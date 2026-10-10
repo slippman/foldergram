@@ -24,6 +24,7 @@ describe.sequential('viewer-safe status payload', () => {
   let APP_DEFAULT_LOCALE_SETTING_KEY: AppSettingKeysModule['APP_DEFAULT_LOCALE_SETTING_KEY'];
   let HOME_FEED_DEFAULT_MODE_SETTING_KEY: AppSettingKeysModule['HOME_FEED_DEFAULT_MODE_SETTING_KEY'];
   let REELS_FEED_DEFAULT_MODE_SETTING_KEY: AppSettingKeysModule['REELS_FEED_DEFAULT_MODE_SETTING_KEY'];
+  let FOLDER_DISPLAY_THEME_SETTING_KEY: AppSettingKeysModule['FOLDER_DISPLAY_THEME_SETTING_KEY'];
   let FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY: AppSettingKeysModule['FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY'];
   let NESTED_FOLDER_TITLE_FORMAT_SETTING_KEY: AppSettingKeysModule['NESTED_FOLDER_TITLE_FORMAT_SETTING_KEY'];
 
@@ -49,6 +50,7 @@ describe.sequential('viewer-safe status payload', () => {
       HOME_FEED_DEFAULT_MODE_SETTING_KEY,
       REELS_FEED_DEFAULT_MODE_SETTING_KEY,
       FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY,
+      FOLDER_DISPLAY_THEME_SETTING_KEY,
       NESTED_FOLDER_TITLE_FORMAT_SETTING_KEY
     } = await import('../src/constants/app-setting-keys.js'));
   });
@@ -59,6 +61,7 @@ describe.sequential('viewer-safe status payload', () => {
     appSettingsRepository.remove(HOME_FEED_DEFAULT_MODE_SETTING_KEY);
     appSettingsRepository.remove(REELS_FEED_DEFAULT_MODE_SETTING_KEY);
     appSettingsRepository.remove(FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY);
+    appSettingsRepository.remove(FOLDER_DISPLAY_THEME_SETTING_KEY);
     appSettingsRepository.remove(NESTED_FOLDER_TITLE_FORMAT_SETTING_KEY);
     await Promise.all([
       fs.rm(appConfig.galleryRoot, { recursive: true, force: true }),
@@ -204,10 +207,20 @@ describe.sequential('viewer-safe status payload', () => {
       defaultHomeFeedMode: 'random',
       defaultReelsFeedMode: 'random',
       defaultFolderImageOrder: 'newest',
+      folderDisplayTheme: 'classic',
+      feedDisplayTheme: 'classic',
       nestedFolderTitleFormat: 'folder',
       treatStoriesAsFolders: false,
       treatCarouselsAsFolders: false
     });
+  });
+
+  it('falls back to classic for an unknown folder theme and exposes the saved choice in admin stats', () => {
+    appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'unknown');
+    expect(galleryService.getStatus().preferences.folderDisplayTheme).toBe('classic');
+    galleryService.setFolderDisplayTheme('cinema');
+    expect(appSettingsRepository.get(FOLDER_DISPLAY_THEME_SETTING_KEY)).toBe('cinema');
+    expect(galleryService.getStats().preferences.folderDisplayTheme).toBe('cinema');
   });
 
   it('includes configured home, reels, and folder defaults in the viewer-safe status payload', () => {
@@ -215,6 +228,7 @@ describe.sequential('viewer-safe status payload', () => {
     appSettingsRepository.set(HOME_FEED_DEFAULT_MODE_SETTING_KEY, 'rediscover');
     appSettingsRepository.set(REELS_FEED_DEFAULT_MODE_SETTING_KEY, 'recommended');
     appSettingsRepository.set(FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY, 'oldest');
+    galleryService.setFolderDisplayTheme('cinema');
 
     const status = galleryService.getStatus();
 
@@ -223,6 +237,8 @@ describe.sequential('viewer-safe status payload', () => {
       defaultHomeFeedMode: 'rediscover',
       defaultReelsFeedMode: 'recommended',
       defaultFolderImageOrder: 'oldest',
+      folderDisplayTheme: 'cinema',
+      feedDisplayTheme: 'classic',
       nestedFolderTitleFormat: 'folder',
       treatStoriesAsFolders: false,
       treatCarouselsAsFolders: false

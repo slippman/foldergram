@@ -2011,3 +2011,22 @@ img[data-loaded="true"] {
     opacity: 0.92;
   }
 }
+
+/* Shared media actions in the feed and library Cinema theme. */
+.media-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 180ms, transform 180ms;
+}
+.media-action:hover { opacity: 0.72; transform: translateY(-1px); }
+.media-action:disabled { opacity: 0.5; cursor: wait; transform: none; }
+.media-action--liked { color: #e5484d; }

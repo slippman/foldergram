@@ -58,6 +58,20 @@ describe.sequential('video derivative strategy', () => {
     ]);
   });
 
+  it('prefers Apple capture time over edited video export time', async () => {
+    execFileAsyncMock.mockImplementation(createExecFileAsyncMock({
+      format: { duration: '4.0', tags: {
+        creation_time: '2026-10-07T04:43:03Z',
+        'com.apple.quicktime.creationdate': '2026-10-03T18:46:36-06:00'
+      } },
+      streams: [{ codec_type: 'video', codec_name: 'h264', width: 640, height: 360,
+        tags: { creation_time: '2026-10-07T04:43:03Z' } }]
+    }));
+    const { readMediaMetadata } = await import('../src/services/derivative-service.js');
+    const metadata = await readMediaMetadata('/tmp/edited.mov', 'video', { fileSize: 2048 });
+    expect(metadata.takenAt).toBe(Date.parse('2026-10-04T00:46:36Z'));
+  });
+
   it('keeps preview transcoding for large high-resolution browser-safe MP4 originals while preserving original playback eligibility', async () => {
     execFileAsyncMock.mockImplementation(createExecFileAsyncMock({
       format: {

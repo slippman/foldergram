@@ -172,6 +172,11 @@ export const router = createRouter({
       return savedPosition;
     }
 
+    // Cinema positions the selected photo after loading its album page.
+    if (to.name === 'folder' && to.query.view === 'scroll') {
+      return false;
+    }
+
     if (shouldPreserveModalScroll(to, from)) {
       return false;
     }

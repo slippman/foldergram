@@ -220,6 +220,17 @@ describe('PostViewer', () => {
         ]
       }
     });
+    const muteStage = wrapper.findComponent({ name: 'CarouselMediaStage' });
+    const appStore = useAppStore();
+    appStore.setVideoMuted(true);
+    muteStage.vm.$emit('toggle-mute');
+    await flushPromises();
+    expect(appStore.videoMuted).toBe(false);
+    expect(muteStage.props('muted')).toBe(false);
+    muteStage.vm.$emit('autoplay-muted');
+    await flushPromises();
+    expect(appStore.videoMuted).toBe(true);
+    expect(muteStage.props('muted')).toBe(true);
     const shell = wrapper.get('.viewer__media-shell--carousel');
     expect(shell.attributes('style')).toBe(singleStyle);
     expect((shell.element as HTMLElement).style.getPropertyValue('--viewer-media-aspect-ratio')).toBe('2880 / 1800');

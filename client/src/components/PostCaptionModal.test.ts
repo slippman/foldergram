@@ -9,6 +9,14 @@ describe('PostCaptionModal', () => {
     i18n.global.locale.value = DEFAULT_LOCALE;
   });
 
+  it('starts with an empty field when filename fallback is disabled', async () => {
+    const wrapper = mount(PostCaptionModal, { props: { filename: 'PXL_123.jpg', caption: null, useFilenameFallback: false } });
+    expect(wrapper.get('textarea').element.value).toBe('');
+    await wrapper.get('textarea').setValue('Family trip');
+    await wrapper.get('form').trigger('submit.prevent');
+    expect(wrapper.emitted('save')).toEqual([['Family trip']]);
+  });
+
   it('emits a trimmed caption when saving', async () => {
     const wrapper = mount(PostCaptionModal, {
       props: {

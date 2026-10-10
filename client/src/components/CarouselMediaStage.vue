@@ -23,11 +23,11 @@
         :height="item.height"
         :poster="item.thumbnailUrl"
         :alt="item.filename"
-        :muted="appStore.videoMuted"
+        :muted="props.muted ?? appStore.videoMuted"
         :autoplay="autoplay"
         variant="viewer"
-        @autoplay-muted="appStore.setVideoMuted(true)"
-        @toggle-mute="appStore.setVideoMuted(!appStore.videoMuted)"
+        @autoplay-muted="handleAutoplayMuted"
+        @toggle-mute="toggleMute"
       />
       <ResilientImage
         v-else-if="index === activeIndex"
@@ -111,7 +111,7 @@ const props = withDefaults(
     preferPreview: false,
     retryWhile: false,
     loading: 'lazy',
-    muted: true,
+    muted: undefined,
     autoplay: false,
     fitContainer: false
   }
@@ -119,10 +119,20 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:modelValue': [index: number];
+  'toggle-mute': [];
+  'autoplay-muted': [];
 }>();
 
 const { t } = useI18n();
 const appStore = useAppStore();
+function toggleMute() {
+  if (props.muted !== undefined) emit('toggle-mute');
+  else appStore.setVideoMuted(!appStore.videoMuted);
+}
+function handleAutoplayMuted() {
+  if (props.muted !== undefined) emit('autoplay-muted');
+  else appStore.setVideoMuted(true);
+}
 const pointerId = ref<number | null>(null);
 const pointerStartX = ref(0);
 

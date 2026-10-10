@@ -92,7 +92,7 @@
             <media-fullscreen-button
               class="video-media-player__control"
               :aria-label="t('post.viewer.toggleFullscreen')"
-              target="media"
+              target="prefer-media"
               data-swipe-ignore="true"
             >
               <span
@@ -249,9 +249,10 @@ function handleMuteClick() {
 
 async function handleAutoplayFail() {
   const player = playerElement.value;
-  if (!player || !props.autoplay || props.muted) return;
+  if (!player || !props.autoplay || player.muted) return;
 
-  // Browsers commonly reject audible autoplay. Keep carousel playback automatic
+  // The provider may not yet reflect the requested mute prop. Retry using
+  // the actual player state when browsers reject audible autoplay. Keep playback automatic
   // by retrying muted and persist that state through the owning app store.
   player.muted = true;
   emit('autoplay-muted');

@@ -61,7 +61,7 @@
     "home": "首页",
     "reels": "短片",
     "search": "搜索",
-    "library": "图库",
+    "library": "相册",
     "places": "地点",
     "collections": "收藏集",
     "more": "更多",
@@ -73,7 +73,7 @@
     "switchToLightMode": "切换到浅色模式",
     "signOut": "退出登录",
     "returnToPublicView": "返回公开视图",
-    "foldersSpotlight": "精选文件夹",
+    "foldersSpotlight": "精选相册",
     "likesAriaLabel": "{label} ({count})",
     "folderPosts": "{count} 个帖子"
   },
@@ -337,6 +337,28 @@
         "validateExcludedFolders": "无法验证已排除文件夹规则。",
         "update": "无法更新常规设置。",
         "partialUpdate": "部分设置已保存（{parts}），但更新未能完成：{message}"
+      },
+      "feedTheme": {
+        "label": "动态主题",
+        "description": "选择电脑和手机上的动态显示方式。",
+        "classic": "经典",
+        "cinema": "Cinema",
+        "saved": "动态主题已保存。",
+        "note": "应用到动态，无需重新扫描。",
+        "closeMenuAria": "关闭动态主题菜单",
+        "classicDescription": "现有的动态卡片。",
+        "cinemaDescription": "与 Cinema 相册相同的紧凑布局和控件。"
+      },
+      "folderTheme": {
+        "label": "文件夹显示主题",
+        "description": "选择电脑和手机上的相册显示方式。对所有浏览者生效；首页和 Reels 保持不变。",
+        "classic": "经典 · 网格",
+        "cinema": "影院 · 垂直滚动",
+        "saved": "文件夹显示主题已保存。",
+        "note": "无需重新扫描即可应用到文件夹。",
+        "closeMenuAria": "关闭文件夹主题菜单",
+        "classicDescription": "文件夹标题、故事和缩略图网格。",
+        "cinemaDescription": "多样化相册网格、全尺寸垂直浏览，以及自动浅色或深色外观。"
       }
     },
     "library": {
@@ -613,6 +635,7 @@
     }
   },
   "home": {
+    "feedTitle": "动态",
     "sidebar": {
       "ariaLabel": "文件夹推荐",
       "suggestedFolders": "推荐文件夹",
@@ -806,6 +829,14 @@
       "posts": "帖子",
       "reels": "短片",
       "sections": "文件夹分区"
+    },
+    "cinema": {
+      "backToGrid": "返回相册网格",
+      "back": "返回媒体库",
+      "empty": "此文件夹中没有帖子",
+      "emptyDescription": "向此文件夹添加照片或视频，然后扫描。",
+      "filename": "文件名",
+      "infoError": "无法加载帖子详情。"
     }
   },
   "share": {
@@ -876,7 +907,8 @@
       "resetToFilename": "重置为文件名",
       "errors": {
         "update": "无法更新说明"
-      }
+      },
+      "removeCaption": "移除说明"
     },
     "viewer": {
       "close": "关闭帖子",
@@ -1055,30 +1087,31 @@
     }
   },
   "libraryPage": {
-    "eyebrow": "图库",
-    "title": "全部文件夹",
-    "description": "浏览并搜索所有已索引的应用文件夹。",
+    "eyebrow": "相册",
+    "title": "所有相册",
+    "description": "浏览和搜索你的相册。",
     "stats": {
-      "folders": "文件夹",
+      "folders": "相册",
       "posts": "帖子"
     },
     "errors": {
-      "load": "无法加载文件夹"
+      "load": "无法加载相册"
     },
-    "searchPlaceholder": "搜索名称或路径片段...",
+    "searchPlaceholder": "搜索相册...",
     "sort": {
+      "albumDate": "相册日期",
       "recentDesc": "最近更新",
       "imagesDesc": "帖子最多",
       "nameAsc": "名称 A-Z",
       "nameDesc": "名称 Z-A",
-      "pathAsc": "路径 A-Z"
+      "pathAsc": "按合集分组"
     },
     "resultsOne": "{count} 个结果",
     "resultsOther": "{count} 个结果",
-    "loading": "正在加载文件夹...",
-    "emptyTitle": "还没有已索引的文件夹",
-    "emptyDescription": "在图库根目录下添加包含媒体的源文件夹，然后运行一次扫描。",
-    "noMatch": "没有匹配的文件夹。请尝试其他搜索或筛选。",
+    "loading": "正在加载相册...",
+    "emptyTitle": "还没有相册",
+    "emptyDescription": "添加照片和视频后，相册将显示在这里。",
+    "noMatch": "未找到相册，请尝试其他搜索。",
     "topLevelSourceFolder": "顶级源文件夹",
     "postsCountOne": "{count} 篇帖子",
     "postsCountOther": "{count} 篇帖子",
@@ -1089,8 +1122,8 @@
       "empty": "空"
     },
     "moreOptions": "更多选项",
-    "openFolder": "打开文件夹",
-    "deleteFolder": "删除文件夹",
+    "openFolder": "打开相册",
+    "deleteFolder": "删除相册",
     "noRecentMedia": "没有最近媒体",
     "delete": {
       "title": "删除此应用文件夹？",

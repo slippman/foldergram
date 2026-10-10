@@ -551,6 +551,24 @@ router.put(
 );
 
 router.put(
+  '/admin/settings/folder-display-theme',
+  requireCapability('canAccessSettings', 'Admin access is required.'),
+  (request, response) => {
+    const body = z.object({ theme: z.enum(['classic', 'cinema']) }).parse(request.body);
+    response.json(galleryService.setFolderDisplayTheme(body.theme));
+  }
+);
+
+router.put(
+  '/admin/settings/feed-display-theme',
+  requireCapability('canAccessSettings', 'Admin access is required.'),
+  (request, response) => {
+    const body = z.object({ theme: z.enum(['classic', 'cinema']) }).parse(request.body);
+    response.json(galleryService.setFeedDisplayTheme(body.theme));
+  }
+);
+
+router.put(
   '/admin/settings/folder-image-order-default',
   requireCapability('canAccessSettings', 'Admin access is required.'),
   (request, response) => {

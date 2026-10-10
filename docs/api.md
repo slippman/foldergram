@@ -7,6 +7,11 @@ description: Backend endpoints, parameters, response shapes, and mutation rules 
 
 All documented routes come from `server/src/routes/api.ts`.
 
+Feed and image responses include `takenAtSource` (`exif`, `mtime`, `first_seen`,
+`sort_timestamp`, or `null`). Only `exif` identifies an embedded capture timestamp
+(including video capture metadata). Other sources provide stable ordering fallbacks;
+Cinema hides those dates rather than presenting them as capture times.
+
 ## Base paths
 
 | Base path | Purpose |
@@ -1136,6 +1141,14 @@ Success:
 }
 ```
 
+### `PUT /api/admin/settings/folder-display-theme`
+
+Requires admin settings access. Accepts `{ "theme": "classic" }` or
+`{ "theme": "cinema" }` and returns the saved `{ "theme": "…" }`.
+The choice is persisted in `app_settings` and included as
+`preferences.folderDisplayTheme` in status/stats. Default: `classic`.
+No scan is required; Cinema applies only to desktop library folder pages.
+
 ### `PUT /api/admin/settings/folder-image-order-default`
 
 Sets the app-wide default order used by App Folder grids and folder-scoped
@@ -1816,3 +1829,5 @@ media assets. Status responses distinguish `indexedPosts`, `indexedMediaAssets`,
 `indexedCarousels`, and single-video `indexedVideos`; scan summaries may include
 `warning_count` and `warning_text`. Carousel mode and migration state are
 available in `preferences.treatCarouselsAsFolders` and `carouselsMigration`.
+
+`PUT /api/admin/settings/feed-display-theme` accepts `{ "theme": "classic" | "cinema" }` and returns `{ "theme": ... }`. Admin access is required. `preferences.feedDisplayTheme` is available in viewer status and admin stats.

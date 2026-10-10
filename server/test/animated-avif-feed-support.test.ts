@@ -201,7 +201,7 @@ describe.sequential('animated AVIF feed support', () => {
 
     await scannerService.scanAll('manual');
 
-    expect(readMediaMetadataMock).toHaveBeenCalledTimes(1);
+    expect(readMediaMetadataMock).toHaveBeenCalledTimes(2);
     expect(readMediaMetadataMock).toHaveBeenCalledWith(avifAbsolutePath, 'image', {
       fileSize: avifStats.size
     });

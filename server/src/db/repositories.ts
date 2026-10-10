@@ -162,14 +162,14 @@ const FOLDER_SUMMARY_AVATAR_THUMBNAIL_PATH_SQL = `
 
 function getQualifiedFolderPostOrderSql(order: FolderImageOrder): string {
   return order === 'oldest'
-    ? 'posts.sort_timestamp ASC, posts.id ASC'
-    : 'posts.sort_timestamp DESC, posts.id DESC';
+    ? 'COALESCE(posts.taken_at, posts.sort_timestamp) ASC, posts.id ASC'
+    : 'COALESCE(posts.taken_at, posts.sort_timestamp) DESC, posts.id DESC';
 }
 
 function getUnscopedFolderPostOrderSql(order: FolderImageOrder): string {
   return order === 'oldest'
-    ? 'sort_timestamp ASC, id ASC'
-    : 'sort_timestamp DESC, id DESC';
+    ? 'COALESCE(taken_at, sort_timestamp) ASC, id ASC'
+    : 'COALESCE(taken_at, sort_timestamp) DESC, id DESC';
 }
 
 const POST_CAPTION_SEARCH_SQL = 'LOWER(COALESCE(posts.caption, \'\'))';
@@ -228,6 +228,7 @@ const BASE_POST_SELECT_SQL = `
     images.playback_strategy AS playbackStrategy,
     posts.sort_timestamp AS sortTimestamp,
     posts.taken_at AS takenAt,
+    posts.taken_at_source AS takenAtSource,
     ${POST_SAVED_SELECT_SQL},
     places.id AS placeId,
     places.slug AS placeSlug,
@@ -298,6 +299,26 @@ const FOLDER_SUMMARY_SELECT_SQL = `
         AND p.is_deleted = 0
         AND p.is_trashed = 0
     ) AS latest_image_mtime_ms,
+    (
+      SELECT MIN(CASE WHEN img.taken_at_source = 'exif' THEN img.taken_at END)
+      FROM posts p
+      JOIN post_items pi ON pi.post_id = p.id
+      JOIN images img ON img.id = pi.image_id
+      WHERE p.folder_id = folders.id
+        AND p.is_deleted = 0
+        AND p.is_trashed = 0
+        AND NOT (img.folder_id = p.folder_id AND LOWER(img.filename) IN (${COVER_FILENAME_SQL}))
+    ) AS earliest_taken_at,
+    (
+      SELECT MAX(CASE WHEN img.taken_at_source = 'exif' THEN img.taken_at END)
+      FROM posts p
+      JOIN post_items pi ON pi.post_id = p.id
+      JOIN images img ON img.id = pi.image_id
+      WHERE p.folder_id = folders.id
+        AND p.is_deleted = 0
+        AND p.is_trashed = 0
+        AND NOT (img.folder_id = p.folder_id AND LOWER(img.filename) IN (${COVER_FILENAME_SQL}))
+    ) AS latest_taken_at,
     CASE WHEN ${HAS_AVATAR_STORY_SQL} THEN 1 ELSE 0 END AS has_avatar_story,
     ${FOLDER_SUMMARY_AVATAR_IMAGE_ID_SQL} AS summary_avatar_image_id,
     ${FOLDER_SUMMARY_AVATAR_THUMBNAIL_PATH_SQL} AS summary_avatar_thumbnail_path
@@ -1619,6 +1640,7 @@ export const postRepository = {
         images.playback_strategy AS playbackStrategy,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         ${POST_SAVED_SELECT_SQL},
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -1816,6 +1838,7 @@ export const postRepository = {
         images.playback_strategy AS playbackStrategy,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         ${POST_SAVED_SELECT_SQL},
         posts.trashed_at AS trashedAt,
         places.id AS placeId,
@@ -1849,11 +1872,11 @@ export const postRepository = {
   ): PostDetail | undefined {
     const resolvedId = id;
     const nextComparisonSql = folderImageOrder === 'oldest'
-      ? '(sort_timestamp > ? OR (sort_timestamp = ? AND id > ?))'
-      : '(sort_timestamp < ? OR (sort_timestamp = ? AND id < ?))';
+      ? '(COALESCE(taken_at, sort_timestamp) > ? OR (COALESCE(taken_at, sort_timestamp) = ? AND id > ?))'
+      : '(COALESCE(taken_at, sort_timestamp) < ? OR (COALESCE(taken_at, sort_timestamp) = ? AND id < ?))';
     const previousComparisonSql = folderImageOrder === 'oldest'
-      ? '(sort_timestamp < ? OR (sort_timestamp = ? AND id < ?))'
-      : '(sort_timestamp > ? OR (sort_timestamp = ? AND id > ?))';
+      ? '(COALESCE(taken_at, sort_timestamp) < ? OR (COALESCE(taken_at, sort_timestamp) = ? AND id < ?))'
+      : '(COALESCE(taken_at, sort_timestamp) > ? OR (COALESCE(taken_at, sort_timestamp) = ? AND id > ?))';
     const nextOrderSql = getUnscopedFolderPostOrderSql(folderImageOrder);
     const previousOrderSql = getUnscopedFolderPostOrderSql(folderImageOrder === 'oldest' ? 'newest' : 'oldest');
 
@@ -1885,6 +1908,7 @@ export const postRepository = {
         images.absolute_path AS originalUrl,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         ${POST_SAVED_SELECT_SQL},
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -1916,7 +1940,7 @@ export const postRepository = {
       ORDER BY ${nextOrderSql}
       LIMIT 1
       `
-    ).get(hydratedPost.folderId, hydratedPost.sortTimestamp, hydratedPost.sortTimestamp, hydratedPost.id) as { id: number } | undefined;
+    ).get(hydratedPost.folderId, hydratedPost.takenAt ?? hydratedPost.sortTimestamp, hydratedPost.takenAt ?? hydratedPost.sortTimestamp, hydratedPost.id) as { id: number } | undefined;
 
     const previous = database.prepare(
       `
@@ -1927,7 +1951,7 @@ export const postRepository = {
       ORDER BY ${previousOrderSql}
       LIMIT 1
       `
-    ).get(hydratedPost.folderId, hydratedPost.sortTimestamp, hydratedPost.sortTimestamp, hydratedPost.id) as { id: number } | undefined;
+    ).get(hydratedPost.folderId, hydratedPost.takenAt ?? hydratedPost.sortTimestamp, hydratedPost.takenAt ?? hydratedPost.sortTimestamp, hydratedPost.id) as { id: number } | undefined;
 
     const nextPostId = next?.id ?? null;
     const previousPostId = previous?.id ?? null;
@@ -2198,6 +2222,7 @@ export const imageRepository = {
         sourcePath: input.relativePath,
         caption: null,
         takenAt: input.takenAt ?? null,
+        takenAtSource: input.takenAtSource,
         sortTimestamp: input.sortTimestamp,
         isDeleted: 0,
         isTrashed: 0
@@ -2279,6 +2304,7 @@ export const imageRepository = {
         sourcePath: input.relativePath,
         caption: null,
         takenAt: input.takenAt ?? null,
+        takenAtSource: input.takenAtSource,
         sortTimestamp: record.sort_timestamp,
         isDeleted: 0,
         isTrashed: 0
@@ -2594,6 +2620,7 @@ export const imageRepository = {
         images.playback_strategy AS playbackStrategy,
         images.sort_timestamp AS sortTimestamp,
         images.taken_at AS takenAt,
+        images.taken_at_source AS takenAtSource,
         0 AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -2633,6 +2660,7 @@ export const imageRepository = {
         images.playback_strategy AS playbackStrategy,
         images.sort_timestamp AS sortTimestamp,
         images.taken_at AS takenAt,
+        images.taken_at_source AS takenAtSource,
         0 AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -2997,6 +3025,7 @@ export const likeRepository = {
         images.playback_strategy AS playbackStrategy,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         1 AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -3042,6 +3071,7 @@ export const likeRepository = {
         images.playback_strategy AS playbackStrategy,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         1 AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -3086,6 +3116,7 @@ export const likeRepository = {
         images.playback_strategy AS playbackStrategy,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         1 AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -3454,6 +3485,7 @@ export const collectionRepository = {
         images.playback_strategy AS playbackStrategy,
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
+        posts.taken_at_source AS takenAtSource,
         1 AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,

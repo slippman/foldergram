@@ -22,7 +22,23 @@
       :message="foldersStore.folderError"
     />
     <template v-else-if="foldersStore.currentFolder">
-      <div class="mx-auto grid w-full max-w-[69rem] gap-[0.15rem]">
+      <section v-if="isCinema" class="folder-cinema">
+        <CinemaHeader :title="foldersStore.currentFolder.name">
+          <template #leading>
+          <RouterLink :to="isCinemaScroll ? cinemaGridRoute : { name: 'library' }" class="folder-cinema__back" :aria-label="isCinemaScroll ? t('folder.cinema.backToGrid') : t('folder.cinema.back')">
+            <span class="i-fluent-arrow-left-20-regular" aria-hidden="true" />
+          </RouterLink>
+          </template>
+        </CinemaHeader>
+        <FolderGrid v-if="!isCinemaScroll" :items="foldersStore.currentImages" variant="cinema" />
+        <div v-else>
+          <CinemaPost v-for="item in foldersStore.currentImages" :id="`cinema-post-${item.id}`" :key="item.id" :item="item" />
+        </div>
+        <EmptyState v-if="!foldersStore.loadingFolder && !foldersStore.currentImages.length"
+          :title="t('folder.cinema.empty')" :description="t('folder.cinema.emptyDescription')" />
+        <InfiniteLoader :loading="foldersStore.loadingFolder" :has-more="foldersStore.currentHasMore" @load-more="loadMore" />
+      </section>
+      <div v-else class="mx-auto grid w-full max-w-[69rem] gap-[0.15rem]">
         <div class="mx-auto w-[min(100%,54rem)]">
           <FolderHeader
             :folder="foldersStore.currentFolder"
@@ -182,13 +198,16 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, ref, watch } from "vue"
+  import { computed, nextTick, onMounted, ref, watch } from "vue"
   import { useI18n } from "vue-i18n"
   import { useRoute, useRouter } from "vue-router"
 
   import EmptyState from "../components/EmptyState.vue"
   import ErrorState from "../components/ErrorState.vue"
   import InfiniteLoader from "../components/InfiniteLoader.vue"
+  import { provideCinemaAudio } from "../composables/useCinemaAudio"
+  import CinemaHeader from "../components/CinemaHeader.vue"
+  import CinemaPost from "../components/CinemaPost.vue"
   import FolderGrid from "../components/FolderGrid.vue"
   import FolderHeader from "../components/FolderHeader.vue"
   import Avatar from "../components/Avatar.vue"
@@ -201,12 +220,34 @@
     slug: string
   }>()
 
+  provideCinemaAudio()
   const appStore = useAppStore()
   const folderStoriesStore = useFolderStoriesStore()
   const foldersStore = useFoldersStore()
   const route = useRoute()
   const router = useRouter()
   const { t } = useI18n()
+  const isCinema = computed(() => appStore.folderDisplayTheme === 'cinema')
+  const isCinemaScroll = computed(() => isCinema.value && route.query.view === 'scroll')
+  const cinemaGridRoute = computed(() => ({
+    name: 'folder', params: { slug: props.slug },
+    query: Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'view' && key !== 'photo')),
+  }))
+  async function focusCinemaPhoto() {
+    if (!isCinemaScroll.value) return
+    const id = Number(route.query.photo)
+    if (!Number.isSafeInteger(id) || id <= 0) return
+    // A bookmarked photo can be on a later page. Load through it before scrolling.
+    while (isCinemaScroll.value && !foldersStore.currentImages.some(item => item.id === id) && foldersStore.currentHasMore && !foldersStore.loadingFolder) {
+      const page = foldersStore.currentPage
+      await loadMore()
+      if (foldersStore.currentPage === page || foldersStore.folderError) break
+    }
+    await nextTick()
+    if (!isCinemaScroll.value || Number(route.query.photo) !== id) return
+    document.getElementById(`cinema-post-${id}`)?.scrollIntoView({ block: 'start' })
+  }
+  watch(() => [route.query.view, route.query.photo], focusCinemaPhoto)
   const hasLoadedOnce = ref(false)
   const activeStoryViewerId = ref<string | null>(null)
   const activeTab = computed(() =>
@@ -226,7 +267,7 @@
       foldersStore.loadFolder(
         props.slug,
         true,
-        activeTab.value === "reels" ? "video" : undefined,
+        !isCinema.value && activeTab.value === "reels" ? "video" : undefined,
       ),
       folderStoriesStore.fetchStories(props.slug, folderStoriesStore.currentFolderSlug !== props.slug),
     ])
@@ -243,6 +284,7 @@
     }
 
     hasLoadedOnce.value = true
+    await focusCinemaPhoto()
   }
 
   async function loadMore() {
@@ -250,7 +292,7 @@
       await foldersStore.loadFolder(
         props.slug,
         false,
-        activeTab.value === "reels" ? "video" : undefined,
+        !isCinema.value && activeTab.value === "reels" ? "video" : undefined,
       )
     }
   }
@@ -296,7 +338,7 @@
 
   onMounted(loadFolder)
   watch(
-    () => [props.slug, activeTab.value] as const,
+    () => [props.slug, activeTab.value, isCinema.value] as const,
     async () => {
       hasLoadedOnce.value = false
       activeStoryViewerId.value = null
@@ -304,3 +346,10 @@
     },
   )
 </script>
+
+<style scoped>
+.folder-cinema { width: 100%; }
+.folder-cinema__back { display: inline-flex; padding: 0.6rem; color: inherit; border-radius: 50%; }
+.folder-cinema__back span { width: 1.1rem; height: 1.1rem; }
+.folder-cinema__back:hover { background: var(--surface-hover); }
+</style>

@@ -99,6 +99,35 @@ Instead:
 - the default is `Newest First`
 - this setting changes app-folder grids and previous/next navigation inside the post viewer when browsing within a folder
 
+## Album theme
+
+`Settings -> General Settings -> Album theme` selects an app-wide,
+SQLite-backed preference for library albums on computers and phones. Save
+General Settings to apply it; no scan is required.
+
+- **Classic** (default): existing folder header, stories, and post grid.
+- **Cinema**: a grid of varied tile widths opens the album. Click a tile to enter
+  a vertical scroll at that photo; the back arrow returns to the grid. Large,
+  uncropped media fits the available width and viewport height, without shadows.
+  The background follows the browser’s light/dark preference.
+  Only manually entered captions, available capture dates/times, and known places
+  appear below the media. Filename fallbacks and technical metadata are hidden.
+
+A compact toolbar reuses the feed button styling for likes, an expandable Info
+panel, and original downloads. Carousel downloads follow the selected slide.
+Technical details and filenames appear only when Info is opened.
+
+Admins can add or edit captions using the small pencil below each Cinema post.
+Clearing a caption hides it in Cinema. In Classic, open a post and use the pencil
+in its details panel. Videos autoplay when visible, start muted, and pause when scrolled out of view.
+Unmuting a Cinema video mutes the previously audible video, including carousel
+videos. Scrolling offscreen also releases sound.
+Carousels remain swipeable posts within the vertical list. Folder ordering and
+pagination still follow the existing settings. Reels and public shares are
+unaffected. The album list uses capture dates (a range
+when photos span multiple days), leaves unknown dates blank, and defaults to
+newest album date first.
+
 ## Nested folder title format
 
 Nested folder title format is **not** configured in `.env`.
@@ -394,3 +423,21 @@ from `GET /api/admin/scan-progress` and from the `scan` field in
 ## Carousel-folder mode
 
 The SQLite setting `library.treat_carousels_as_folders` controls folders named `carousels`. Its default `false` value reserves `AppFolder/carousels/<post>/` for multi-item posts. Enable **Treat carousels folders as normal app folders** from **Settings → General Settings** to index those paths as ordinary folders instead. When no indexed path conflicts with the reserved name, Settings can show a dismissible Carousel Posts introduction with an expandable folder example. Existing path collisions produce a migration decision card that remains available until a mode is saved. Settings shows a pending update until a successful full scan has applied the saved mode. Use **Scan Library** under normal conditions, or **Rebuild Library Index** when the gallery location requires a new index. There is no `.env` equivalent.
+
+Album ordering and next/previous navigation use embedded capture timestamps when
+available, with the existing stable timestamp as fallback. EXIF timezone offsets
+and Apple QuickTime capture dates are respected. The next successful full scan
+repairs timestamps for already indexed files without re-importing them.
+
+## Feed theme
+
+`Settings -> General Settings -> Feed theme` independently selects Classic or
+Cinema for the Home feed. Classic is the default. Save changes to apply it for
+all viewers without rescanning. Album and feed Cinema use the same component,
+media sizing, captions, capture metadata, buttons, and exclusive audio behavior.
+The Cinema feed opens directly in vertical scroll and uses the available width
+without the Classic summary sidebar. Feed ordering and pagination are unchanged.
+
+Cinema uses compact sticky headers: the album name with a back-to-grid arrow
+in albums, and a stable Feed heading in Home. Feed items link to their album
+below the media, centered above capture time, on computers and phones.

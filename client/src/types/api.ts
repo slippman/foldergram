@@ -2,6 +2,8 @@ import type { SupportedLocale } from '../locales';
 
 export type FeedMode = 'recent' | 'rediscover' | 'random';
 export type ReelsFeedMode = 'recommended' | 'recent' | 'random';
+export type DisplayTheme = 'classic' | 'cinema';
+export type FolderDisplayTheme = DisplayTheme;
 export type FolderImageOrder = 'newest' | 'oldest';
 export type NestedFolderTitleFormat = 'folder' | 'parent-plus-folder';
 export type FeedRailKind = 'moments' | 'highlights';
@@ -98,6 +100,7 @@ export interface FeedItem {
   previewUrl: string;
   sortTimestamp: number;
   takenAt: number | null;
+  takenAtSource?: 'exif' | 'mtime' | 'first_seen' | 'sort_timestamp' | null;
   isSaved?: boolean;
   place?: PlaceSummary | null;
   mediaItems?: PostMediaItem[];
@@ -136,6 +139,8 @@ export interface FolderSummary {
   imageCount: number;
   videoCount: number;
   latestImageMtimeMs: number | null;
+  earliestTakenAt?: number | null;
+  latestTakenAt?: number | null;
   hasAvatarStory?: boolean;
   avatarImageId: number | null;
   avatarUrl: string | null;
@@ -582,6 +587,8 @@ export interface AppStatus {
     defaultHomeFeedMode: FeedMode;
     defaultReelsFeedMode: ReelsFeedMode;
     defaultFolderImageOrder?: FolderImageOrder;
+    folderDisplayTheme?: FolderDisplayTheme;
+    feedDisplayTheme?: DisplayTheme;
     nestedFolderTitleFormat?: NestedFolderTitleFormat;
     treatStoriesAsFolders: boolean;
     treatCarouselsAsFolders: boolean;

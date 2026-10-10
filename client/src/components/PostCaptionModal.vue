@@ -39,7 +39,7 @@
               :disabled="loading"
               @click="resetToFilename"
             >
-              {{ t('post.captionModal.resetToFilename') }}
+              {{ t(useFilenameFallback === false ? 'post.captionModal.removeCaption' : 'post.captionModal.resetToFilename') }}
             </button>
             <div class="flex items-center gap-3 ml-auto">
               <button
@@ -71,12 +71,13 @@ import { useI18n } from 'vue-i18n';
 
 import { normalizeCaptionInput, resolveDisplayCaption } from '../utils/caption';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   filename: string;
   caption?: string | null;
+  useFilenameFallback?: boolean;
   error?: string | null;
   loading?: boolean;
-}>();
+}>(), { useFilenameFallback: true });
 
 const emit = defineEmits<{
   cancel: [];
@@ -87,7 +88,7 @@ const { t } = useI18n();
 const titleId = `caption-dialog-title-${Math.random().toString(36).slice(2, 10)}`;
 const hasCustomCaption = computed(() => props.caption !== null && props.caption !== undefined);
 const formData = reactive({
-  caption: resolveDisplayCaption({
+  caption: props.useFilenameFallback === false ? (props.caption ?? '') : resolveDisplayCaption({
     filename: props.filename,
     caption: props.caption
   })
@@ -96,7 +97,7 @@ const formData = reactive({
 watch(
   () => [props.filename, props.caption] as const,
   ([filename, caption]) => {
-    formData.caption = resolveDisplayCaption({ filename, caption });
+    formData.caption = props.useFilenameFallback === false ? (caption ?? '') : resolveDisplayCaption({ filename, caption });
   }
 );
 

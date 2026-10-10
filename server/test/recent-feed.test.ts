@@ -25,6 +25,7 @@ describe.sequential('recent feed ordering', () => {
   let galleryService: GalleryServiceModule['galleryService'];
   let folderRepository: RepositoriesModule['folderRepository'];
   let imageRepository: RepositoriesModule['imageRepository'];
+  let postRepository: RepositoriesModule['postRepository'];
 
   beforeAll(async () => {
     tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'insta-recent-feed-'));
@@ -45,7 +46,7 @@ describe.sequential('recent feed ordering', () => {
 
     ({ appConfig } = await import('../src/config/env.js'));
     ({ galleryService } = await import('../src/services/gallery-service.js'));
-    ({ folderRepository, imageRepository } = await import('../src/db/repositories.js'));
+    ({ folderRepository, imageRepository, postRepository } = await import('../src/db/repositories.js'));
 
     await Promise.all([
       fs.mkdir(appConfig.galleryRoot, { recursive: true }),
@@ -71,7 +72,36 @@ describe.sequential('recent feed ordering', () => {
     expect(payload.items.map((item) => item.id)).toEqual([julyNewer.id, julyOlder.id, octoberOlder.id]);
   });
 
-  async function createIndexedImage(folderPath: string, filename: string, timestamp: number): Promise<ImageRecord> {
+  it('orders album pages and adjacent posts by capture time rather than export time', async () => {
+    const later = await createIndexedImage('trip', '1.jpg', 1000, 3000);
+    const earlier = await createIndexedImage('trip', '2.jpg', 2000, 1000);
+    const tied = await createIndexedImage('trip', '3.jpg', 3000, 1000);
+    const folder = folderRepository.getBySlug('trip')!;
+    const oldest = postRepository.listVisibleByFolder(folder.id, 1, 10, 'oldest');
+    expect(oldest.map(item => item.filename)).toEqual([earlier.filename, tied.filename, later.filename]);
+    expect(postRepository.listVisibleByFolder(folder.id, 2, 1, 'oldest')[0].filename).toBe(tied.filename);
+    expect(postRepository.listVisibleByFolder(folder.id, 1, 10, 'newest').map(item => item.id)).toEqual(oldest.map(item => item.id).reverse());
+    expect(postRepository.getPostDetail(oldest[1].id, 'oldest')).toMatchObject({ previousPostId: oldest[0].id, nextPostId: oldest[2].id });
+  });
+
+  it('reports album capture ranges without using export dates or cover images', async () => {
+    const first = Date.UTC(2026, 9, 3, 18);
+    const last = Date.UTC(2026, 9, 4, 19);
+    const exported = Date.UTC(2026, 9, 10);
+    await createIndexedImage('trip', 'first.jpg', exported, first);
+    await createIndexedImage('trip', 'last.mp4', exported, last);
+    await createIndexedImage('trip', 'unknown.jpg', exported, null);
+    await createIndexedImage('trip', 'cover.jpg', exported, Date.UTC(2020, 0, 1));
+    const album = galleryService.listFolders().find(folder => folder.slug === 'trip')!;
+    expect(album.earliestTakenAt).toBe(first);
+    expect(album.latestTakenAt).toBe(last);
+    await createIndexedImage('unknown', 'photo.jpg', exported, null);
+    const unknown = galleryService.listFolders().find(folder => folder.slug === 'unknown')!;
+    expect(unknown.earliestTakenAt).toBeNull();
+    expect(unknown.latestTakenAt).toBeNull();
+  });
+
+  async function createIndexedImage(folderPath: string, filename: string, timestamp: number, captureTimestamp: number | null = timestamp): Promise<ImageRecord> {
     const folder = folderRepository.upsert({
       slug: folderPath.replaceAll('/', '-'),
       name: path.posix.basename(folderPath),
@@ -101,8 +131,8 @@ describe.sequential('recent feed ordering', () => {
       mtimeMs: timestamp,
       firstSeenAt: new Date(timestamp).toISOString(),
       sortTimestamp: timestamp,
-      takenAt: timestamp,
-      takenAtSource: 'mtime',
+      takenAt: captureTimestamp,
+      takenAtSource: captureTimestamp === null ? null : 'exif',
       exifJson: '{}',
       thumbnailPath,
       previewPath

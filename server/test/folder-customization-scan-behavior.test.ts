@@ -96,6 +96,40 @@ describe.sequential('folder customization scan behavior', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('repairs capture timestamps for unchanged indexed media once', async () => {
+    await createSourceFile('albums/photo-1.jpg', 1000);
+    await scannerService.scanAll('manual');
+    // Confirm the unchanged folder is eligible for the signature shortcut before
+    // simulating an upgrade that requires capture metadata to be read again.
+    await scannerService.scanAll('manual');
+    readMediaMetadataMock.mockClear();
+    await scannerService.scanAll('manual');
+    expect(readMediaMetadataMock).not.toHaveBeenCalled();
+    appSettingsRepository.set('library.capture_metadata_repair_version', '1');
+    readMediaMetadataMock.mockResolvedValue({ width: 1000, height: 1000,
+      takenAt: Date.parse('2026-10-04T00:23:55Z'), durationMs: null,
+      mediaType: 'image', playbackStrategy: 'preview', isAnimated: false });
+    await scannerService.scanAll('manual');
+    expect(imageRepository.getByRelativePath('albums/photo-1.jpg')).toMatchObject({
+      taken_at: Date.parse('2026-10-04T00:23:55Z'), taken_at_source: 'exif'
+    });
+    expect(galleryService.getFolderImages('albums', 1, 24)?.items[0]).toMatchObject({
+      takenAt: Date.parse('2026-10-04T00:23:55Z'), takenAtSource: 'exif'
+    });
+    expect(appSettingsRepository.get('library.capture_metadata_repair_version')).toBe('3');
+    readMediaMetadataMock.mockClear();
+    await scannerService.scanAll('manual');
+    expect(readMediaMetadataMock).not.toHaveBeenCalled();
+    // An old EXIF date that the new parser cannot verify must lose capture status.
+    appSettingsRepository.set('library.capture_metadata_repair_version', '2');
+    readMediaMetadataMock.mockResolvedValue({ width: 1000, height: 1000,
+      takenAt: null, durationMs: null, mediaType: 'image',
+      playbackStrategy: 'preview', isAnimated: false });
+    await scannerService.scanAll('manual');
+    expect(imageRepository.getByRelativePath('albums/photo-1.jpg')?.taken_at_source).not.toBe('exif');
+    expect(galleryService.getFolderImages('albums', 1, 24)?.items[0].takenAtSource).not.toBe('exif');
+  });
+
   it('preserves a customized folder name and description across normal rescans', async () => {
     maintenanceRepository.resetLibraryIndex();
 

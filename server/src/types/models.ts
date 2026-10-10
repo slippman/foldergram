@@ -66,6 +66,8 @@ export interface FolderSummaryRecord extends FolderRecord {
   carousel_count: number;
   video_count: number;
   latest_image_mtime_ms: number | null;
+  earliest_taken_at?: number | null;
+  latest_taken_at?: number | null;
   has_avatar_story?: number | null;
   summary_avatar_image_id?: number | null;
   summary_avatar_thumbnail_path?: string | null;
@@ -255,6 +257,7 @@ export interface FeedImage {
   previewUrl: string;
   sortTimestamp: number;
   takenAt: number | null;
+  takenAtSource?: TakenAtSource | null;
   isSaved: boolean;
   place?: PlaceSummary | null;
 

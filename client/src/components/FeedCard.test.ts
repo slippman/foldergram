@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import type { FeedItem } from '../types/api';
 import FeedCard from './FeedCard.vue';
@@ -159,6 +160,31 @@ describe('FeedCard', () => {
     );
   });
 
+  it('persists carousel mute changes and blocked-autoplay fallback', async () => {
+    const appStore = useAppStore();
+    appStore.setVideoMuted(true);
+    const video = createVideoItem(805);
+    const wrapper = mount(FeedCard, {
+      props: { item: { ...video, postType: 'carousel', mediaItems: [
+        { imageId: 805, position: 1, filename: 'video.mp4', mediaType: 'video',
+          width: 1080, height: 1080, previewUrl: video.previewUrl, thumbnailUrl: video.thumbnailUrl },
+        { imageId: 806, position: 2, filename: 'photo.jpg', mediaType: 'image',
+          width: 1080, height: 1080, previewUrl: '/photo.jpg', thumbnailUrl: '/thumb.jpg' }
+      ] } },
+      global: { stubs: globalStubs }
+    });
+    const stage = wrapper.findComponent({ name: 'CarouselMediaStage' });
+    stage.vm.$emit('toggle-mute');
+    await flushPromises();
+    expect(appStore.videoMuted).toBe(false);
+    expect(stage.props('muted')).toBe(false);
+    expect(localStorage.getItem('foldergram-video-muted')).toBe('false');
+    stage.vm.$emit('autoplay-muted');
+    await flushPromises();
+    expect(appStore.videoMuted).toBe(true);
+    expect(stage.props('muted')).toBe(true);
+    wrapper.unmount();
+  });
   it('updates the home video aspect ratio from the loaded video element when metadata disagrees with indexed dimensions', async () => {
     const wrapper = mount(FeedCard, {
       props: {

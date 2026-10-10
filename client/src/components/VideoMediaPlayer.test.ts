@@ -44,12 +44,12 @@ describe('VideoMediaPlayer', () => {
     expect((wrapper.find('media-player').element as any).autoPlay).toBe(true);
   });
 
-  it('retries blocked audible autoplay while muted', async () => {
+  it.each([false, true])('retries blocked audible autoplay with requested muted=%s', async (muted) => {
     const wrapper = mount(VideoMediaPlayer, {
       props: {
         src: '/test-video.mp4',
         autoplay: true,
-        muted: false
+        muted
       },
       global: {
         plugins: [i18n]
@@ -58,6 +58,7 @@ describe('VideoMediaPlayer', () => {
 
     const playerEl = wrapper.find('media-player').element as any;
     playerEl.play = vi.fn().mockResolvedValue(undefined);
+    playerEl.muted = false; // Simulate the provider not reflecting the requested prop yet.
     playerEl.dispatchEvent(new CustomEvent('auto-play-fail'));
     await vi.waitFor(() => expect(playerEl.play).toHaveBeenCalled());
 

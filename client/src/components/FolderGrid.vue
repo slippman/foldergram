@@ -1,10 +1,11 @@
 <template>
-  <section class="grid gap-[1px]" :class="columns === 'three' ? 'grid-cols-3' : 'grid-cols-3 md:grid-cols-4'">
+  <section :class="variant === 'cinema' ? 'cinema-grid' : ['grid gap-[1px]', columns === 'three' ? 'grid-cols-3' : 'grid-cols-3 md:grid-cols-4']">
     <RouterLink v-for="item in items" :key="item.id" custom :to="buildImageRoute(item.id)" v-slot="{ href, navigate }">
       <a
         :href="href"
         class="group relative overflow-hidden bg-surface-alt"
-        :class="variant === 'reels' ? 'aspect-[9/14]' : variant === 'posts' ? 'aspect-[3/4]' : 'aspect-square'"
+        :style="variant === 'cinema' ? cinemaTileStyle(item) : undefined"
+        :class="variant === 'cinema' ? 'cinema-grid__tile' : variant === 'reels' ? 'aspect-[9/14]' : variant === 'posts' ? 'aspect-[3/4]' : 'aspect-square'"
         @click="handleImageNavigation($event, navigate)"
         :aria-label="item.postType === 'carousel' ? t('post.carousel.open', { count: item.itemCount ?? item.mediaItems?.length ?? 0 }) : undefined"
       >
@@ -47,7 +48,7 @@ import ResilientImage from './ResilientImage.vue';
 const props = withDefaults(
   defineProps<{
     items: Array<FeedItem | SharedFeedItem>;
-    variant?: 'square' | 'posts' | 'reels';
+    variant?: 'square' | 'posts' | 'reels' | 'cinema';
     columns?: 'adaptive' | 'three';
     sharedSlug?: string | null;
   }>(),
@@ -62,7 +63,17 @@ const appStore = useAppStore();
 const route = useRoute();
 const { t } = useI18n();
 
+function cinemaTileStyle(item: FeedItem | SharedFeedItem) {
+  const ratio = item.width > 0 && item.height > 0 ? item.width / item.height : 1;
+  // Justified rows keep DOM/chronological order while varying tile widths.
+  const boundedRatio = Math.max(0.6, Math.min(2, ratio));
+  return { flexGrow: boundedRatio, flexBasis: `calc(var(--cinema-tile-width, 220px) * ${boundedRatio})` };
+}
+
 function buildImageRoute(id: number) {
+  if (props.variant === 'cinema') {
+    return { name: 'folder', params: route.params, query: { ...route.query, view: 'scroll', photo: String(id) } };
+  }
   if (props.sharedSlug) {
     return {
       name: 'shared-post',
@@ -87,7 +98,7 @@ function handleImageNavigation(event: MouseEvent, navigate: () => void) {
   }
 
   event.preventDefault();
-  if (props.sharedSlug) {
+  if (props.sharedSlug || props.variant === 'cinema') {
     navigate();
     return;
   }
@@ -96,3 +107,13 @@ function handleImageNavigation(event: MouseEvent, navigate: () => void) {
   navigate();
 }
 </script>
+
+<style scoped>
+.cinema-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-bottom: 1rem; }
+.cinema-grid__tile { height: clamp(180px, 22vw, 280px); min-width: 0; }
+@media (max-width: 767px) {
+  .cinema-grid { --cinema-tile-width: 110px; gap: 0.25rem; }
+  .cinema-grid__tile { height: 140px; }
+}
+.cinema-grid__tile:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+</style>

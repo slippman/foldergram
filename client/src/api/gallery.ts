@@ -1,5 +1,6 @@
 import type {
   AppLocaleSetting,
+  FolderDisplayTheme,
   AppStatus,
   AppStats,
   AuthMutationResult,
@@ -602,5 +603,21 @@ export function updateCarouselsMigrationDecision(decision: 'restore' | 'carousel
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ decision })
+  });
+}
+
+export function updateFolderDisplayTheme(theme: FolderDisplayTheme) {
+  return requestJson<{ theme: FolderDisplayTheme }>('/api/admin/settings/folder-display-theme', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ theme })
+  });
+}
+
+export function updateFeedDisplayTheme(theme: FolderDisplayTheme) {
+  return requestJson<{ theme: FolderDisplayTheme }>('/api/admin/settings/feed-display-theme', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ theme })
   });
 }

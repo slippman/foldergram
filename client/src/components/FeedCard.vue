@@ -64,6 +64,8 @@
       :retry-while="appStore.isScanning"
       :loading="isHomeContext ? 'eager' : 'lazy'"
       :muted="appStore.videoMuted"
+      @toggle-mute="appStore.setVideoMuted(!appStore.videoMuted)"
+      @autoplay-muted="appStore.setVideoMuted(true)"
     />
 
     <RouterLink v-else-if="!isHomeContext" custom :to="imageRoute" v-slot="{ href, navigate }">
@@ -209,8 +211,8 @@
         <div class="flex items-center gap-[0.65rem]">
           <button
             v-if="authStore.canUseSavedItems"
-            class="inline-flex items-center justify-center w-8 h-8 border-0 bg-transparent cursor-pointer transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px disabled:opacity-50 disabled:cursor-wait disabled:transform-none"
-            :class="{ 'text-[#e5484d]': likesStore.isLiked(item.id) }"
+            class="media-action"
+            :class="{ 'media-action--liked': likesStore.isLiked(item.id) }"
             type="button"
             :aria-label="likeActionLabel"
             :aria-pressed="likesStore.isLiked(item.id)"
@@ -227,7 +229,7 @@
           <RouterLink custom :to="imageRoute" v-slot="{ href, navigate }">
             <a
               :href="href"
-              class="inline-flex items-center justify-center w-8 h-8 border-0 bg-transparent cursor-pointer color-inherit transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
+              class="media-action"
               :aria-label="openMediaLabel"
               :title="openMediaLabel"
               @click="handleImageNavigation($event, navigate)"
@@ -246,7 +248,7 @@
             </a>
           </RouterLink>
           <RouterLink
-            class="inline-flex items-center justify-center w-8 h-8 border-0 bg-transparent cursor-pointer color-inherit transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
+            class="media-action"
             :to="{ name: 'folder', params: { slug: item.folderSlug } }"
             :aria-label="t('post.viewer.openFolder')"
             :title="t('post.viewer.openFolder')"
@@ -257,7 +259,7 @@
         <div class="flex items-center gap-[0.65rem]">
           <a
             v-if="isHomeContext"
-            class="inline-flex items-center justify-center w-8 h-8 border-0 bg-transparent cursor-pointer color-inherit transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
+            class="media-action"
             :href="downloadOriginalMediaUrl"
             download
             :aria-label="t('post.viewer.downloadOriginalFile')"
@@ -275,7 +277,7 @@
             </svg>
           </a>
           <a
-            class="inline-flex items-center justify-center w-8 h-8 border-0 bg-transparent cursor-pointer color-inherit transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
+            class="media-action"
             :href="originalMediaUrl"
             target="_blank"
             rel="noreferrer"

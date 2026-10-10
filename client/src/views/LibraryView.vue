@@ -79,6 +79,7 @@
             v-model="sortMode"
             class="h-10 pl-3 pr-9 border border-border rounded-[0.75rem] text-text text-[0.82rem] bg-surface-alt cursor-pointer appearance-none focus:outline-none focus:border-accent/40"
           >
+            <option value="album-date-desc">{{ t('libraryPage.sort.albumDate') }}</option>
             <option value="recent-desc">{{ t('libraryPage.sort.recentDesc') }}</option>
             <option value="images-desc">{{ t('libraryPage.sort.imagesDesc') }}</option>
             <option value="name-asc">{{ t('libraryPage.sort.nameAsc') }}</option>
@@ -148,13 +149,8 @@
               <p class="m-0 text-[0.9rem] font-semibold leading-[1.25] break-words sm:truncate">
                 {{ formatDisplayFolderTitle(folder) }}
               </p>
-              <p class="m-0 text-muted text-[0.76rem] truncate">
-                {{ folder.breadcrumb ?? t('libraryPage.topLevelSourceFolder') }}
-              </p>
-              <p
-                class="m-0 hidden text-muted text-[0.74rem] truncate font-mono opacity-70 sm:block"
-              >
-                {{ folder.folderPath }}
+              <p v-if="folder.breadcrumb" class="m-0 text-muted text-[0.76rem] truncate">
+                {{ folder.breadcrumb }}
               </p>
               <div class="mt-1 grid gap-[0.1rem] sm:hidden">
                 <span class="text-[0.74rem] font-semibold text-text">
@@ -162,7 +158,7 @@
                   {{ formatReelsCount(folder.videoCount) }}
                 </span>
                 <span class="text-[0.72rem] text-muted">
-                  {{ formatLatestDate(folder.latestImageMtimeMs) }}
+                  {{ formatAlbumDates(folder) }}
                 </span>
               </div>
             </div>
@@ -175,7 +171,7 @@
                 >{{ formatPostsCount(folder.imageCount) }}</span
               >
               <span class="text-[0.72rem] text-muted">
-                {{ formatReelsCount(folder.videoCount) }} · {{ formatLatestDate(folder.latestImageMtimeMs) }}
+                {{ formatReelsCount(folder.videoCount) }}<template v-if="formatAlbumDates(folder)"> · {{ formatAlbumDates(folder) }}</template>
               </span>
             </div>
             <span
@@ -345,6 +341,7 @@
   import { formatFolderTitle } from "../utils/folder-titles"
 
   type LibrarySort =
+    | "album-date-desc"
     | "recent-desc"
     | "images-desc"
     | "name-asc"
@@ -360,7 +357,7 @@
   const router = useRouter()
   const { t, locale } = useI18n()
   const searchQuery = ref("")
-  const sortMode = ref<LibrarySort>("recent-desc")
+  const sortMode = ref<LibrarySort>("album-date-desc")
   const menuFolder = ref<FolderSummary | null>(null)
   const confirmDeleteFolder = ref<FolderSummary | null>(null)
   const deleting = ref(false)
@@ -371,16 +368,18 @@
     return new Intl.NumberFormat(locale.value).format(value)
   }
 
-  function formatLatestDate(value: number | null) {
-    if (!value) {
-      return t("libraryPage.noRecentMedia")
-    }
-
-    return new Date(value).toLocaleDateString(locale.value, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+  function formatAlbumDates(folder: FolderSummary) {
+    const start = folder.earliestTakenAt
+    const end = folder.latestTakenAt
+    if (start == null || end == null) return ''
+    const formatter = new Intl.DateTimeFormat(locale.value, {
+      month: 'short', day: 'numeric', year: 'numeric',
     })
+    const first = new Date(start)
+    const last = new Date(end)
+    return formatter.format(first) === formatter.format(last)
+      ? formatter.format(first)
+      : formatter.formatRange(first, last)
   }
 
   function formatResultsCount(value: number) {
@@ -474,6 +473,11 @@
 
   function sortFolders(left: FolderSummary, right: FolderSummary) {
     switch (sortMode.value) {
+      case "album-date-desc":
+        return (
+          (right.latestTakenAt ?? -Infinity) - (left.latestTakenAt ?? -Infinity) ||
+          left.name.localeCompare(right.name)
+        )
       case "recent-desc":
         return (
           (right.latestImageMtimeMs ?? 0) - (left.latestImageMtimeMs ?? 0) ||
