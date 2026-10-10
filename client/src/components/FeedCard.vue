@@ -64,6 +64,8 @@
       :retry-while="appStore.isScanning"
       :loading="isHomeContext ? 'eager' : 'lazy'"
       :muted="appStore.videoMuted"
+      @toggle-mute="appStore.setVideoMuted(!appStore.videoMuted)"
+      @autoplay-muted="appStore.setVideoMuted(true)"
     />
 
     <RouterLink v-else-if="!isHomeContext" custom :to="imageRoute" v-slot="{ href, navigate }">

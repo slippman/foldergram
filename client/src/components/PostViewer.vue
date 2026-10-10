@@ -147,6 +147,8 @@
             :retry-while="appStore.isScanning"
             loading="eager"
             :muted="appStore.videoMuted"
+            @toggle-mute="appStore.setVideoMuted(!appStore.videoMuted)"
+            @autoplay-muted="appStore.setVideoMuted(true)"
             autoplay
           />
         </div>
