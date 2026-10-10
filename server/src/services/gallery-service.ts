@@ -8,6 +8,7 @@ import {
   CAROUSELS_MIGRATION_DECISION_SETTING_KEY,
   EXCLUDED_FOLDERS_SETTING_KEY,
   FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY,
+  FOLDER_DISPLAY_THEME_SETTING_KEY,
   HOME_FEED_DEFAULT_MODE_SETTING_KEY,
   LAST_SUCCESSFUL_GALLERY_ROOT_SETTING_KEY,
   LIBRARY_REBUILD_REQUIRED_SETTING_KEY,
@@ -221,6 +222,10 @@ function parseFolderImageOrder(value: string | null): FolderImageOrder {
 
 function getDefaultFolderImageOrder(): FolderImageOrder {
   return parseFolderImageOrder(appSettingsRepository.get(FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY));
+}
+
+function getFolderDisplayTheme(): 'classic' | 'cinema' {
+  return appSettingsRepository.get(FOLDER_DISPLAY_THEME_SETTING_KEY) === 'cinema' ? 'cinema' : 'classic';
 }
 
 function getNestedFolderTitleFormat(): NestedFolderTitleFormat {
@@ -708,6 +713,8 @@ function buildFolderSummary(folder: FolderSummaryRecord) {
       postCount: folder.post_count,
       videoCount: folder.video_count,
       latestImageMtimeMs: folder.latest_image_mtime_ms,
+      earliestTakenAt: folder.earliest_taken_at ?? null,
+      latestTakenAt: folder.latest_taken_at ?? null,
       hasAvatarStory: Boolean(folder.has_avatar_story),
       avatarImageId: folder.summary_avatar_image_id ?? null,
       avatarUrl: folder.summary_avatar_thumbnail_path
@@ -736,6 +743,8 @@ function buildFolderSummary(folder: FolderSummaryRecord) {
     postCount: folder.post_count,
     videoCount: folder.video_count,
     latestImageMtimeMs: folder.latest_image_mtime_ms,
+    earliestTakenAt: folder.earliest_taken_at ?? null,
+    latestTakenAt: folder.latest_taken_at ?? null,
     hasAvatarStory: Boolean(folder.has_avatar_story),
     avatarImageId: avatar?.id ?? null,
     avatarUrl: avatar ? mapImageDetail(avatar, derivativeVersion).thumbnailUrl : null
@@ -2163,6 +2172,7 @@ export const galleryService = {
         defaultHomeFeedMode,
         defaultReelsFeedMode,
         defaultFolderImageOrder,
+        folderDisplayTheme: getFolderDisplayTheme(),
         nestedFolderTitleFormat,
         treatStoriesAsFolders,
         treatCarouselsAsFolders
@@ -2245,6 +2255,7 @@ export const galleryService = {
         defaultHomeFeedMode,
         defaultReelsFeedMode,
         defaultFolderImageOrder,
+        folderDisplayTheme: getFolderDisplayTheme(),
         nestedFolderTitleFormat,
         treatStoriesAsFolders,
         treatCarouselsAsFolders
@@ -2278,6 +2289,11 @@ export const galleryService = {
     return {
       defaultMode: mode
     };
+  },
+
+  setFolderDisplayTheme(theme: 'classic' | 'cinema') {
+    appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, theme);
+    return { theme };
   },
 
   setDefaultFolderImageOrder(order: FolderImageOrder) {

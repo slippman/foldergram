@@ -2,6 +2,7 @@ import type { SupportedLocale } from '../locales';
 
 export type FeedMode = 'recent' | 'rediscover' | 'random';
 export type ReelsFeedMode = 'recommended' | 'recent' | 'random';
+export type FolderDisplayTheme = 'classic' | 'cinema';
 export type FolderImageOrder = 'newest' | 'oldest';
 export type NestedFolderTitleFormat = 'folder' | 'parent-plus-folder';
 export type FeedRailKind = 'moments' | 'highlights';
@@ -136,6 +137,8 @@ export interface FolderSummary {
   imageCount: number;
   videoCount: number;
   latestImageMtimeMs: number | null;
+  earliestTakenAt?: number | null;
+  latestTakenAt?: number | null;
   hasAvatarStory?: boolean;
   avatarImageId: number | null;
   avatarUrl: string | null;
@@ -582,6 +585,7 @@ export interface AppStatus {
     defaultHomeFeedMode: FeedMode;
     defaultReelsFeedMode: ReelsFeedMode;
     defaultFolderImageOrder?: FolderImageOrder;
+    folderDisplayTheme?: FolderDisplayTheme;
     nestedFolderTitleFormat?: NestedFolderTitleFormat;
     treatStoriesAsFolders: boolean;
     treatCarouselsAsFolders: boolean;

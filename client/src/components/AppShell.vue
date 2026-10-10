@@ -6,7 +6,8 @@
     :class="{
       'app-shell--standalone': isStandaloneDisplay,
       'app-shell--explore': isExploreShell,
-      'app-shell--reels': isReelsShell
+      'app-shell--reels': isReelsShell,
+      'app-shell--cinema': route.name === 'folder' && appStore.folderDisplayTheme === 'cinema'
     }"
   >
     <!-- Sidebar: fixed on desktop, hidden on mobile -->
@@ -175,6 +176,37 @@ onMounted(() => {
 
   .app-shell__scan-status {
     bottom: calc(var(--mobile-bottom-nav-height) + 1.65rem);
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell--cinema {
+    color-scheme: light dark;
+    background: var(--bg);
+    color: var(--text);
+    --bg: #fafafa;
+    --surface: #fff;
+    --surface-alt: #f0f0f0;
+    --surface-hover: #e8e8e8;
+    --border: #ddd;
+    --text: #202020;
+    --muted: #666;
+  }
+
+  .app-shell--cinema .app-shell__main {
+    padding: 0 1rem 2rem;
+  }
+}
+
+@media (min-width: 768px) and (prefers-color-scheme: dark) {
+  .app-shell--cinema {
+    --bg: #000;
+    --surface: #111;
+    --surface-alt: #080808;
+    --surface-hover: #222;
+    --border: #282828;
+    --text: #f5f5f5;
+    --muted: #aaa;
   }
 }
 

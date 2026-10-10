@@ -107,6 +107,7 @@ export const useAppStore = defineStore('app', {
     defaultHomeFeedMode: (state): FeedMode => state.stats?.preferences.defaultHomeFeedMode ?? 'random',
     savedDefaultLocale: (state): SupportedLocale | null => resolveSupportedLocale(state.stats?.preferences.defaultLocale ?? null),
     defaultReelsFeedMode: (state): ReelsFeedMode => state.stats?.preferences.defaultReelsFeedMode ?? 'random',
+    folderDisplayTheme: (state) => state.stats?.preferences.folderDisplayTheme ?? 'classic',
     defaultFolderImageOrder: (state): FolderImageOrder => state.stats?.preferences.defaultFolderImageOrder ?? 'newest',
     nestedFolderTitleFormat: (state) => state.stats?.preferences.nestedFolderTitleFormat ?? 'folder',
     treatStoriesAsFolders: (state) => state.stats?.preferences.treatStoriesAsFolders === true,

@@ -8,6 +8,7 @@ import pLimit from 'p-limit';
 
 import {
   AVIF_METADATA_REPAIR_VERSION_SETTING_KEY,
+  CAPTURE_METADATA_REPAIR_VERSION_SETTING_KEY,
   CAROUSELS_APPLIED_MODE_SETTING_KEY,
   EXCLUDED_FOLDERS_SETTING_KEY,
   LAST_SUCCESSFUL_GALLERY_ROOT_SETTING_KEY,
@@ -209,6 +210,7 @@ interface ImageProcessingContext {
   galleryRootChanged: boolean;
   hasStoredGalleryRoot: boolean;
   avifMetadataRepairPending: boolean;
+  captureMetadataRepairPending: boolean;
   moveReconciliationEnabled: boolean;
   claimedMoveImageIds: Set<number>;
   rebuildDerivativeReuseIndex?: RebuildDerivativeReuseIndex;
@@ -290,6 +292,7 @@ const HEARTBEAT_INTERVAL_MS = 5000;
 const DERIVATIVE_CACHE_KEEP_FILE = '.gitkeep';
 const ROOT_DISCOVERY_LABEL = '(root)';
 const CURRENT_AVIF_METADATA_REPAIR_VERSION = '1';
+const CURRENT_CAPTURE_METADATA_REPAIR_VERSION = '1';
 const MAX_SCAN_ERROR_TEXT_LENGTH = 8000;
 const MAX_SCAN_ERROR_LINE_LENGTH = 2000;
 export const LIBRARY_REBUILD_REQUIRED_MESSAGE =
@@ -2206,10 +2209,12 @@ class ScannerService {
     const hasStoredGalleryRoot = normalizedStoredGalleryRoot !== null;
     const galleryRootChanged = normalizedStoredGalleryRoot !== currentGalleryRoot;
     const avifMetadataRepairPending = this.isAvifMetadataRepairPending();
+    const captureMetadataRepairPending = appSettingsRepository.get(CAPTURE_METADATA_REPAIR_VERSION_SETTING_KEY) !== CURRENT_CAPTURE_METADATA_REPAIR_VERSION;
     const imageProcessingContext: ImageProcessingContext = {
       galleryRootChanged,
       hasStoredGalleryRoot,
       avifMetadataRepairPending,
+      captureMetadataRepairPending,
       moveReconciliationEnabled: false,
       claimedMoveImageIds: new Set<number>(),
       rebuildDerivativeReuseIndex: contextOptions.rebuildDerivativeReuseIndex
@@ -2518,6 +2523,10 @@ class ScannerService {
       ]);
     }
 
+    if (summary.status === 'completed' && captureMetadataRepairPending) {
+      appSettingsRepository.set(CAPTURE_METADATA_REPAIR_VERSION_SETTING_KEY, CURRENT_CAPTURE_METADATA_REPAIR_VERSION);
+    }
+
     if (summary.status === 'completed' && avifMetadataRepairPending) {
       this.markAvifMetadataRepairComplete();
     }
@@ -2617,6 +2626,7 @@ class ScannerService {
         galleryRootChanged: false,
         hasStoredGalleryRoot: appSettingsRepository.get(LAST_SUCCESSFUL_GALLERY_ROOT_SETTING_KEY) !== null,
         avifMetadataRepairPending: false,
+        captureMetadataRepairPending: false,
         moveReconciliationEnabled: false,
         claimedMoveImageIds: new Set<number>()
       };
@@ -3011,6 +3021,7 @@ class ScannerService {
       galleryRootChanged: false,
       hasStoredGalleryRoot: false,
       avifMetadataRepairPending: false,
+      captureMetadataRepairPending: false,
       moveReconciliationEnabled: false,
       claimedMoveImageIds: new Set<number>()
     }
@@ -3068,6 +3079,7 @@ class ScannerService {
         || needsAnimatedBackfill
         || needsExifBackfill
         || needsAvifMetadataRepair
+        || context.captureMetadataRepairPending
       ) {
         const metadata = await readMediaMetadata(file.absolutePath, mediaType, {
           fileSize: file.stats.size
@@ -3100,6 +3112,7 @@ class ScannerService {
         || needsAnimatedBackfill
         || needsExifBackfill
         || needsAvifMetadataRepair
+        || context.captureMetadataRepairPending
       ) {
         const resolvedTakenAt = resolveTakenAt({
           exifTakenAt: metadataTakenAt,

@@ -61,7 +61,7 @@
     "home": "Home",
     "reels": "Reels",
     "search": "Search",
-    "library": "Library",
+    "library": "Albums",
     "places": "Places",
     "collections": "Collections",
     "more": "More",
@@ -73,7 +73,7 @@
     "switchToLightMode": "Switch to light mode",
     "signOut": "Sign out",
     "returnToPublicView": "Return to public view",
-    "foldersSpotlight": "Folders Spotlight",
+    "foldersSpotlight": "Featured albums",
     "likesAriaLabel": "{label} ({count})",
     "folderPosts": "{count} posts"
   },
@@ -337,6 +337,17 @@
         "validateExcludedFolders": "Unable to validate the excluded folder rules.",
         "update": "Unable to update the general settings.",
         "partialUpdate": "Some settings were saved ({parts}), but the update did not finish: {message}"
+      },
+      "folderTheme": {
+        "label": "Folder Display Theme",
+        "description": "Choose how library folders appear on desktop. Applies to all viewers; Home and mobile layouts stay the same.",
+        "classic": "Classic · Grid",
+        "cinema": "Cinema · Vertical scroll",
+        "saved": "Folder display theme saved.",
+        "note": "Applies to library folders without a rescan.",
+        "closeMenuAria": "Close folder theme menu",
+        "classicDescription": "Folder header, stories, and thumbnail grid.",
+        "cinemaDescription": "A varied album grid, full-size vertical viewing, and automatic light/dark appearance."
       }
     },
     "library": {
@@ -806,6 +817,14 @@
       "posts": "Posts",
       "reels": "Reels",
       "sections": "Folder sections"
+    },
+    "cinema": {
+      "backToGrid": "Back to album grid",
+      "back": "Back to library",
+      "empty": "No posts in this folder",
+      "emptyDescription": "Add photos or videos to this folder and run a scan.",
+      "filename": "Filename",
+      "infoError": "Could not load post details."
     }
   },
   "share": {
@@ -876,7 +895,8 @@
       "resetToFilename": "Reset to filename",
       "errors": {
         "update": "Unable to update caption"
-      }
+      },
+      "removeCaption": "Remove caption"
     },
     "viewer": {
       "close": "Close post",
@@ -1055,33 +1075,34 @@
     }
   },
   "libraryPage": {
-    "eyebrow": "Library",
-    "title": "All folders",
-    "description": "Browse and search every indexed app folder.",
+    "eyebrow": "Albums",
+    "title": "All Albums",
+    "description": "Browse and search albums",
     "stats": {
-      "folders": "Folders",
-      "posts": "Posts"
+      "folders": "Albums",
+      "posts": "Items"
     },
     "errors": {
-      "load": "Could not load folders"
+      "load": "Could not load albums"
     },
-    "searchPlaceholder": "Search names or path segments...",
+    "searchPlaceholder": "Search albums...",
     "sort": {
+      "albumDate": "Album date",
       "recentDesc": "Recently updated",
-      "imagesDesc": "Most posts",
+      "imagesDesc": "Most items",
       "nameAsc": "Name A-Z",
       "nameDesc": "Name Z-A",
-      "pathAsc": "Path A-Z"
+      "pathAsc": "Grouped by collection"
     },
     "resultsOne": "{count} result",
     "resultsOther": "{count} results",
-    "loading": "Loading folders...",
-    "emptyTitle": "No folders indexed yet",
-    "emptyDescription": "Add media-containing source folders under the gallery root and run a scan.",
-    "noMatch": "No folders match. Try a different search or filter.",
+    "loading": "Loading albums...",
+    "emptyTitle": "No albums yet",
+    "emptyDescription": "Your albums will appear here once photos and videos have been added.",
+    "noMatch": "No albums found. Try another search.",
     "topLevelSourceFolder": "Top-level source folder",
-    "postsCountOne": "{count} post",
-    "postsCountOther": "{count} posts",
+    "postsCountOne": "{count} item",
+    "postsCountOther": "{count} items",
     "reelsCountOne": "{count} reel",
     "reelsCountOther": "{count} reels",
     "readiness": {
@@ -1089,8 +1110,8 @@
       "empty": "Empty"
     },
     "moreOptions": "More options",
-    "openFolder": "Open folder",
-    "deleteFolder": "Delete folder",
+    "openFolder": "Open album",
+    "deleteFolder": "Delete album",
     "noRecentMedia": "No recent media",
     "delete": {
       "title": "Delete this app folder?",

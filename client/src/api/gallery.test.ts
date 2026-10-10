@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { addImageToCollection, fetchSharedImage, fetchSharedPost } from './gallery';
+import { addImageToCollection, fetchSharedImage, fetchSharedPost, updateFolderDisplayTheme } from './gallery';
 
 describe('post and image API namespaces', () => {
   afterEach(() => {
@@ -36,4 +36,17 @@ describe('post and image API namespaces', () => {
       expect.objectContaining({ method: 'POST' })
     );
   });
+});
+
+it('sends folder themes as JSON with the mutation intent header', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ theme: 'cinema' }), {
+    headers: { 'content-type': 'application/json' }
+  }));
+  vi.stubGlobal('fetch', fetchMock);
+  expect(await updateFolderDisplayTheme('cinema')).toEqual({ theme: 'cinema' });
+  const [url, request] = fetchMock.mock.calls[0];
+  expect(url).toBe('/api/admin/settings/folder-display-theme');
+  expect(request.headers.get('content-type')).toBe('application/json');
+  expect(request.headers.get('x-foldergram-intent')).toBe('1');
+  expect(JSON.parse(request.body)).toEqual({ theme: 'cinema' });
 });

@@ -1136,6 +1136,14 @@ Success:
 }
 ```
 
+### `PUT /api/admin/settings/folder-display-theme`
+
+Requires admin settings access. Accepts `{ "theme": "classic" }` or
+`{ "theme": "cinema" }` and returns the saved `{ "theme": "…" }`.
+The choice is persisted in `app_settings` and included as
+`preferences.folderDisplayTheme` in status/stats. Default: `classic`.
+No scan is required; Cinema applies only to desktop library folder pages.
+
 ### `PUT /api/admin/settings/folder-image-order-default`
 
 Sets the app-wide default order used by App Folder grids and folder-scoped

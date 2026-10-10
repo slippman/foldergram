@@ -545,6 +545,33 @@ describe('SettingsView', () => {
     expect(wrapper.text()).toContain('App folders now open with Oldest First.');
   });
 
+  it('saves the folder theme globally without changing feed defaults or scanning', async () => {
+    const appStore = useAppStore();
+    appStore.$patch({ stats: createAppStatus() });
+    vi.spyOn(appStore, 'fetchStats').mockResolvedValue();
+    const updateTheme = vi.spyOn(galleryApi, 'updateFolderDisplayTheme').mockResolvedValue({ theme: 'cinema' });
+    const scan = vi.spyOn(galleryApi, 'triggerManualScan');
+    const home = vi.spyOn(galleryApi, 'updateHomeFeedDefault');
+    const wrapper = mountSettingsView();
+    await flushPromises();
+    await openGeneralSettingsSidebarTab(wrapper);
+    expect(wrapper.get('#folder-display-theme').text()).toContain('Classic');
+    await wrapper.get('#folder-display-theme').trigger('click');
+    const cinema = wrapper.findAll('button').find(button => button.text().includes('Cinema · Vertical scroll'));
+    expect(cinema).toBeDefined();
+    await cinema!.trigger('click');
+    await flushPromises();
+    const save = wrapper.findAll('button').find(button => button.text() === 'Save changes');
+    expect(save).toBeDefined();
+    await save!.trigger('click');
+    await flushPromises();
+    expect(updateTheme).toHaveBeenCalledWith('cinema');
+    expect(appStore.stats?.preferences.folderDisplayTheme).toBe('cinema');
+    expect(wrapper.text()).toContain('Folder display theme saved.');
+    expect(scan).not.toHaveBeenCalled();
+    expect(home).not.toHaveBeenCalled();
+  });
+
   it('saves the nested folder title format from the general settings card', async () => {
     const appStore = useAppStore();
     appStore.$patch({

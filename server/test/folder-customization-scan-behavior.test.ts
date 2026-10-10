@@ -96,6 +96,23 @@ describe.sequential('folder customization scan behavior', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('repairs capture timestamps for unchanged indexed media once', async () => {
+    await createSourceFile('albums/photo-1.jpg', 1000);
+    await scannerService.scanAll('manual');
+    appSettingsRepository.remove('library.capture_metadata_repair_version');
+    readMediaMetadataMock.mockResolvedValue({ width: 1000, height: 1000,
+      takenAt: Date.parse('2026-10-04T00:23:55Z'), durationMs: null,
+      mediaType: 'image', playbackStrategy: 'preview', isAnimated: false });
+    await scannerService.scanAll('manual');
+    expect(imageRepository.getByRelativePath('albums/photo-1.jpg')).toMatchObject({
+      taken_at: Date.parse('2026-10-04T00:23:55Z'), taken_at_source: 'exif'
+    });
+    expect(galleryService.getFolderImages('albums', 1, 24)?.items[0].takenAt).toBe(Date.parse('2026-10-04T00:23:55Z'));
+    readMediaMetadataMock.mockClear();
+    await scannerService.scanAll('manual');
+    expect(readMediaMetadataMock).not.toHaveBeenCalled();
+  });
+
   it('preserves a customized folder name and description across normal rescans', async () => {
     maintenanceRepository.resetLibraryIndex();
 

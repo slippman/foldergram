@@ -1,13 +1,15 @@
 import exifr from 'exifr';
 import type { ImageExifData, TakenAtSource } from '../types/models.js';
 
-const EXIF_DATE_TAGS = ['DateTimeOriginal', 'DateTimeDigitized', 'DateTime'] as const;
+const EXIF_DATE_TAGS = ['DateTimeOriginal', 'CreateDate', 'DateTimeDigitized', 'ModifyDate', 'DateTime'] as const;
+const EXIF_OFFSET_TAGS = ['OffsetTimeOriginal', 'OffsetTimeDigitized', 'OffsetTime'] as const;
 const EXIF_METADATA_PARSE_OPTIONS = {
+  reviveValues: false,
   ifd0: {
-    pick: ['Make', 'Model']
+    pick: ['Make', 'Model', 'ModifyDate', 'DateTime']
   },
   exif: {
-    pick: [...EXIF_DATE_TAGS, 'LensModel', 'FNumber', 'ExposureTime', 'ISO', 'FocalLength', 'FocalLengthIn35mmFormat']
+    pick: [...EXIF_DATE_TAGS, ...EXIF_OFFSET_TAGS, 'LensModel', 'FNumber', 'ExposureTime', 'ISO', 'FocalLength', 'FocalLengthIn35mmFormat']
   },
   gps: {
     pick: ['GPSAltitude']
@@ -15,6 +17,11 @@ const EXIF_METADATA_PARSE_OPTIONS = {
 };
 
 interface ExifDatePayload {
+  OffsetTimeOriginal?: string;
+  OffsetTimeDigitized?: string;
+  OffsetTime?: string;
+  CreateDate?: Date | string | number | null;
+  ModifyDate?: Date | string | number | null;
   DateTimeOriginal?: Date | string | number | null;
   DateTimeDigitized?: Date | string | number | null;
   DateTime?: Date | string | number | null;
@@ -120,7 +127,14 @@ function extractTakenAtFromPayload(metadata: ExifDatePayload | null | undefined)
   }
 
   for (const tag of EXIF_DATE_TAGS) {
-    const parsed = normalizeTakenAtValue(metadata[tag]);
+    const value = metadata[tag];
+    const offset = tag === 'DateTimeOriginal' ? metadata.OffsetTimeOriginal
+      : tag === 'CreateDate' || tag === 'DateTimeDigitized' ? metadata.OffsetTimeDigitized : metadata.OffsetTime;
+    // Read camera wall time without exifr converting it in the server's timezone.
+    const rawDate = typeof value === 'string' ? value.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})$/) : null;
+    const parsed = normalizeTakenAtValue(rawDate
+      ? `${rawDate[1]}-${rawDate[2]}-${rawDate[3]}T${rawDate[4]}${offset && /^[+-]\d{2}:\d{2}$/.test(offset) ? offset : ''}`
+      : value);
     if (parsed !== null) {
       return parsed;
     }
@@ -223,7 +237,7 @@ export async function extractTakenAt(sourcePath: string): Promise<number | null>
   let metadata: ExifDatePayload | null;
 
   try {
-    metadata = (await exifr.parse(sourcePath, [...EXIF_DATE_TAGS])) as ExifDatePayload | null;
+    metadata = (await exifr.parse(sourcePath, { pick: [...EXIF_DATE_TAGS, ...EXIF_OFFSET_TAGS], reviveValues: false })) as ExifDatePayload | null;
   } catch {
     return null;
   }

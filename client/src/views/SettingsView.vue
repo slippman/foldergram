@@ -959,6 +959,68 @@
 
               <div class="grid gap-3 px-6 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                 <div class="min-w-0">
+                  <p class="m-0 text-[0.96rem] font-semibold text-text">{{ t('settings.general.folderTheme.label') }}</p>
+                  <p class="m-0 mt-[0.25rem] text-[0.84rem] text-muted">{{ t('settings.general.folderTheme.description') }}</p>
+                </div>
+
+                <div class="relative w-full md:w-[18rem] md:justify-self-end" @keydown.escape.stop.prevent="closeGeneralSettingsMenu">
+                  <button
+                    class="inline-flex w-full items-center justify-between gap-3 rounded-[0.9rem] border border-border bg-[color-mix(in_srgb,var(--surface-alt)_80%,transparent_20%)] px-3 py-[0.85rem] text-left transition-[border-color,box-shadow] duration-180 hover:border-[color-mix(in_srgb,var(--accent)_22%,var(--border)_78%)] hover:bg-surface-hover focus-visible:border-[color-mix(in_srgb,var(--accent)_35%,var(--border)_65%)] focus-visible:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft)_76%,transparent_24%)]"
+                    type="button"
+                    id="folder-display-theme"
+                    :aria-expanded="activeGeneralSettingsMenu === 'folderTheme'"
+                    :disabled="savingGeneralSettings || waitingForInitialStatus"
+                    @click="toggleGeneralSettingsMenu('folderTheme')"
+                  >
+                    <span class="min-w-0 truncate text-[0.9rem] font-semibold text-text">
+                      {{ selectedFolderThemeOption.label }}
+                    </span>
+                    <span
+                      class="i-fluent-chevron-down-20-regular h-5 w-5 shrink-0 text-muted transition-transform duration-180"
+                      :class="activeGeneralSettingsMenu === 'folderTheme' ? 'rotate-180 text-text' : ''"
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  <button
+                    v-if="activeGeneralSettingsMenu === 'folderTheme'"
+                    class="fixed inset-0 z-40 border-0 bg-transparent"
+                    type="button"
+                    :aria-label="t('settings.general.folderTheme.closeMenuAria')"
+                    @click="closeGeneralSettingsMenu"
+                  />
+
+                  <div
+                    v-if="activeGeneralSettingsMenu === 'folderTheme'"
+                    class="absolute right-0 top-[calc(100%+0.45rem)] z-50 w-full overflow-hidden rounded-[1rem] border border-border bg-[color-mix(in_srgb,var(--surface)_97%,var(--bg)_3%)] shadow-[0_28px_70px_rgba(0,0,0,0.16)]"
+                  >
+                    <div class="border-b border-border px-4 py-3">
+                      <p class="m-0 text-[0.83rem] font-semibold text-text">{{ t('settings.general.folderTheme.label') }}</p>
+                    </div>
+                    <div class="grid gap-1 p-2">
+                      <button
+                        v-for="mode in folderThemeOptions"
+                        :key="mode.id"
+                        class="flex items-start gap-3 rounded-[0.85rem] border-0 px-3 py-3 text-left cursor-pointer transition-colors duration-150 hover:bg-surface-hover"
+                        :class="folderDisplayTheme === mode.id ? 'bg-[color-mix(in_srgb,var(--accent-soft)_72%,transparent_28%)]' : 'bg-transparent'"
+                        type="button"
+                        @click="selectFolderTheme(mode.id)"
+                      >
+                        <span class="mt-[0.05rem] inline-flex h-5 w-5 items-center justify-center shrink-0 text-accent-strong">
+                          <span v-if="folderDisplayTheme === mode.id" class="i-fluent-checkmark-20-filled h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <span class="grid min-w-0 gap-[0.08rem]">
+                          <span class="text-[0.9rem] font-semibold text-text">{{ mode.label }}</span>
+                          <span class="text-[0.78rem] text-muted">{{ mode.description }}</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid gap-3 px-6 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
                     <p class="m-0 text-[0.96rem] font-semibold text-text">{{ t('settings.general.storiesMode.label') }}</p>
                     <span class="inline-flex items-center rounded-full bg-surface-alt px-2 py-[0.2rem] text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -1382,6 +1444,7 @@ import {
   updateAppLocale,
   updateExcludedFolders,
   updateFolderImageOrderDefault,
+  updateFolderDisplayTheme,
   updateHomeFeedDefault,
   updateNestedFolderTitleFormat,
   updateReelsFeedDefault,
@@ -1397,7 +1460,7 @@ import { useLikesStore } from '../stores/likes';
 import { useMomentsStore } from '../stores/moments';
 import { usePlacesStore } from '../stores/places';
 import { useViewerStore } from '../stores/viewer';
-import type { AppStats, FeedMode, FolderImageOrder, NestedFolderTitleFormat, ReelsFeedMode, ViewerAccessMode } from '../types/api';
+import type { AppStats, FeedMode, FolderDisplayTheme, FolderImageOrder, NestedFolderTitleFormat, ReelsFeedMode, ViewerAccessMode } from '../types/api';
 
 const { t, locale } = useI18n();
 const appStore = useAppStore();
@@ -1435,6 +1498,7 @@ const nextPasswordConfirmation = ref('');
 const disablePassword = ref('');
 const homeFeedDefaultMode = ref<FeedMode>('random');
 const reelsFeedDefaultMode = ref<ReelsFeedMode>('random');
+const folderDisplayTheme = ref<FolderDisplayTheme>('classic');
 const folderImageOrderDefault = ref<FolderImageOrder>('newest');
 const nestedFolderTitleFormat = ref<NestedFolderTitleFormat>('folder');
 const savedLocaleSelection = ref<SupportedLocale | null>(appStore.savedDefaultLocale);
@@ -1444,7 +1508,7 @@ const carouselsMode = ref(false);
 const feedDefaultsHydrated = ref(false);
 const storiesModeHydrated = ref(false);
 const carouselsModeHydrated = ref(false);
-const activeGeneralSettingsMenu = ref<'home' | 'reels' | 'folder' | 'nestedTitle' | null>(null);
+const activeGeneralSettingsMenu = ref<'home' | 'reels' | 'folder' | 'folderTheme' | 'nestedTitle' | null>(null);
 const showStoriesAnnouncementStructure = ref(false);
 const showCarouselsAnnouncementStructure = ref(false);
 const generalSettingsSaveArea = ref<HTMLElement | null>(null);
@@ -1683,6 +1747,7 @@ function syncFeedDefaultsFromSaved() {
   homeFeedDefaultMode.value = appStore.defaultHomeFeedMode;
   reelsFeedDefaultMode.value = appStore.defaultReelsFeedMode;
   folderImageOrderDefault.value = appStore.defaultFolderImageOrder;
+  folderDisplayTheme.value = appStore.folderDisplayTheme;
   nestedFolderTitleFormat.value = appStore.nestedFolderTitleFormat;
   feedDefaultsHydrated.value = true;
 }
@@ -1837,6 +1902,18 @@ const homeFeedDefaultDirty = computed(
 const reelsFeedDefaultDirty = computed(
   () => feedDefaultsHydrated.value && reelsFeedDefaultMode.value !== savedReelsFeedDefaultMode.value
 );
+const folderThemeOptions = computed(() => [
+  { id: 'classic' as const, label: t('settings.general.folderTheme.classic'), description: t('settings.general.folderTheme.classicDescription') },
+  { id: 'cinema' as const, label: t('settings.general.folderTheme.cinema'), description: t('settings.general.folderTheme.cinemaDescription') }
+]);
+const selectedFolderThemeOption = computed(() => folderThemeOptions.value.find(option => option.id === folderDisplayTheme.value) ?? folderThemeOptions.value[0]);
+function selectFolderTheme(theme: FolderDisplayTheme) {
+  folderDisplayTheme.value = theme;
+  closeGeneralSettingsMenu();
+}
+const folderDisplayThemeDirty = computed(
+  () => feedDefaultsHydrated.value && folderDisplayTheme.value !== appStore.folderDisplayTheme
+);
 const folderImageOrderDirty = computed(
   () => feedDefaultsHydrated.value && folderImageOrderDefault.value !== savedFolderImageOrderDefault.value
 );
@@ -1850,11 +1927,12 @@ const defaultSettingsDirtyCount = computed(
       homeFeedDefaultDirty.value,
       reelsFeedDefaultDirty.value,
       folderImageOrderDirty.value,
+      folderDisplayThemeDirty.value,
       nestedFolderTitleDirty.value
     ].filter(Boolean).length
 );
 const feedDefaultsDirty = computed(
-  () => homeFeedDefaultDirty.value || reelsFeedDefaultDirty.value || folderImageOrderDirty.value || nestedFolderTitleDirty.value
+  () => folderDisplayThemeDirty.value || homeFeedDefaultDirty.value || reelsFeedDefaultDirty.value || folderImageOrderDirty.value || nestedFolderTitleDirty.value
 );
 const storiesModeDirty = computed(() => storiesModeHydrated.value && storiesMode.value !== savedStoriesMode.value);
 const carouselsModeDirty = computed(() => carouselsModeHydrated.value && carouselsMode.value !== savedCarouselsMode.value);
@@ -1937,6 +2015,10 @@ const generalSettingsActionNote = computed(() => {
 
   if (reelsFeedDefaultDirty.value) {
     return t('settings.general.actionNote.reelsOnly');
+  }
+
+  if (folderDisplayThemeDirty.value) {
+    return t('settings.general.folderTheme.note');
   }
 
   if (folderImageOrderDirty.value) {
@@ -2683,7 +2765,7 @@ function closeGeneralSettingsMenu() {
   activeGeneralSettingsMenu.value = null;
 }
 
-function toggleGeneralSettingsMenu(menu: 'home' | 'reels' | 'folder' | 'nestedTitle') {
+function toggleGeneralSettingsMenu(menu: 'home' | 'reels' | 'folder' | 'folderTheme' | 'nestedTitle') {
   clearGeneralSettingsFeedback();
   activeGeneralSettingsMenu.value = activeGeneralSettingsMenu.value === menu ? null : menu;
 }
@@ -2770,15 +2852,17 @@ async function saveGeneralSettings() {
   const shouldSaveCarousels = carouselsModeDirty.value || carouselsModeRequiresDecision.value;
   const shouldSaveHome = homeFeedDefaultDirty.value;
   const shouldSaveReels = reelsFeedDefaultDirty.value;
+  const shouldSaveFolderTheme = folderDisplayThemeDirty.value;
   const shouldSaveFolderOrder = folderImageOrderDirty.value;
   const shouldSaveNestedFolderTitle = nestedFolderTitleDirty.value;
   const shouldSaveAnyDefault =
-    shouldSaveLocale || shouldSaveHome || shouldSaveReels || shouldSaveFolderOrder || shouldSaveNestedFolderTitle;
+    shouldSaveFolderTheme || shouldSaveLocale || shouldSaveHome || shouldSaveReels || shouldSaveFolderOrder || shouldSaveNestedFolderTitle;
   const savedDefaultCount = [
     shouldSaveLocale,
     shouldSaveHome,
     shouldSaveReels,
     shouldSaveFolderOrder,
+    shouldSaveFolderTheme,
     shouldSaveNestedFolderTitle
   ].filter(Boolean).length;
   const savedParts: string[] = [];
@@ -2870,6 +2954,15 @@ async function saveGeneralSettings() {
       reelsFeedDefaultMode.value = payload.defaultMode;
     }
 
+    if (shouldSaveFolderTheme) {
+      const payload = await updateFolderDisplayTheme(folderDisplayTheme.value);
+      savedParts.push(t('settings.general.folderTheme.label'));
+      if (appStore.stats) {
+        appStore.stats.preferences.folderDisplayTheme = payload.theme;
+      }
+      folderDisplayTheme.value = payload.theme;
+    }
+
     if (shouldSaveFolderOrder) {
       const payload = await updateFolderImageOrderDefault(folderImageOrderDefault.value);
       savedParts.push(t('settings.general.feedback.parts.appFolderOrder'));
@@ -2930,6 +3023,8 @@ async function saveGeneralSettings() {
         'success',
         t('settings.general.feedback.folderOrderSaved', { label: selectedFolderImageOrderOption.value.label })
       );
+    } else if (shouldSaveFolderTheme) {
+      setGeneralSettingsFeedback('success', t('settings.general.folderTheme.saved'));
     } else if (shouldSaveNestedFolderTitle) {
       setGeneralSettingsFeedback(
         'success',

@@ -36,6 +36,7 @@ interface FfprobeStream {
   nb_frames?: string;
   tags?: {
     creation_time?: string;
+    'com.apple.quicktime.creationdate'?: string;
     rotate?: string;
     title?: string;
     handler_name?: string;
@@ -51,6 +52,7 @@ interface FfprobeFormat {
   nb_streams?: number;
   tags?: {
     creation_time?: string;
+    'com.apple.quicktime.creationdate'?: string;
     major_brand?: string;
     compatible_brands?: string;
   };
@@ -116,7 +118,7 @@ async function readMediaProbe(sourcePath: string): Promise<FfprobePayload> {
       '-v',
       'error',
       '-show_entries',
-      'format=duration,format_name,nb_streams:format_tags=creation_time,major_brand,compatible_brands:stream=index,codec_type,codec_name,width,height,pix_fmt,duration,nb_frames:stream_tags=creation_time,rotate,title,handler_name:stream_side_data=rotation',
+      'format=duration,format_name,nb_streams:format_tags=creation_time,com.apple.quicktime.creationdate,major_brand,compatible_brands:stream=index,codec_type,codec_name,width,height,pix_fmt,duration,nb_frames:stream_tags=creation_time,rotate,title,handler_name:stream_side_data=rotation',
       '-of',
       'json',
       sourcePath
@@ -399,7 +401,8 @@ async function readVideoMetadata(sourcePath: string, options: ReadMediaMetadataO
   const videoStream = payload.streams?.find((stream) => stream.codec_type === 'video');
   const durationSeconds = parseFfprobeFloat(payload.format?.duration);
   const durationMs = durationSeconds !== null ? Math.round(durationSeconds * 1000) : null;
-  const takenAt = normalizeTakenAtValue(videoStream?.tags?.creation_time ?? payload.format?.tags?.creation_time ?? null);
+  const takenAt = [payload.format?.tags?.['com.apple.quicktime.creationdate'], videoStream?.tags?.creation_time, payload.format?.tags?.creation_time]
+    .map(normalizeTakenAtValue).find((timestamp) => timestamp !== null) ?? null;
   const displayDimensions = resolveVideoDisplayDimensions(videoStream);
 
   return {
