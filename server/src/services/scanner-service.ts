@@ -292,8 +292,8 @@ const HEARTBEAT_INTERVAL_MS = 5000;
 const DERIVATIVE_CACHE_KEEP_FILE = '.gitkeep';
 const ROOT_DISCOVERY_LABEL = '(root)';
 const CURRENT_AVIF_METADATA_REPAIR_VERSION = '1';
-// Retry libraries whose earlier repair could have skipped unchanged folders.
-const CURRENT_CAPTURE_METADATA_REPAIR_VERSION = '2';
+// Reparse earlier repairs that accepted EXIF modification dates as capture dates.
+const CURRENT_CAPTURE_METADATA_REPAIR_VERSION = '3';
 const MAX_SCAN_ERROR_TEXT_LENGTH = 8000;
 const MAX_SCAN_ERROR_LINE_LENGTH = 2000;
 export const LIBRARY_REBUILD_REQUIRED_MESSAGE =
@@ -3100,6 +3100,9 @@ class ScannerService {
           : null;
       }
 
+      const shouldResetUnverifiedCaptureTime = context.captureMetadataRepairPending
+        && existingByPath.taken_at_source === 'exif'
+        && metadataTakenAt === null;
       const shouldResetLegacyAnimatedAvifTakenAt = needsAvifMetadataRepair
         && existingByPath.taken_at_source === 'exif'
         && metadataIsAnimated
@@ -3118,8 +3121,8 @@ class ScannerService {
       ) {
         const resolvedTakenAt = resolveTakenAt({
           exifTakenAt: metadataTakenAt,
-          existingTakenAt: shouldResetLegacyAnimatedAvifTakenAt ? null : existingByPath.taken_at,
-          existingTakenAtSource: shouldResetLegacyAnimatedAvifTakenAt ? null : existingByPath.taken_at_source,
+          existingTakenAt: (shouldResetLegacyAnimatedAvifTakenAt || shouldResetUnverifiedCaptureTime) ? null : existingByPath.taken_at,
+          existingTakenAtSource: (shouldResetLegacyAnimatedAvifTakenAt || shouldResetUnverifiedCaptureTime) ? null : existingByPath.taken_at_source,
           existingSortTimestamp: existingByPath.sort_timestamp,
           existingFirstSeenAt: existingByPath.first_seen_at,
           existingMtimeMs: existingByPath.mtime_ms,
@@ -3195,10 +3198,13 @@ class ScannerService {
       && existing?.taken_at_source === 'exif'
       && metadata.isAnimated
       && metadata.takenAt !== existing.taken_at;
+    const shouldResetUnverifiedCaptureTime = context.captureMetadataRepairPending
+      && existing?.taken_at_source === 'exif'
+      && metadata.takenAt === null;
     const resolvedTakenAt = resolveTakenAt({
       exifTakenAt: metadata.takenAt,
-      existingTakenAt: shouldResetLegacyAnimatedAvifTakenAt ? null : existing?.taken_at,
-      existingTakenAtSource: shouldResetLegacyAnimatedAvifTakenAt ? null : existing?.taken_at_source,
+      existingTakenAt: (shouldResetLegacyAnimatedAvifTakenAt || shouldResetUnverifiedCaptureTime) ? null : existing?.taken_at,
+      existingTakenAtSource: (shouldResetLegacyAnimatedAvifTakenAt || shouldResetUnverifiedCaptureTime) ? null : existing?.taken_at_source,
       existingSortTimestamp: existing?.sort_timestamp,
       existingFirstSeenAt: existing?.first_seen_at,
       existingMtimeMs: existing?.mtime_ms,

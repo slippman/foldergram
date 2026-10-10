@@ -116,10 +116,18 @@ describe.sequential('folder customization scan behavior', () => {
     expect(galleryService.getFolderImages('albums', 1, 24)?.items[0]).toMatchObject({
       takenAt: Date.parse('2026-10-04T00:23:55Z'), takenAtSource: 'exif'
     });
-    expect(appSettingsRepository.get('library.capture_metadata_repair_version')).toBe('2');
+    expect(appSettingsRepository.get('library.capture_metadata_repair_version')).toBe('3');
     readMediaMetadataMock.mockClear();
     await scannerService.scanAll('manual');
     expect(readMediaMetadataMock).not.toHaveBeenCalled();
+    // An old EXIF date that the new parser cannot verify must lose capture status.
+    appSettingsRepository.set('library.capture_metadata_repair_version', '2');
+    readMediaMetadataMock.mockResolvedValue({ width: 1000, height: 1000,
+      takenAt: null, durationMs: null, mediaType: 'image',
+      playbackStrategy: 'preview', isAnimated: false });
+    await scannerService.scanAll('manual');
+    expect(imageRepository.getByRelativePath('albums/photo-1.jpg')?.taken_at_source).not.toBe('exif');
+    expect(galleryService.getFolderImages('albums', 1, 24)?.items[0].takenAtSource).not.toBe('exif');
   });
 
   it('preserves a customized folder name and description across normal rescans', async () => {

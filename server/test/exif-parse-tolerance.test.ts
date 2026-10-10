@@ -21,6 +21,11 @@ describe('EXIF parsing tolerance', () => {
     const { extractTakenAt } = await import('../src/utils/exif-utils.js');
     expect(await extractTakenAt('/tmp/export.jpeg')).toBe(Date.parse('2026-10-04T00:23:55Z'));
   });
+  it.each(['ModifyDate', 'DateTime'])('ignores modification-only tag %s', async (tag) => {
+    parseMock.mockResolvedValueOnce({ [tag]: '2026:10:09 12:00:00', OffsetTime: '-06:00' });
+    const { extractTakenAt } = await import('../src/utils/exif-utils.js');
+    expect(await extractTakenAt('/tmp/export.jpeg')).toBeNull();
+  });
   it('treats parser failures as missing EXIF instead of scan errors', async () => {
     parseMock.mockRejectedValueOnce(new Error('Unknown file format'));
 

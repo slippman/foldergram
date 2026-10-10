@@ -1,7 +1,7 @@
 import exifr from 'exifr';
 import type { ImageExifData, TakenAtSource } from '../types/models.js';
 
-const EXIF_DATE_TAGS = ['DateTimeOriginal', 'CreateDate', 'DateTimeDigitized', 'ModifyDate', 'DateTime'] as const;
+const EXIF_DATE_TAGS = ['DateTimeOriginal', 'CreateDate', 'DateTimeDigitized'] as const;
 const EXIF_OFFSET_TAGS = ['OffsetTimeOriginal', 'OffsetTimeDigitized', 'OffsetTime'] as const;
 const EXIF_METADATA_PARSE_OPTIONS = {
   reviveValues: false,
