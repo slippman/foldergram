@@ -3,18 +3,19 @@
     ref="homeLayoutElement"
     :class="[
       'grid gap-[4rem] items-start justify-center mx-auto',
-      isCompactHomeLayout
+      isCompactHomeLayout || isCinema
         ? 'grid-cols-1 w-full'
         : 'grid-cols-[minmax(0,39.375rem)_19.9375rem] w-[min(100%,63.3125rem)] md:relative',
     ]"
     :style="
-      isCompactHomeLayout
+      isCompactHomeLayout || isCinema
         ? undefined
         : { left: 'calc(var(--desktop-content-compensation) * -1)' }
     "
   >
     <!-- Main feed column -->
     <div class="min-w-0">
+      <CinemaHeader v-if="isCinema" :title="t('home.feedTitle')" />
       <section
         v-if="appStore.isLibraryRebuildRequired && appStore.stats && !appStore.isRebuilding"
         class="grid gap-[0.55rem] px-5 py-[1rem] mb-[1.1rem] border rounded-[1rem] shadow-[var(--shadow)]"
@@ -185,7 +186,10 @@
         </div>
 
         <!-- Feed cards in home-layout context: transparent card, no shadow -->
-        <div class="w-full max-w-[29.375rem] mx-auto flex flex-col gap-[1.2rem]">
+        <div v-if="isCinema" class="w-full">
+          <CinemaPost v-for="item in feedStore.items" :key="item.id" :item="item" show-album-name />
+        </div>
+        <div v-else class="w-full max-w-[29.375rem] mx-auto flex flex-col gap-[1.2rem]">
           <FeedList
             :items="feedStore.items"
             context="home"
@@ -221,7 +225,7 @@
       v-if="
         !appStore.isLibraryUnavailable &&
         homeSummaryFolder &&
-        !isCompactHomeLayout
+        !isCompactHomeLayout && !isCinema
       "
       class="sticky top-8 grid gap-[1.15rem] w-[19.9375rem] text-muted"
       :aria-label="t('home.sidebar.ariaLabel')"
@@ -285,6 +289,9 @@ import InfiniteLoader from '../components/InfiniteLoader.vue';
 import StoriesModal from '../components/StoriesModal.vue';
 import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
+import CinemaHeader from '../components/CinemaHeader.vue';
+import CinemaPost from '../components/CinemaPost.vue';
+import { provideCinemaAudio } from '../composables/useCinemaAudio';
 import { useFeedStore } from '../stores/feed';
 import { useFolderStoriesStore } from '../stores/folder-stories';
 import { useLikesStore } from '../stores/likes';
@@ -297,6 +304,8 @@ import { getInitialScanStats, getScanActionLine, getScanPhaseLabel, getScanSumma
 
 const appStore = useAppStore();
 const authStore = useAuthStore();
+provideCinemaAudio();
+const isCinema = computed(() => appStore.feedDisplayTheme === 'cinema');
 const feedStore = useFeedStore();
 const folderStoriesStore = useFolderStoriesStore();
 const likesStore = useLikesStore();

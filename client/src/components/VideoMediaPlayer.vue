@@ -92,7 +92,7 @@
             <media-fullscreen-button
               class="video-media-player__control"
               :aria-label="t('post.viewer.toggleFullscreen')"
-              target="media"
+              target="prefer-media"
               data-swipe-ignore="true"
             >
               <span

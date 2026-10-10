@@ -67,7 +67,7 @@ function cinemaTileStyle(item: FeedItem | SharedFeedItem) {
   const ratio = item.width > 0 && item.height > 0 ? item.width / item.height : 1;
   // Justified rows keep DOM/chronological order while varying tile widths.
   const boundedRatio = Math.max(0.6, Math.min(2, ratio));
-  return { flexGrow: boundedRatio, flexBasis: `${boundedRatio * 220}px` };
+  return { flexGrow: boundedRatio, flexBasis: `calc(var(--cinema-tile-width, 220px) * ${boundedRatio})` };
 }
 
 function buildImageRoute(id: number) {
@@ -111,5 +111,9 @@ function handleImageNavigation(event: MouseEvent, navigate: () => void) {
 <style scoped>
 .cinema-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-bottom: 1rem; }
 .cinema-grid__tile { height: clamp(180px, 22vw, 280px); min-width: 0; }
+@media (max-width: 767px) {
+  .cinema-grid { --cinema-tile-width: 110px; gap: 0.25rem; }
+  .cinema-grid__tile { height: 140px; }
+}
 .cinema-grid__tile:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 </style>

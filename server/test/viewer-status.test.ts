@@ -208,6 +208,7 @@ describe.sequential('viewer-safe status payload', () => {
       defaultReelsFeedMode: 'random',
       defaultFolderImageOrder: 'newest',
       folderDisplayTheme: 'classic',
+      feedDisplayTheme: 'classic',
       nestedFolderTitleFormat: 'folder',
       treatStoriesAsFolders: false,
       treatCarouselsAsFolders: false
@@ -237,6 +238,7 @@ describe.sequential('viewer-safe status payload', () => {
       defaultReelsFeedMode: 'recommended',
       defaultFolderImageOrder: 'oldest',
       folderDisplayTheme: 'cinema',
+      feedDisplayTheme: 'classic',
       nestedFolderTitleFormat: 'folder',
       treatStoriesAsFolders: false,
       treatCarouselsAsFolders: false

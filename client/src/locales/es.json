@@ -338,9 +338,20 @@
         "update": "No se pudieron actualizar los ajustes generales.",
         "partialUpdate": "Se guardaron algunos ajustes ({parts}), pero la actualización no terminó: {message}"
       },
+      "feedTheme": {
+        "label": "Tema del feed",
+        "description": "Elige cómo se muestra el feed en ordenadores y móviles.",
+        "classic": "Clásico",
+        "cinema": "Cinema",
+        "saved": "Tema del feed guardado.",
+        "note": "Se aplica al feed sin volver a escanear.",
+        "closeMenuAria": "Cerrar menú del tema del feed",
+        "classicDescription": "Las tarjetas actuales del feed.",
+        "cinemaDescription": "El mismo diseño compacto y controles que los álbumes Cinema."
+      },
       "folderTheme": {
         "label": "Tema de visualización de carpetas",
-        "description": "Elige cómo se muestran las carpetas en el escritorio. Se aplica a todos; Inicio y móvil no cambian.",
+        "description": "Elige cómo se muestran los álbumes en ordenadores y móviles. Se aplica a todos; Inicio y Reels no cambian.",
         "classic": "Clásico · Cuadrícula",
         "cinema": "Cine · Desplazamiento vertical",
         "saved": "Tema de carpetas guardado.",
@@ -624,6 +635,7 @@
     }
   },
   "home": {
+    "feedTitle": "Feed",
     "sidebar": {
       "ariaLabel": "Recomendaciones de carpetas",
       "suggestedFolders": "Carpetas sugeridas",

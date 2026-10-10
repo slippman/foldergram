@@ -1824,3 +1824,5 @@ media assets. Status responses distinguish `indexedPosts`, `indexedMediaAssets`,
 `indexedCarousels`, and single-video `indexedVideos`; scan summaries may include
 `warning_count` and `warning_text`. Carousel mode and migration state are
 available in `preferences.treatCarouselsAsFolders` and `carouselsMigration`.
+
+`PUT /api/admin/settings/feed-display-theme` accepts `{ "theme": "classic" | "cinema" }` and returns `{ "theme": ... }`. Admin access is required. `preferences.feedDisplayTheme` is available in viewer status and admin stats.

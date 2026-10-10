@@ -99,11 +99,11 @@ Instead:
 - the default is `Newest First`
 - this setting changes app-folder grids and previous/next navigation inside the post viewer when browsing within a folder
 
-## Folder Display Theme
+## Album theme
 
-`Settings -> General Settings -> Folder Display Theme` selects an app-wide,
-SQLite-backed preference for desktop library folders. Save General Settings to
-apply it; no scan is required.
+`Settings -> General Settings -> Album theme` selects an app-wide,
+SQLite-backed preference for library albums on computers and phones. Save
+General Settings to apply it; no scan is required.
 
 - **Classic** (default): existing folder header, stories, and post grid.
 - **Cinema**: a grid of varied tile widths opens the album. Click a tile to enter
@@ -123,8 +123,8 @@ in its details panel. Videos autoplay when visible, start muted, and pause when 
 Unmuting a Cinema video mutes the previously audible video, including carousel
 videos. Scrolling offscreen also releases sound.
 Carousels remain swipeable posts within the vertical list. Folder ordering and
-pagination still follow the existing settings. Home, Reels, public shares,
-and mobile layouts are unaffected. The album list uses capture dates (a range
+pagination still follow the existing settings. Reels and public shares are
+unaffected. The album list uses capture dates (a range
 when photos span multiple days), leaves unknown dates blank, and defaults to
 newest album date first.
 
@@ -428,3 +428,16 @@ Album ordering and next/previous navigation use embedded capture timestamps when
 available, with the existing stable timestamp as fallback. EXIF timezone offsets
 and Apple QuickTime capture dates are respected. The next successful full scan
 repairs timestamps for already indexed files without re-importing them.
+
+## Feed theme
+
+`Settings -> General Settings -> Feed theme` independently selects Classic or
+Cinema for the Home feed. Classic is the default. Save changes to apply it for
+all viewers without rescanning. Album and feed Cinema use the same component,
+media sizing, captions, capture metadata, buttons, and exclusive audio behavior.
+The Cinema feed opens directly in vertical scroll and uses the available width
+without the Classic summary sidebar. Feed ordering and pagination are unchanged.
+
+Cinema uses compact sticky headers: the album name with a back-to-grid arrow
+in albums, and a stable Feed heading in Home. Feed items link to their album
+below the media, centered above capture time, on computers and phones.

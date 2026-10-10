@@ -28,3 +28,5 @@ export const CAROUSELS_MIGRATION_DECISION_SETTING_KEY = 'library.carousels_migra
 export const CAROUSELS_APPLIED_MODE_SETTING_KEY = 'library.carousels_applied_mode';
 
 export const CAPTURE_METADATA_REPAIR_VERSION_SETTING_KEY = 'library.capture_metadata_repair_version';
+
+export const FEED_DISPLAY_THEME_SETTING_KEY = 'feed.display_theme';

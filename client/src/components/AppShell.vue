@@ -7,7 +7,7 @@
       'app-shell--standalone': isStandaloneDisplay,
       'app-shell--explore': isExploreShell,
       'app-shell--reels': isReelsShell,
-      'app-shell--cinema': route.name === 'folder' && appStore.folderDisplayTheme === 'cinema'
+      'app-shell--cinema': (route.name === 'folder' && appStore.folderDisplayTheme === 'cinema') || (route.name === 'home' && appStore.feedDisplayTheme === 'cinema')
     }"
   >
     <!-- Sidebar: fixed on desktop, hidden on mobile -->
@@ -179,26 +179,24 @@ onMounted(() => {
   }
 }
 
-@media (min-width: 768px) {
-  .app-shell--cinema {
-    color-scheme: light dark;
-    background: var(--bg);
-    color: var(--text);
-    --bg: #fafafa;
-    --surface: #fff;
-    --surface-alt: #f0f0f0;
-    --surface-hover: #e8e8e8;
-    --border: #ddd;
-    --text: #202020;
-    --muted: #666;
-  }
-
-  .app-shell--cinema .app-shell__main {
-    padding: 0 1rem 2rem;
-  }
+.app-shell--cinema {
+  color-scheme: light dark;
+  background: var(--bg);
+  color: var(--text);
+  --bg: #fafafa;
+  --surface: #fff;
+  --surface-alt: #f0f0f0;
+  --surface-hover: #e8e8e8;
+  --border: #ddd;
+  --text: #202020;
+  --muted: #666;
 }
 
-@media (min-width: 768px) and (prefers-color-scheme: dark) {
+.app-shell--cinema .app-shell__main {
+  padding: 0 1rem 2rem;
+}
+
+@media (prefers-color-scheme: dark) {
   .app-shell--cinema {
     --bg: #000;
     --surface: #111;
@@ -218,5 +216,8 @@ onMounted(() => {
   100% {
     transform: translateX(260%);
   }
+}
+@media (max-width: 767px) {
+  .app-shell--cinema .app-shell__main { padding: 0 0.5rem calc(var(--mobile-bottom-nav-height) + 1rem); }
 }
 </style>

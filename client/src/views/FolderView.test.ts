@@ -33,7 +33,7 @@ async function render(theme: 'cinema' | 'classic' = 'cinema') {
   const wrapper = mount(FolderView, { props: { slug: 'trip' }, global: {
     plugins: [router], stubs: {
       InfiniteLoader: true, FolderHeader: true, EmptyState: true, StoriesModal: true,
-      FolderCinemaPost: { props: ['item'], template: '<article class="cinema-post" />' },
+      CinemaPost: { props: ['item'], template: '<article class="cinema-post" />' },
       ResilientImage: { props: ['src', 'alt'], template: '<img :src="src" :alt="alt" />' }
     }
   } });
@@ -65,6 +65,15 @@ describe('Cinema album navigation', () => {
     await router.push('/f/trip?view=scroll&photo=2'); await flushPromises();
     expect(folders.loadFolder).toHaveBeenLastCalledWith('trip', false, undefined);
     expect(wrapper.find('#cinema-post-2').exists()).toBe(true); wrapper.unmount();
+  });
+  it('opens Cinema grid and scroll on phone widths', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    const { wrapper } = await render();
+    expect(wrapper.findAll('.cinema-grid__tile')).toHaveLength(2);
+    await wrapper.findAll('.cinema-grid__tile')[0].trigger('click');
+    await flushPromises();
+    expect(wrapper.findAll('.cinema-post')).toHaveLength(2);
+    wrapper.unmount();
   });
   it('keeps Classic using the existing grid', async () => {
     const { wrapper } = await render('classic');

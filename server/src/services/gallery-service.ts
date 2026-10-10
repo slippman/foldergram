@@ -9,6 +9,7 @@ import {
   EXCLUDED_FOLDERS_SETTING_KEY,
   FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY,
   FOLDER_DISPLAY_THEME_SETTING_KEY,
+  FEED_DISPLAY_THEME_SETTING_KEY,
   HOME_FEED_DEFAULT_MODE_SETTING_KEY,
   LAST_SUCCESSFUL_GALLERY_ROOT_SETTING_KEY,
   LIBRARY_REBUILD_REQUIRED_SETTING_KEY,
@@ -222,6 +223,10 @@ function parseFolderImageOrder(value: string | null): FolderImageOrder {
 
 function getDefaultFolderImageOrder(): FolderImageOrder {
   return parseFolderImageOrder(appSettingsRepository.get(FOLDER_IMAGE_DEFAULT_ORDER_SETTING_KEY));
+}
+
+function getFeedDisplayTheme(): 'classic' | 'cinema' {
+  return appSettingsRepository.get(FEED_DISPLAY_THEME_SETTING_KEY) === 'cinema' ? 'cinema' : 'classic';
 }
 
 function getFolderDisplayTheme(): 'classic' | 'cinema' {
@@ -2173,6 +2178,7 @@ export const galleryService = {
         defaultReelsFeedMode,
         defaultFolderImageOrder,
         folderDisplayTheme: getFolderDisplayTheme(),
+        feedDisplayTheme: getFeedDisplayTheme(),
         nestedFolderTitleFormat,
         treatStoriesAsFolders,
         treatCarouselsAsFolders
@@ -2256,6 +2262,7 @@ export const galleryService = {
         defaultReelsFeedMode,
         defaultFolderImageOrder,
         folderDisplayTheme: getFolderDisplayTheme(),
+        feedDisplayTheme: getFeedDisplayTheme(),
         nestedFolderTitleFormat,
         treatStoriesAsFolders,
         treatCarouselsAsFolders
@@ -2289,6 +2296,11 @@ export const galleryService = {
     return {
       defaultMode: mode
     };
+  },
+
+  setFeedDisplayTheme(theme: 'classic' | 'cinema') {
+    appSettingsRepository.set(FEED_DISPLAY_THEME_SETTING_KEY, theme);
+    return { theme };
   },
 
   setFolderDisplayTheme(theme: 'classic' | 'cinema') {

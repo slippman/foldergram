@@ -4,7 +4,7 @@ import { useAppStore } from '../stores/app';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import FolderCinemaPost from './FolderCinemaPost.vue';
+import CinemaPost from './CinemaPost.vue';
 import { useAuthStore } from '../stores/auth';
 import * as galleryApi from '../api/gallery';
 import type { FeedItem } from '../types/api';
@@ -18,13 +18,13 @@ const item: FeedItem = {
   sortTimestamp: 1700000000000, takenAt: null
 };
 function render(overrides: Partial<FeedItem> = {}) {
-  return mount(FolderCinemaPost, {
+  return mount(CinemaPost, {
     props: { item: { ...item, ...overrides } },
     global: { stubs: { VideoMediaPlayer: true, CarouselMediaStage: true, RouterLink: { template: '<a><slot /></a>' } } }
   });
 }
 
-describe('FolderCinemaPost', () => {
+describe('CinemaPost', () => {
   beforeEach(() => setActivePinia(createPinia()));
   it('does not show filenames or indexing dates as captions or capture dates', () => {
     const wrapper = render();
@@ -94,8 +94,8 @@ describe('Cinema audio coordination', () => {
       setup() {
         provideCinemaAudio();
         return () => h('div', [
-          h(FolderCinemaPost, { item: { ...item, mediaType: 'video' } }),
-          h(FolderCinemaPost, { item: { ...item, id: 2, postType: 'carousel',
+          h(CinemaPost, { item: { ...item, mediaType: 'video' } }),
+          h(CinemaPost, { item: { ...item, id: 2, postType: 'carousel',
             mediaItems: [media, { ...media, imageId: 3, position: 2 }] } })
         ]);
       }

@@ -23,15 +23,16 @@
     />
     <template v-else-if="foldersStore.currentFolder">
       <section v-if="isCinema" class="folder-cinema">
-        <header class="folder-cinema__header">
+        <CinemaHeader :title="foldersStore.currentFolder.name">
+          <template #leading>
           <RouterLink :to="isCinemaScroll ? cinemaGridRoute : { name: 'library' }" class="folder-cinema__back" :aria-label="isCinemaScroll ? t('folder.cinema.backToGrid') : t('folder.cinema.back')">
             <span class="i-fluent-arrow-left-20-regular" aria-hidden="true" />
           </RouterLink>
-          <h1>{{ foldersStore.currentFolder.name }}</h1>
-        </header>
+          </template>
+        </CinemaHeader>
         <FolderGrid v-if="!isCinemaScroll" :items="foldersStore.currentImages" variant="cinema" />
         <div v-else>
-          <FolderCinemaPost v-for="item in foldersStore.currentImages" :id="`cinema-post-${item.id}`" :key="item.id" :item="item" />
+          <CinemaPost v-for="item in foldersStore.currentImages" :id="`cinema-post-${item.id}`" :key="item.id" :item="item" />
         </div>
         <EmptyState v-if="!foldersStore.loadingFolder && !foldersStore.currentImages.length"
           :title="t('folder.cinema.empty')" :description="t('folder.cinema.emptyDescription')" />
@@ -197,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue"
+  import { computed, nextTick, onMounted, ref, watch } from "vue"
   import { useI18n } from "vue-i18n"
   import { useRoute, useRouter } from "vue-router"
 
@@ -205,7 +206,8 @@
   import ErrorState from "../components/ErrorState.vue"
   import InfiniteLoader from "../components/InfiniteLoader.vue"
   import { provideCinemaAudio } from "../composables/useCinemaAudio"
-  import FolderCinemaPost from "../components/FolderCinemaPost.vue"
+  import CinemaHeader from "../components/CinemaHeader.vue"
+  import CinemaPost from "../components/CinemaPost.vue"
   import FolderGrid from "../components/FolderGrid.vue"
   import FolderHeader from "../components/FolderHeader.vue"
   import Avatar from "../components/Avatar.vue"
@@ -225,12 +227,7 @@
   const route = useRoute()
   const router = useRouter()
   const { t } = useI18n()
-  const desktopQuery = window.matchMedia('(min-width: 768px)')
-  const isDesktop = ref(desktopQuery.matches)
-  function updateDesktop(event: MediaQueryListEvent) { isDesktop.value = event.matches }
-  onMounted(() => desktopQuery.addEventListener('change', updateDesktop))
-  onBeforeUnmount(() => desktopQuery.removeEventListener('change', updateDesktop))
-  const isCinema = computed(() => isDesktop.value && appStore.folderDisplayTheme === 'cinema')
+  const isCinema = computed(() => appStore.folderDisplayTheme === 'cinema')
   const isCinemaScroll = computed(() => isCinema.value && route.query.view === 'scroll')
   const cinemaGridRoute = computed(() => ({
     name: 'folder', params: { slug: props.slug },
@@ -352,8 +349,6 @@
 
 <style scoped>
 .folder-cinema { width: 100%; }
-.folder-cinema__header { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 0; }
-.folder-cinema__header h1 { font-size: 0.95rem; font-weight: 500; margin: 0; }
 .folder-cinema__back { display: inline-flex; padding: 0.6rem; color: inherit; border-radius: 50%; }
 .folder-cinema__back span { width: 1.1rem; height: 1.1rem; }
 .folder-cinema__back:hover { background: var(--surface-hover); }

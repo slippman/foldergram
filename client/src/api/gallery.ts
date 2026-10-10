@@ -613,3 +613,11 @@ export function updateFolderDisplayTheme(theme: FolderDisplayTheme) {
     body: JSON.stringify({ theme })
   });
 }
+
+export function updateFeedDisplayTheme(theme: FolderDisplayTheme) {
+  return requestJson<{ theme: FolderDisplayTheme }>('/api/admin/settings/feed-display-theme', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ theme })
+  });
+}

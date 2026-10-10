@@ -114,6 +114,7 @@ function mountHomeView() {
         EmptyState: true,
         ErrorState: true,
         FeedList: true,
+        CinemaPost: { props: ['item'], template: '<article class="cinema-post">{{ item.caption }}</article>' },
         InfiniteLoader: true,
         StoriesModal: true
       }
@@ -131,6 +132,30 @@ describe('HomeView', () => {
       writable: true,
       value: 1280
     });
+  });
+
+  it('uses shared Cinema posts on mobile while preserving feed order', async () => {
+    window.innerWidth = 390;
+    const appStore = useAppStore();
+    const feedStore = useFeedStore();
+    const status = createAppStatus({ isScanning: false });
+    status.preferences.feedDisplayTheme = 'cinema';
+    appStore.$patch({ stats: status });
+    const media = createMomentCapsule('1', 'Sample').coverImage;
+    feedStore.$patch({ initialized: true, loading: false,
+      items: [{ ...media, id: 2, caption: 'First' }, { ...media, id: 1, caption: 'Second' }] });
+    vi.spyOn(feedStore, 'loadInitial').mockResolvedValue();
+    vi.spyOn(useMomentsStore(), 'fetchMoments').mockResolvedValue();
+    const wrapper = mountHomeView();
+    await flushPromises();
+    expect(wrapper.findAll('.cinema-post').map(post => post.text())).toEqual(['First', 'Second']);
+    expect(wrapper.findComponent({ name: 'FeedList' }).exists()).toBe(false);
+    expect(wrapper.find('aside').exists()).toBe(false);
+    appStore.stats!.preferences.feedDisplayTheme = 'classic';
+    await flushPromises();
+    expect(wrapper.find('.cinema-post').exists()).toBe(false);
+    expect(wrapper.find('feed-list-stub').exists()).toBe(true);
+    wrapper.unmount();
   });
 
   it('shows an explicit startup scan phase badge and updates it with the current phase', async () => {

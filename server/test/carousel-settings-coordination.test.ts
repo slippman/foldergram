@@ -92,6 +92,21 @@ describe.sequential('carousel settings persistence', () => {
     expect(scanSpy).not.toHaveBeenCalled();
   });
 
+  it('saves the feed display theme and rejects invalid choices without scanning', async () => {
+    const app = createApp();
+    const scanSpy = vi.spyOn(scannerService, 'scanAll');
+    const saved = await requestApp(app, 'PUT', '/api/admin/settings/feed-display-theme', { theme: 'cinema' });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toEqual({ theme: 'cinema' });
+    const status = await requestApp(app, 'GET', '/api/status');
+    expect(status.body.preferences.feedDisplayTheme).toBe('cinema');
+    expect(status.body.preferences.folderDisplayTheme).toBe('classic');
+    const invalid = await requestApp(app, 'PUT', '/api/admin/settings/feed-display-theme', { theme: 'invalid' });
+    expect(invalid.status).toBe(400);
+    expect(appSettingsRepository.get('feed.display_theme')).toBe('cinema');
+    expect(scanSpy).not.toHaveBeenCalled();
+  });
+
   it('rolls back atomically when setMany encounters a failure', () => {
     appSettingsRepository.set(TREAT_CAROUSELS_AS_FOLDERS_SETTING_KEY, '0');
     appSettingsRepository.set(CAROUSELS_MIGRATION_DECISION_SETTING_KEY, 'carousels');

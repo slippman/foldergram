@@ -29,6 +29,11 @@
           </button>
         </div>
         <div class="cinema-post__metadata">
+          <RouterLink v-if="showAlbumName" class="cinema-post__album" :to="{ name: 'folder', params: { slug: item.folderSlug } }">
+            {{ item.folderName }}
+            <span class="i-fluent-chevron-right-16-regular cinema-post__album-chevron" aria-hidden="true" />
+          </RouterLink>
+
           <time v-if="captureDate" :datetime="captureDate.toISOString()">{{ formattedDate }}</time>
           <RouterLink v-if="item.place" :to="{ name: 'place', params: { slug: item.place.slug } }">{{ item.place.name }}</RouterLink>
         </div>
@@ -79,7 +84,7 @@ import { fetchImage } from '../api/gallery';
 import { getOriginalMediaDownloadUrl } from '../utils/original-media';
 import type { FeedItem, ImageDetail } from '../types/api';
 
-const props = defineProps<{ item: FeedItem }>();
+const props = defineProps<{ item: FeedItem; showAlbumName?: boolean }>();
 const appStore = useAppStore();
 const authStore = useAuthStore();
 const likesStore = useLikesStore();
@@ -174,7 +179,26 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.cinema-post { margin: 0 0 3rem; color: var(--text); }
+.cinema-post__metadata .cinema-post__album {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-basis: 100%;
+  max-width: 100%;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 0.2rem;
+}
+.cinema-post__album-chevron { flex-shrink: 0; width: 0.85rem; height: 0.85rem; }
+.cinema-post__metadata .cinema-post__album:hover { color: var(--text); text-decoration-color: currentColor; }
+.cinema-post__album:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.cinema-post__metadata:has(.cinema-post__album) { row-gap: 0.25rem; }
+.cinema-post { scroll-margin-top: 3.75rem; margin: 0 0 3rem; color: var(--text); }
 .cinema-post__media { margin: 0 auto; max-height: calc(100dvh - 6rem); background: var(--surface-alt); }
 .cinema-post__media :deep(img), .cinema-post__media :deep(video) { width: 100%; height: 100%; object-fit: contain; }
 .cinema-post__details { margin: 0 auto; text-align: center; padding: 0.6rem 0 0; }
@@ -189,4 +213,8 @@ onBeforeUnmount(() => {
 .cinema-post__info dl div { display: flex; justify-content: space-between; gap: 1rem; }
 .cinema-post__info dt { color: var(--muted); }
 .cinema-post__info dd { margin: 0; overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 767px) {
+  .cinema-post { margin-bottom: 1.5rem; }
+  .cinema-post__metadata { gap: 0.4rem; font-size: 0.7rem; }
+}
 </style>

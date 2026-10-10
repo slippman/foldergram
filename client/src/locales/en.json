@@ -75,7 +75,7 @@
     "returnToPublicView": "Return to public view",
     "foldersSpotlight": "Featured albums",
     "likesAriaLabel": "{label} ({count})",
-    "folderPosts": "{count} posts"
+    "folderPosts": "{count} items"
   },
   "settings": {
     "eyebrow": "Settings",
@@ -338,9 +338,20 @@
         "update": "Unable to update the general settings.",
         "partialUpdate": "Some settings were saved ({parts}), but the update did not finish: {message}"
       },
+      "feedTheme": {
+        "label": "Feed theme",
+        "description": "Choose how the feed appears on computers and phones.",
+        "classic": "Classic",
+        "cinema": "Cinema",
+        "saved": "Feed theme saved.",
+        "note": "Applies to the feed without a rescan.",
+        "closeMenuAria": "Close feed theme menu",
+        "classicDescription": "The existing feed cards.",
+        "cinemaDescription": "The same compact media layout and controls as Cinema albums."
+      },
       "folderTheme": {
-        "label": "Folder Display Theme",
-        "description": "Choose how library folders appear on desktop. Applies to all viewers; Home and mobile layouts stay the same.",
+        "label": "Album theme",
+        "description": "Choose how albums appear on computers and phones. Applies to all viewers; Home and Reels stay the same.",
         "classic": "Classic · Grid",
         "cinema": "Cinema · Vertical scroll",
         "saved": "Folder display theme saved.",
@@ -624,6 +635,7 @@
     }
   },
   "home": {
+    "feedTitle": "Feed",
     "sidebar": {
       "ariaLabel": "Folder recommendations",
       "suggestedFolders": "Suggested folders",

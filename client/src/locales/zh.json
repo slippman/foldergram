@@ -338,9 +338,20 @@
         "update": "无法更新常规设置。",
         "partialUpdate": "部分设置已保存（{parts}），但更新未能完成：{message}"
       },
+      "feedTheme": {
+        "label": "动态主题",
+        "description": "选择电脑和手机上的动态显示方式。",
+        "classic": "经典",
+        "cinema": "Cinema",
+        "saved": "动态主题已保存。",
+        "note": "应用到动态，无需重新扫描。",
+        "closeMenuAria": "关闭动态主题菜单",
+        "classicDescription": "现有的动态卡片。",
+        "cinemaDescription": "与 Cinema 相册相同的紧凑布局和控件。"
+      },
       "folderTheme": {
         "label": "文件夹显示主题",
-        "description": "选择桌面端文件夹的显示方式。对所有浏览者生效；首页和移动端布局保持不变。",
+        "description": "选择电脑和手机上的相册显示方式。对所有浏览者生效；首页和 Reels 保持不变。",
         "classic": "经典 · 网格",
         "cinema": "影院 · 垂直滚动",
         "saved": "文件夹显示主题已保存。",
@@ -624,6 +635,7 @@
     }
   },
   "home": {
+    "feedTitle": "动态",
     "sidebar": {
       "ariaLabel": "文件夹推荐",
       "suggestedFolders": "推荐文件夹",
