@@ -257,6 +257,7 @@ export interface FeedImage {
   previewUrl: string;
   sortTimestamp: number;
   takenAt: number | null;
+  takenAtSource?: TakenAtSource | null;
   isSaved: boolean;
   place?: PlaceSummary | null;
 

@@ -134,7 +134,7 @@ const mediaStyle = computed(() => {
 });
 // Do not present indexing or upload times as capture dates.
 const captureDate = computed(() => {
-  if (props.item.takenAt === null || !Number.isFinite(props.item.takenAt)) return null;
+  if (props.item.takenAtSource !== 'exif' || props.item.takenAt === null || !Number.isFinite(props.item.takenAt)) return null;
   const date = new Date(props.item.takenAt);
   return Number.isFinite(date.getTime()) ? date : null;
 });

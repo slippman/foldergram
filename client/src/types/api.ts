@@ -100,6 +100,7 @@ export interface FeedItem {
   previewUrl: string;
   sortTimestamp: number;
   takenAt: number | null;
+  takenAtSource?: 'exif' | 'mtime' | 'first_seen' | 'sort_timestamp' | null;
   isSaved?: boolean;
   place?: PlaceSummary | null;
   mediaItems?: PostMediaItem[];

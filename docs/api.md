@@ -7,6 +7,11 @@ description: Backend endpoints, parameters, response shapes, and mutation rules 
 
 All documented routes come from `server/src/routes/api.ts`.
 
+Feed and image responses include `takenAtSource` (`exif`, `mtime`, `first_seen`,
+`sort_timestamp`, or `null`). Only `exif` identifies an embedded capture timestamp
+(including video capture metadata). Other sources provide stable ordering fallbacks;
+Cinema hides those dates rather than presenting them as capture times.
+
 ## Base paths
 
 | Base path | Purpose |

@@ -292,7 +292,8 @@ const HEARTBEAT_INTERVAL_MS = 5000;
 const DERIVATIVE_CACHE_KEEP_FILE = '.gitkeep';
 const ROOT_DISCOVERY_LABEL = '(root)';
 const CURRENT_AVIF_METADATA_REPAIR_VERSION = '1';
-const CURRENT_CAPTURE_METADATA_REPAIR_VERSION = '1';
+// Retry libraries whose earlier repair could have skipped unchanged folders.
+const CURRENT_CAPTURE_METADATA_REPAIR_VERSION = '2';
 const MAX_SCAN_ERROR_TEXT_LENGTH = 8000;
 const MAX_SCAN_ERROR_LINE_LENGTH = 2000;
 export const LIBRARY_REBUILD_REQUIRED_MESSAGE =
@@ -1934,6 +1935,7 @@ class ScannerService {
 
     if (
       !folderHadErrors &&
+      !context.captureMetadataRepairPending &&
       shouldSkipFolderBySignature({
         currentSignature: folderSignature.signature,
         galleryRootChanged: context.galleryRootChanged,

@@ -33,8 +33,14 @@ describe('CinemaPost', () => {
     expect(wrapper.find('time').exists()).toBe(false);
     expect(wrapper.get('img').attributes('src')).toBe('/preview.jpg');
   });
+  it.each(['mtime', 'first_seen', 'sort_timestamp', null, undefined] as const)(
+    'does not display a fallback timestamp with source %s', (takenAtSource) => {
+      const wrapper = render({ takenAt: 1700000000000, takenAtSource });
+      expect(wrapper.find('time').exists()).toBe(false);
+    }
+  );
   it('shows an entered caption, capture time, and known location', () => {
-    const wrapper = render({ caption: 'Family evening', takenAt: 1700000000000,
+    const wrapper = render({ caption: 'Family evening', takenAt: 1700000000000, takenAtSource: 'exif',
       place: { id: 2, slug: 'denver', name: 'Denver', kind: 'city', isApproximate: false } });
     expect(wrapper.get('.cinema-post__caption').text()).toBe('Family evening');
     expect(wrapper.get('time').attributes('datetime')).toBe('2023-11-14T22:13:20.000Z');
