@@ -87,6 +87,7 @@ const momentsStore = useMomentsStore();
 const route = useRoute();
 const router = useRouter();
 const confirmDeleteOpen = ref(false);
+const deleteTarget = ref<Pick<ImageDetail, 'id' | 'mediaType'> | null>(null);
 const deleteOriginalFromDisk = ref(false);
 const deleteError = ref<string | null>(null);
 
@@ -120,17 +121,19 @@ async function loadImage() {
 watch(() => [imageId.value, activeMediaType.value] as const, loadImage, { immediate: true });
 
 function openDeleteDialog() {
+  if (!activeImage.value) return;
+  deleteTarget.value = { id: activeImage.value.id, mediaType: activeImage.value.mediaType };
   deleteOriginalFromDisk.value = false;
   deleteError.value = null;
   confirmDeleteOpen.value = true;
 }
 
 async function handleDelete() {
-  if (!viewerStore.image) {
+  if (!confirmDeleteOpen.value || !deleteTarget.value || viewerStore.deleting) {
     return;
   }
 
-  const currentImage = viewerStore.image;
+  const currentImage = deleteTarget.value;
   deleteError.value = null;
 
   try {

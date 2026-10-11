@@ -158,4 +158,27 @@ describe('PostView', () => {
     expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('2');
   });
 
+  it.each([false, true])('deletes the confirmed photo when navigation completes (permanent: %s)', async (permanent) => {
+    const viewerStore = useViewerStore();
+    vi.spyOn(viewerStore, 'loadImage').mockImplementation(async (id: number) => {
+      if (id === 1) viewerStore.image = createImageDetail(1);
+      else viewerStore.loading = true;
+    });
+    const deleteImage = vi.spyOn(viewerStore, 'deleteImage').mockResolvedValue({ id: 1, folderSlug: 'peopleplanet' } as any);
+    const wrapper = mount(PostView, { props: { id: '1', modal: true, cinema: true } });
+    await flushPromises();
+    await wrapper.setProps({ id: '2' });
+    expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('1');
+    wrapper.findComponent({ name: 'PostViewer' }).vm.$emit('delete');
+    await flushPromises();
+    await wrapper.get('input[type="checkbox"]').setValue(permanent);
+    viewerStore.image = createImageDetail(2);
+    viewerStore.loading = false;
+    await flushPromises();
+    wrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm');
+    await flushPromises();
+    expect(deleteImage).toHaveBeenCalledWith(1, { permanent });
+    expect(wrapper.emitted('close')).toEqual([[]]);
+  });
+
 });
