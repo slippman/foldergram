@@ -8,6 +8,7 @@ import { useFoldersStore } from '../stores/folders';
 import { useLikesStore } from '../stores/likes';
 import PostViewer from './PostViewer.vue';
 
+const mockRouteQuery: Record<string, string> = {};
 const mockRouterPush = vi.fn();
 const mockRouterResolve = vi.fn();
 
@@ -18,7 +19,7 @@ vi.mock('vue-router', async () => {
   return {
     ...actual,
     useRoute: () => ({
-      query: {}
+      query: mockRouteQuery
     }),
     useRouter: () => ({
       push: mockRouterPush,
@@ -187,6 +188,7 @@ describe('PostViewer', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia());
+    delete mockRouteQuery.media;
     mockRouterPush.mockReset();
     mockRouterResolve.mockReset();
     mockRouterResolve.mockImplementation((path: string) => ({
@@ -292,6 +294,19 @@ describe('PostViewer', () => {
     await coverButton.trigger('click');
 
     expect(setFolderCoverSpy).toHaveBeenCalledWith('animal-planet', 21);
+  });
+
+  it('opens the requested carousel media and ignores a media id from another post', async () => {
+    const image: ImageDetail = { ...createImageDetail(18, { previousImageId: null, nextImageId: null }), postType: 'carousel', mediaItems: [
+      { imageId: 180, position: 1, mediaType: 'image', width: 100, height: 100 },
+      { imageId: 181, position: 2, mediaType: 'image', width: 100, height: 100 }
+    ] as ImageDetail['mediaItems'] };
+    mockRouteQuery.media = '181';
+    const wrapper = mount(PostViewer, { props: { image, isModal: true }, global: { stubs: globalStubs } });
+    expect(wrapper.get('a.photo-download-desktop').attributes('href')).toBe('/api/originals/181?download=1');
+    await wrapper.setProps({ image: createImageDetail(19, { previousImageId: null, nextImageId: null }) });
+    expect(wrapper.get('a.photo-download-desktop').attributes('href')).toBe('/api/originals/19?download=1');
+    delete mockRouteQuery.media;
   });
 
   it('renders a download-original control beside the open-original action', () => {

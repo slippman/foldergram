@@ -546,10 +546,11 @@ describe.sequential('DERIVATIVE_MODE lazy behavior', () => {
     const output = path.join(appConfig.previewsDir, video.preview_path);
     await fs.mkdir(path.dirname(output), { recursive: true });
     await fs.writeFile(output, '');
-    generatePreviewDerivativeMock.mockRejectedValueOnce(new Error('No audio track has an available FFmpeg decoder'));
+    generatePreviewDerivativeMock.mockRejectedValueOnce(new Error('FFmpeg failed opening /private/gallery/family/clip.mp4: No audio decoder'));
     const response = await dispatchRoute(lazyPreviewsRouter, `/${encodeRelativePath(video.preview_path)}`);
     expect(response.statusCode).toBe(500);
-    expect(response.body).toMatchObject({ message: expect.stringContaining('No audio track') });
+    expect(response.body).toEqual({ message: 'Failed to generate derivative.' });
+    expect(JSON.stringify(response.body)).not.toContain('/private/gallery');
     expect(generatePreviewDerivativeMock).toHaveBeenCalledOnce();
   });
 

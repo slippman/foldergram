@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-60 flex items-center justify-center p-6 bg-black/55" @click.self="$emit('cancel')">
+  <div class="fixed inset-0 z-60 flex items-center justify-center p-6 bg-black/55" @click.self="$emit('cancel')" @keydown.esc.stop.prevent="$emit('cancel')">
     <section
       class="w-[min(100%,32rem)] p-[1.4rem] bg-surface border border-border rounded-[1.2rem] shadow-[var(--shadow)]"
       role="dialog"

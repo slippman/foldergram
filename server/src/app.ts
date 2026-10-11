@@ -5,6 +5,7 @@ import express from 'express';
 
 import { appConfig, repositoryRoot } from './config/env.js';
 import { requireApiAuthentication, requireMediaAuthentication } from './middleware/auth-protection.js';
+import { handleRequestError } from './middleware/error-handler.js';
 import { requireTrustedMutationRequest } from './middleware/csrf-protection.js';
 import { blockPublicDemoMutations } from './middleware/public-demo-mode.js';
 import { apiRouter } from './routes/api.js';
@@ -48,15 +49,7 @@ export function createApp() {
     }
   }
 
-  app.use((error: unknown, _request: express.Request, response: express.Response, next: express.NextFunction) => {
-    if (response.headersSent) {
-      next(error);
-      return;
-    }
-
-    const message = error instanceof Error ? error.message : 'Unexpected server error';
-    response.status(400).json({ message });
-  });
+  app.use(handleRequestError);
 
   return app;
 }

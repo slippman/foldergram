@@ -17,6 +17,12 @@ describe('PostCaptionModal', () => {
     expect(wrapper.emitted('save')).toEqual([['Family trip']]);
   });
 
+  it('consumes Escape from the caption field and cancels only the dialog', async () => {
+    const wrapper = mount(PostCaptionModal, { props: { filename: 'photo.jpg' } });
+    await wrapper.get('textarea').trigger('keydown', { key: 'Escape' });
+    expect(wrapper.emitted('cancel')).toEqual([[]]);
+  });
+
   it('emits a trimmed caption when saving', async () => {
     const wrapper = mount(PostCaptionModal, {
       props: {

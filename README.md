@@ -38,7 +38,9 @@ Cinema can be selected separately for albums and the Home feed in General Settin
 Album grids open into a vertical scroll with adjacent-image previews. Clicking a
 photo opens a screen-filling viewer; Close or Escape returns to the album. Camera
 and exposure details are available through Info, including for public viewers;
-GPS coordinates and internal file paths remain hidden from public responses.
+GPS coordinates and internal file paths remain hidden from public JSON responses.
+Original downloads and native photo shares preserve the source file, including
+any embedded location metadata; JSON redaction does not sanitize those files.
 On desktop, click a navigation icon to expand the sidebar, and click outside to
 collapse it. Admins can create album shares from the album menu.
 On phones, photo controls offer native file sharing when supported, with the

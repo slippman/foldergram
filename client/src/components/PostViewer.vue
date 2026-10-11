@@ -770,9 +770,13 @@
     }
   })
 
-  watch(() => props.image?.id, () => {
-    carouselIndex.value = 0
-  })
+  watch(() => [props.image?.id, route.query.media], () => {
+    const mediaId = Number(route.query.media)
+    const index = Number.isSafeInteger(mediaId) && mediaId > 0
+      ? props.image?.mediaItems?.findIndex(item => item.imageId === mediaId) ?? -1
+      : -1
+    carouselIndex.value = Math.max(0, index)
+  }, { immediate: true })
 
   const locallySetCover = ref(false)
 

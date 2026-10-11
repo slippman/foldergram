@@ -102,7 +102,10 @@ const props = defineProps<{ item: FeedItem; showAlbumName?: boolean }>();
 const appStore = useAppStore();
 const route = useRoute();
 const router = useRouter();
-const photoRoute = computed(() => ({ name: 'image', params: { id: String(props.item.id) } }));
+const photoRoute = computed(() => ({
+  name: 'image', params: { id: String(props.item.id) },
+  query: activeMedia.value ? { media: String(activeMedia.value.imageId) } : {}
+}));
 function openCarouselPhoto(event: MouseEvent) {
   if (!(event.target instanceof Element) || !event.target.closest('img')) return;
   openPhoto(event, () => { void router.push(photoRoute.value); });

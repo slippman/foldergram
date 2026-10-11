@@ -11,7 +11,7 @@ import type { FeedItem } from '../types/api';
 
 vi.mock('vidstack/bundle', () => ({}));
 const navigatePhoto = vi.fn();
-vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/folder/trip?view=scroll&photo=1' }), useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('vue-router', () => ({ useRoute: () => ({ name: 'folder', fullPath: '/folder/trip?view=scroll&photo=1' }), useRouter: () => ({ push: vi.fn() }) }));
 const item: FeedItem = {
   id: 1, folderId: 1, folderSlug: 'trip', folderName: 'Trip', folderPath: 'Trip',
   folderBreadcrumb: null, filename: 'PXL_20261001.jpg', caption: null,
@@ -22,7 +22,7 @@ const item: FeedItem = {
 function render(overrides: Partial<FeedItem> = {}) {
   return mount(CinemaPost, {
     props: { item: { ...item, ...overrides } },
-    global: { stubs: { VideoMediaPlayer: true, CarouselMediaStage: true, RouterLink: defineComponent({ props: { custom: Boolean }, setup: (props, { slots }) => () => props.custom ? slots.default?.({ href: '/post/1', navigate: navigatePhoto }) : h('a', slots.default?.()) }) } }
+    global: { stubs: { VideoMediaPlayer: true, CarouselMediaStage: true, RouterLink: defineComponent({ name: 'RouterLink', props: { custom: Boolean, to: Object }, setup: (props, { slots }) => () => props.custom ? slots.default?.({ href: '/post/1', navigate: navigatePhoto }) : h('a', slots.default?.()) }) } }
   });
 }
 
@@ -60,6 +60,17 @@ describe('CinemaPost', () => {
     expect(video.find('.cinema-post__photo').exists()).toBe(false);
     video.unmount();
   });
+  it('includes the selected carousel photo in the zoom route', async () => {
+    const wrapper = render({ postType: 'carousel', mediaItems: [
+      { imageId: 10, position: 1, mediaType: 'image', width: 100, height: 100 },
+      { imageId: 11, position: 2, mediaType: 'image', width: 100, height: 100 }
+    ] as FeedItem['mediaItems'] });
+    wrapper.findComponent({ name: 'CarouselMediaStage' }).vm.$emit('update:modelValue', 1);
+    await nextTick();
+    const route = wrapper.findAllComponents({ name: 'RouterLink' }).find(link => link.props('custom'));
+    expect(route?.props('to').query).toEqual({ media: '11' });
+  });
+
   it('renders initially muted video controls without looping', () => {
     const wrapper = render({ mediaType: 'video' });
     const player = wrapper.findComponent({ name: 'VideoMediaPlayer' });

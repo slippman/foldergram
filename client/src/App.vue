@@ -283,6 +283,7 @@ watch(
 
 function handleImageModalEscape(event: KeyboardEvent) {
   if (event.key !== 'Escape' || event.defaultPrevented || !showImageModal.value) return;
+  if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
   event.preventDefault();
   void closeImageModal();
 }
