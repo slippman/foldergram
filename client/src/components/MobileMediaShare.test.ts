@@ -4,6 +4,22 @@ import MobileMediaShare from './MobileMediaShare.vue';
 const mountButton = () => mount(MobileMediaShare, { props: { url: '/api/originals/1?download=1' } });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('mobile photo sharing', () => {
+  it.each(['fetch', 'share'])('exposes Download after a %s failure', async (failure) => {
+    const share = failure === 'share'
+      ? vi.fn().mockRejectedValue(new Error('Share failed'))
+      : vi.fn();
+    vi.stubGlobal('navigator', { share, canShare: vi.fn().mockReturnValue(true), userActivation: { isActive: true } });
+    vi.stubGlobal('fetch', failure === 'fetch'
+      ? vi.fn().mockRejectedValue(new Error('Fetch failed'))
+      : vi.fn().mockResolvedValue(new Response(new Blob(['photo'], { type: 'image/jpeg' }))));
+    const wrapper = mountButton();
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => expect(wrapper.find('a').exists()).toBe(true));
+    expect(wrapper.find('button').exists()).toBe(false);
+    expect(wrapper.get('a').attributes('href')).toBe('/api/originals/1?download=1');
+    expect(wrapper.get('a').attributes('download')).toBeDefined();
+    expect(wrapper.find('[role="status"]').exists()).toBe(true);
+  });
   it('shares the original file and treats cancellation as normal', async () => {
     const share = vi.fn().mockRejectedValue(new DOMException('Cancelled', 'AbortError'));
     vi.stubGlobal('navigator', { share, canShare: vi.fn().mockReturnValue(true), userActivation: { isActive: true } });

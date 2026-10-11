@@ -55,9 +55,12 @@ async function share() {
     await navigator.share({ files: [file] });
     ready.value = false;
   } catch (cause) {
+    if (url !== props.url) return;
     const name = cause && typeof cause === 'object' && 'name' in cause ? cause.name : '';
     if (name === 'AbortError') { ready.value = false; return; }
     if (file && name === 'NotAllowedError') { ready.value = true; return; }
+    supportsSharing.value = false;
+    ready.value = false;
     error.value = true;
   } finally { loading.value = false; }
 }
