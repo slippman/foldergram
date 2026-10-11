@@ -22,7 +22,7 @@
       </div>
       <!-- Actions -->
       <div class="flex justify-end gap-3 mt-[1.4rem]">
-        <button class="min-h-[2.5rem] px-4 py-[0.6rem] border border-transparent rounded-[0.75rem] font-semibold cursor-pointer bg-surface-hover text-text disabled:opacity-70 disabled:cursor-wait" type="button" @click="$emit('cancel')">
+        <button ref="cancelButton" class="min-h-[2.5rem] px-4 py-[0.6rem] border border-transparent rounded-[0.75rem] font-semibold cursor-pointer bg-surface-hover text-text disabled:opacity-70 disabled:cursor-wait" type="button" @click="$emit('cancel')">
           {{ cancelLabel }}
         </button>
         <button class="min-h-[2.5rem] px-4 py-[0.6rem] border border-transparent rounded-[0.75rem] font-semibold cursor-pointer bg-[#d93025] text-white disabled:opacity-70 disabled:cursor-wait" type="button" :disabled="loading" @click="$emit('confirm')">
@@ -34,6 +34,18 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+
+const cancelButton = ref<HTMLButtonElement | null>(null);
+let previousFocus: HTMLElement | null = null;
+onMounted(() => {
+  previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  cancelButton.value?.focus({ preventScroll: true });
+});
+onBeforeUnmount(() => {
+  if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+});
+
 withDefaults(
   defineProps<{
     title: string;

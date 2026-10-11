@@ -16,6 +16,7 @@
               <span class="text-[0.75rem] text-muted">{{ formData.caption.length }} / 300</span>
             </div>
             <textarea
+              ref="captionField"
               id="post-caption"
               v-model="formData.caption"
               class="w-full min-h-[7rem] rounded-lg border border-border bg-surface px-[0.75rem] py-[0.6rem] text-[0.95rem] text-text placeholder-muted resize-y focus:border-text focus:outline-none focus:ring-1 focus:ring-text"
@@ -66,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { normalizeCaptionInput, resolveDisplayCaption } from '../utils/caption';
@@ -85,6 +86,15 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const captionField = ref<HTMLTextAreaElement | null>(null);
+let previousFocus: HTMLElement | null = null;
+onMounted(() => {
+  previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  captionField.value?.focus({ preventScroll: true });
+});
+onBeforeUnmount(() => {
+  if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+});
 const titleId = `caption-dialog-title-${Math.random().toString(36).slice(2, 10)}`;
 const hasCustomCaption = computed(() => props.caption !== null && props.caption !== undefined);
 const formData = reactive({
