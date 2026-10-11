@@ -41,6 +41,12 @@ and exposure details are available through Info, including for public viewers;
 GPS coordinates and internal file paths remain hidden from public responses.
 On desktop, click a navigation icon to expand the sidebar, and click outside to
 collapse it. Admins can create album shares from the album menu.
+On phones, photo controls offer native file sharing when supported, with the
+iPhone or Android share icon. Browsers without file sharing offer Download
+instead; desktop controls retain Download. Sharing requires HTTPS, and large
+photos may need a second tap after the original file is prepared.
+Mobile Cinema uses a stable viewport height to avoid resizing media as browser
+toolbars move; Info shows the same camera details in scroll and zoom views.
 
 - **Instagram-Inspired UI:** Enjoy a familiar feed layout, dedicated app folders (profiles), and a media viewer.
 - Home feed with `Recent`, `Rediscover`, and `Random` modes.

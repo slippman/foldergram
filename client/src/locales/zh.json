@@ -950,7 +950,11 @@
       "setAsCover": "设为文件夹封面",
       "downloadOriginalFile": "下载原始文件",
       "openOriginalFile": "打开原始文件",
-      "deletePost": "删除帖子"
+      "deletePost": "删除帖子",
+      "shareFile": "分享照片",
+      "preparingShare": "正在准备照片…",
+      "shareReady": "点击分享",
+      "shareFailed": "无法准备照片，请尝试下载。"
     },
     "feedCard": {
       "openStories": "打开 {name} 的动态",

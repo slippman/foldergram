@@ -70,7 +70,7 @@ describe('CinemaPost', () => {
   it('loads extra details only when Info is opened and provides an original download link', async () => {
     const fetch = vi.spyOn(galleryApi, 'fetchImage').mockResolvedValue({ ...item,
       folderAvatarImageId: null, relativePath: 'Trip/PXL_20261001.jpg', mimeType: 'image/jpeg',
-      fileSize: 1048576, exif: null, originalUrl: '/original', nextImageId: null, previousImageId: null });
+      fileSize: 1048576, exif: { cameraMake: 'Apple', cameraModel: 'iPhone 16 Pro', iso: 800 }, originalUrl: '/original', nextImageId: null, previousImageId: null });
     const wrapper = render();
     expect(fetch).not.toHaveBeenCalled();
     const info = wrapper.get('button[aria-controls]');
@@ -80,6 +80,9 @@ describe('CinemaPost', () => {
     expect(fetch).toHaveBeenCalledWith(1);
     expect(wrapper.get('.cinema-post__info').text()).toContain('image/jpeg');
     expect(wrapper.get('.cinema-post__info').text()).toContain('1 MB');
+    expect(wrapper.get('.cinema-post__info').text()).toContain('Apple iPhone 16 Pro');
+    expect(wrapper.get('.cinema-post__info').text()).toContain('800');
+    expect(wrapper.get('.cinema-post__info').text()).not.toContain(item.filename);
     expect(wrapper.get('a[download]').attributes('href')).toContain('download');
     await info.trigger('click');
     expect(wrapper.find('.cinema-post__info').exists()).toBe(false);

@@ -950,7 +950,11 @@
       "setAsCover": "Set as folder cover",
       "downloadOriginalFile": "Download original file",
       "openOriginalFile": "Open original file",
-      "deletePost": "Delete post"
+      "deletePost": "Delete post",
+      "shareFile": "Share photo",
+      "preparingShare": "Preparing photo…",
+      "shareReady": "Tap to share",
+      "shareFailed": "Could not prepare photo. Try Download."
     },
     "feedCard": {
       "openStories": "Open {name} stories",

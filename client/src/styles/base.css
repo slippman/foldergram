@@ -2079,3 +2079,15 @@ img[data-loaded="true"] {
 .viewer--cinema .viewer__sidebar-toggle:hover { background: rgba(0, 0, 0, 0.6); box-shadow: none; }
 .viewer--cinema .viewer__modal-close-icon,
 .viewer--cinema .viewer__sidebar-toggle-icon { width: 1.45rem; height: 1.45rem; }
+
+@media (max-width: 768px) {
+  .viewer--cinema .viewer__sidebar--drawer {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .viewer--cinema .viewer__sidebar--drawer > * { flex-shrink: 0; }
+}
+
+@media (max-width: 767px) {
+  .photo-download-desktop { display: none !important; }
+}

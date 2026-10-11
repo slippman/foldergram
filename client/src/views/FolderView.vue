@@ -260,8 +260,9 @@
     const previousMedia = selected?.previousElementSibling?.querySelector('.cinema-post__media')
     const header = document.querySelector('.folder-cinema .cinema-header')
     if (previousMedia && header) {
-      // Keep the last 36px of the previous image visible below the sticky header.
-      window.scrollTo({ top: Math.max(0, window.scrollY + previousMedia.getBoundingClientRect().bottom - header.getBoundingClientRect().height - 36) })
+      // Keep a smaller adjacent-image hint on phones to leave room for the photo.
+      const previousPeek = window.matchMedia('(max-width: 767px)').matches ? 20 : 36
+      window.scrollTo({ top: Math.max(0, window.scrollY + previousMedia.getBoundingClientRect().bottom - header.getBoundingClientRect().height - previousPeek) })
     } else {
       selected?.scrollIntoView({ block: 'start' })
     }

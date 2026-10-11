@@ -31,6 +31,12 @@
             :aria-label="infoLabel" :title="infoLabel" @click="toggleInfo">
             <span class="i-fluent-info-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
           </button>
+          <RouterLink v-if="route.name === 'folder' && (activeMedia?.mediaType ?? item.mediaType) === 'image'" custom :to="photoRoute" v-slot="{ href, navigate }">
+            <a class="media-action cinema-post__zoom" :href="href" :aria-label="t('folder.cinema.openPhoto')"
+              :title="t('folder.cinema.openPhoto')" @click="openPhoto($event, navigate)">
+              <span class="i-fluent-zoom-in-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
+            </a>
+          </RouterLink>
         </div>
         <div class="cinema-post__metadata">
           <RouterLink v-if="showAlbumName" class="cinema-post__album" :to="{ name: 'folder', params: { slug: item.folderSlug } }">
@@ -46,7 +52,8 @@
             :aria-label="t('post.viewer.editCaption')" :title="t('post.viewer.editCaption')" @click="openCaptionEditor">
             <span class="i-fluent-edit-16-regular w-5 h-5" aria-hidden="true" />
           </button>
-          <a class="media-action" :href="downloadUrl" download
+          <MobileMediaShare v-if="(activeMedia?.mediaType ?? item.mediaType) === 'image'" :url="downloadUrl" />
+          <a class="media-action" :class="{ 'photo-download-desktop': (activeMedia?.mediaType ?? item.mediaType) === 'image' }" :href="downloadUrl" download
             :aria-label="t('post.viewer.downloadOriginalFile')" :title="t('post.viewer.downloadOriginalFile')">
             <svg class="w-[1.45rem] h-[1.45rem]" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 4.75v9.5m0 0 3.5-3.5M12 14.25l-3.5-3.5M5.75 16.75v1.5A1.75 1.75 0 0 0 7.5 20h9a1.75 1.75 0 0 0 1.75-1.75v-1.5"
@@ -62,7 +69,7 @@
           <div><dt>{{ t('post.viewer.stats.dimensions') }}</dt><dd>{{ activeMedia?.width ?? item.width }} × {{ activeMedia?.height ?? item.height }}</dd></div>
           <div v-if="detail"><dt>{{ t('post.viewer.stats.type') }}</dt><dd>{{ activeMedia?.mimeType ?? detail.mimeType }}</dd></div>
           <div v-if="detail"><dt>{{ t('post.viewer.stats.size') }}</dt><dd>{{ formattedFileSize }}</dd></div>
-          <div><dt>{{ t('folder.cinema.filename') }}</dt><dd>{{ activeMedia?.filename ?? item.filename }}</dd></div>
+          <div v-for="entry in exifDetails" :key="entry.label"><dt>{{ entry.label }}</dt><dd>{{ entry.value }}</dd></div>
         </dl>
       </section>
     </footer>
@@ -73,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatExifDetails } from '../utils/media-details';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -86,6 +94,7 @@ import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import { useLikesStore } from '../stores/likes';
 import { fetchImage } from '../api/gallery';
+import MobileMediaShare from './MobileMediaShare.vue';
 import { getOriginalMediaDownloadUrl } from '../utils/original-media';
 import type { FeedItem, ImageDetail } from '../types/api';
 
@@ -116,6 +125,7 @@ const infoError = ref<string | null>(null);
 const detail = ref<ImageDetail | null>(null);
 const infoId = computed(() => `cinema-info-${props.item.id}`);
 const activeMedia = computed(() => detail.value?.mediaItems?.[carouselIndex.value] ?? props.item.mediaItems?.[carouselIndex.value]);
+const exifDetails = computed(() => formatExifDetails(activeMedia.value?.exif ?? detail.value?.exif, t));
 const downloadUrl = computed(() => getOriginalMediaDownloadUrl(activeMedia.value?.imageId ?? props.item.id));
 const likeLabel = computed(() => likesStore.toggleAriaLabel(likesStore.isLiked(props.item.id)));
 const infoLabel = computed(() => t(showInfo.value ? 'post.viewer.hideDetails' : 'post.viewer.showDetails'));
@@ -148,7 +158,7 @@ const isCarousel = computed(() => props.item.postType === 'carousel' && (props.i
 // Leave room for the header, controls, and a glimpse of the next item.
 const mediaStyle = computed(() => {
   const ratio = props.item.width > 0 && props.item.height > 0 ? props.item.width / props.item.height : 1;
-  return { aspectRatio: String(ratio), width: `min(100%, calc((100dvh - var(--cinema-viewport-reserve)) * ${ratio}))` };
+  return { aspectRatio: String(ratio), width: `min(100%, calc((var(--cinema-viewport-height) - var(--cinema-viewport-reserve)) * ${ratio}))` };
 });
 // Do not present indexing or upload times as capture dates.
 const captureDate = computed(() => {
@@ -217,8 +227,8 @@ onBeforeUnmount(() => {
 .cinema-post__metadata .cinema-post__album:hover { color: var(--text); text-decoration-color: currentColor; }
 .cinema-post__album:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .cinema-post__metadata:has(.cinema-post__album) { row-gap: 0.25rem; }
-.cinema-post { --cinema-viewport-reserve: 17rem; scroll-margin-top: 3.75rem; margin: 0 0 1.25rem; color: var(--text); }
-.cinema-post__media { margin: 0 auto; max-height: calc(100dvh - var(--cinema-viewport-reserve)); background: var(--surface-alt); }
+.cinema-post { --cinema-viewport-height: 100dvh; --cinema-viewport-reserve: 17rem; scroll-margin-top: 3.75rem; margin: 0 0 1.25rem; color: var(--text); }
+.cinema-post__media { margin: 0 auto; max-height: calc(var(--cinema-viewport-height) - var(--cinema-viewport-reserve)); background: var(--surface-alt); }
 .cinema-post__media :deep(img), .cinema-post__media :deep(video) { width: 100%; height: 100%; object-fit: contain; }
 .cinema-post__photo { display: block; width: 100%; height: 100%; cursor: zoom-in; }
 .cinema-post__photo:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
@@ -234,8 +244,11 @@ onBeforeUnmount(() => {
 .cinema-post__info dl div { display: flex; justify-content: space-between; gap: 1rem; }
 .cinema-post__info dt { color: var(--muted); }
 .cinema-post__info dd { margin: 0; overflow-wrap: anywhere; min-width: 0; }
+.cinema-post__zoom { display: none; }
 @media (max-width: 767px) {
-  .cinema-post { --cinema-viewport-reserve: 22rem; margin-bottom: 1rem; }
+  .cinema-post__zoom { display: inline-flex; }
+  /* Keep Safari toolbar changes from resizing the scrollable album. */
+  .cinema-post { --cinema-viewport-height: 100svh; --cinema-viewport-reserve: 20rem; margin-bottom: 1rem; }
   .cinema-post__metadata { gap: 0.4rem; font-size: 0.7rem; }
 }
 </style>
