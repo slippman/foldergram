@@ -56,6 +56,8 @@
     }
   },
   "nav": {
+    "expandSidebar": "Expandir barra lateral",
+    "collapseSidebar": "Contraer barra lateral",
     "primary": "Navegación principal",
     "foldergramHome": "Inicio de Foldergram",
     "home": "Inicio",
@@ -831,6 +833,8 @@
       "sections": "Secciones de carpeta"
     },
     "cinema": {
+      "openPhoto": "Abrir foto en pantalla completa",
+      "scrollHint": "Desplázate para explorar",
       "backToGrid": "Volver a la cuadrícula del álbum",
       "back": "Volver a la biblioteca",
       "empty": "No hay publicaciones en esta carpeta",
@@ -1087,6 +1091,7 @@
     }
   },
   "libraryPage": {
+    "shareAlbum": "Compartir álbum",
     "eyebrow": "Álbumes",
     "title": "Todos los álbumes",
     "description": "Explora y busca tus álbumes.",

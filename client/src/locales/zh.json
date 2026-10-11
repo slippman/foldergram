@@ -56,6 +56,8 @@
     }
   },
   "nav": {
+    "expandSidebar": "展开侧边栏",
+    "collapseSidebar": "收起侧边栏",
     "primary": "主导航",
     "foldergramHome": "Foldergram 首页",
     "home": "首页",
@@ -831,6 +833,8 @@
       "sections": "文件夹分区"
     },
     "cinema": {
+      "openPhoto": "全屏查看照片",
+      "scrollHint": "滚动浏览",
       "backToGrid": "返回相册网格",
       "back": "返回媒体库",
       "empty": "此文件夹中没有帖子",
@@ -1087,6 +1091,7 @@
     }
   },
   "libraryPage": {
+    "shareAlbum": "分享相册",
     "eyebrow": "相册",
     "title": "所有相册",
     "description": "浏览和搜索你的相册。",

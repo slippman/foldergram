@@ -3,15 +3,19 @@
     <div class="cinema-post__media" :style="mediaStyle">
       <CarouselMediaStage v-if="isCarousel" :items="item.mediaItems!" v-model="carouselIndex" prefer-preview fit-container
         :retry-while="appStore.isScanning" :autoplay="isVisible" :muted="videoMuted"
-        @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" />
+        @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" @click="openCarouselPhoto" />
       <VideoMediaPlayer v-else-if="item.mediaType === 'video'" :src="item.previewUrl"
         :poster="item.thumbnailUrl" :original-url="media?.originalUrl"
         :playback-strategy="media?.playbackStrategy" :width="item.width" :height="item.height"
         :alt="item.caption || ''" :muted="videoMuted" :autoplay="isVisible" :loop="false" load="visible"
         @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" />
-      <ResilientImage v-else :src="item.previewUrl" :fallback-src="media?.originalUrl"
+      <RouterLink v-else custom :to="photoRoute" v-slot="{ href, navigate }">
+        <a class="cinema-post__photo" :href="href" :aria-label="t('folder.cinema.openPhoto')" @click="openPhoto($event, navigate)">
+      <ResilientImage :src="item.previewUrl" :fallback-src="media?.originalUrl"
         :alt="item.caption || ''" :width="item.width" :height="item.height" loading="lazy"
         :retry-while="appStore.isScanning" />
+        </a>
+      </RouterLink>
     </div>
     <footer class="cinema-post__details" :style="{ width: mediaStyle.width }">
       <p v-if="item.caption?.trim()" class="cinema-post__caption">{{ item.caption }}</p>
@@ -70,6 +74,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import CarouselMediaStage from './CarouselMediaStage.vue';
 import VideoMediaPlayer from './VideoMediaPlayer.vue';
@@ -86,6 +91,19 @@ import type { FeedItem, ImageDetail } from '../types/api';
 
 const props = defineProps<{ item: FeedItem; showAlbumName?: boolean }>();
 const appStore = useAppStore();
+const route = useRoute();
+const router = useRouter();
+const photoRoute = computed(() => ({ name: 'image', params: { id: String(props.item.id) } }));
+function openCarouselPhoto(event: MouseEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest('img')) return;
+  openPhoto(event, () => { void router.push(photoRoute.value); });
+}
+function openPhoto(event: MouseEvent, navigate: () => void) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  appStore.setImageModalBackground(route.fullPath);
+  navigate();
+}
 const authStore = useAuthStore();
 const likesStore = useLikesStore();
 const { t, locale } = useI18n();
@@ -127,10 +145,10 @@ function toggleMute() {
 const postElement = ref<HTMLElement | null>(null);
 const media = computed(() => props.item.mediaItems?.[0]);
 const isCarousel = computed(() => props.item.postType === 'carousel' && (props.item.mediaItems?.length ?? 0) > 1);
-// Fit complete media within the viewport while using the available width.
+// Leave room for the header, controls, and a glimpse of the next item.
 const mediaStyle = computed(() => {
   const ratio = props.item.width > 0 && props.item.height > 0 ? props.item.width / props.item.height : 1;
-  return { aspectRatio: String(ratio), width: `min(100%, calc((100dvh - 6rem) * ${ratio}))` };
+  return { aspectRatio: String(ratio), width: `min(100%, calc((100dvh - var(--cinema-viewport-reserve)) * ${ratio}))` };
 });
 // Do not present indexing or upload times as capture dates.
 const captureDate = computed(() => {
@@ -158,7 +176,7 @@ let observer: IntersectionObserver | null = null;
 onMounted(() => {
   if (!postElement.value || typeof IntersectionObserver === 'undefined') return;
   observer = new IntersectionObserver(async ([entry]) => {
-    isVisible.value = entry.isIntersecting;
+    isVisible.value = entry.isIntersecting && entry.intersectionRatio >= 0.5;
     if (!isVisible.value) releaseAudio();
     await nextTick();
     postElement.value?.querySelectorAll('media-player').forEach(element => {
@@ -169,8 +187,9 @@ onMounted(() => {
         player.pause?.();
       }
     });
-  });
-  observer.observe(postElement.value);
+  }, { threshold: [0, 0.5] });
+  const mediaElement = postElement.value.querySelector('.cinema-post__media');
+  if (mediaElement) observer.observe(mediaElement);
 });
 onBeforeUnmount(() => {
   observer?.disconnect();
@@ -198,9 +217,11 @@ onBeforeUnmount(() => {
 .cinema-post__metadata .cinema-post__album:hover { color: var(--text); text-decoration-color: currentColor; }
 .cinema-post__album:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .cinema-post__metadata:has(.cinema-post__album) { row-gap: 0.25rem; }
-.cinema-post { scroll-margin-top: 3.75rem; margin: 0 0 3rem; color: var(--text); }
-.cinema-post__media { margin: 0 auto; max-height: calc(100dvh - 6rem); background: var(--surface-alt); }
+.cinema-post { --cinema-viewport-reserve: 17rem; scroll-margin-top: 3.75rem; margin: 0 0 1.25rem; color: var(--text); }
+.cinema-post__media { margin: 0 auto; max-height: calc(100dvh - var(--cinema-viewport-reserve)); background: var(--surface-alt); }
 .cinema-post__media :deep(img), .cinema-post__media :deep(video) { width: 100%; height: 100%; object-fit: contain; }
+.cinema-post__photo { display: block; width: 100%; height: 100%; cursor: zoom-in; }
+.cinema-post__photo:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .cinema-post__details { margin: 0 auto; text-align: center; padding: 0.6rem 0 0; }
 .cinema-post__caption { margin: 0 0 0.35rem; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .cinema-post__metadata { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.85rem; color: var(--muted); font-size: 0.75rem; }
@@ -214,7 +235,7 @@ onBeforeUnmount(() => {
 .cinema-post__info dt { color: var(--muted); }
 .cinema-post__info dd { margin: 0; overflow-wrap: anywhere; min-width: 0; }
 @media (max-width: 767px) {
-  .cinema-post { margin-bottom: 1.5rem; }
+  .cinema-post { --cinema-viewport-reserve: 22rem; margin-bottom: 1rem; }
   .cinema-post__metadata { gap: 0.4rem; font-size: 0.7rem; }
 }
 </style>

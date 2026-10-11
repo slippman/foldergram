@@ -1,3 +1,4 @@
+import { redactPublicMediaMetadata } from '../utils/public-media-metadata.js';
 import express from 'express';
 import { z } from 'zod';
 
@@ -293,29 +294,6 @@ function ensureShareFolderAccess(request: express.Request, response: express.Res
   return true;
 }
 
-const PUBLIC_SENSITIVE_MEDIA_KEYS = new Set([
-  'absolutePath',
-  'exif',
-  'exifJson',
-  'relativePath',
-  'sourcePath'
-]);
-
-function redactPublicMediaMetadata(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => redactPublicMediaMetadata(item));
-  }
-
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => !PUBLIC_SENSITIVE_MEDIA_KEYS.has(key))
-      .map(([key, item]) => [key, redactPublicMediaMetadata(item)])
-  );
-}
 
 router.use((request, response, next) => {
   const isAnonymousPublicViewer =

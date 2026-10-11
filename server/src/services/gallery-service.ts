@@ -626,7 +626,7 @@ function mapImageDetail(image: IndexedImageDetail, derivativeVersion = getDeriva
     carouselTitle: rest.postType === 'carousel' && rest.sourcePath ? getLeafPathName(rest.sourcePath) : null,
     isAnimated: Boolean(rest.isAnimated),
     isSaved: Boolean(isSaved),
-    exif: deserializeImageExifData(exifJson),
+    exif: image.exif ?? deserializeImageExifData(exifJson),
     folderParentName: getParentFolderDisplayName(rest.folderPath),
     folderBreadcrumb: getPathBreadcrumb(rest.folderPath),
     thumbnailUrl: toPublicMediaUrl('/thumbnails', rest.thumbnailUrl, derivativeVersion),

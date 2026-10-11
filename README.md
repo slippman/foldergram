@@ -34,6 +34,14 @@ Generated derivatives are now stored under stable asset-key shards instead of mi
 
 ## Features
 
+Cinema can be selected separately for albums and the Home feed in General Settings.
+Album grids open into a vertical scroll with adjacent-image previews. Clicking a
+photo opens a screen-filling viewer; Close or Escape returns to the album. Camera
+and exposure details are available through Info, including for public viewers;
+GPS coordinates and internal file paths remain hidden from public responses.
+On desktop, click a navigation icon to expand the sidebar, and click outside to
+collapse it. Admins can create album shares from the album menu.
+
 - **Instagram-Inspired UI:** Enjoy a familiar feed layout, dedicated app folders (profiles), and a media viewer.
 - Home feed with `Recent`, `Rediscover`, and `Random` modes.
 - A dedicated `/reels` route with a video-only queue. Settings can default it to `Recommended`, `Recent`, or `Random`.

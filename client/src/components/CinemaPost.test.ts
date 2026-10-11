@@ -10,6 +10,8 @@ import * as galleryApi from '../api/gallery';
 import type { FeedItem } from '../types/api';
 
 vi.mock('vidstack/bundle', () => ({}));
+const navigatePhoto = vi.fn();
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/folder/trip?view=scroll&photo=1' }), useRouter: () => ({ push: vi.fn() }) }));
 const item: FeedItem = {
   id: 1, folderId: 1, folderSlug: 'trip', folderName: 'Trip', folderPath: 'Trip',
   folderBreadcrumb: null, filename: 'PXL_20261001.jpg', caption: null,
@@ -20,7 +22,7 @@ const item: FeedItem = {
 function render(overrides: Partial<FeedItem> = {}) {
   return mount(CinemaPost, {
     props: { item: { ...item, ...overrides } },
-    global: { stubs: { VideoMediaPlayer: true, CarouselMediaStage: true, RouterLink: { template: '<a><slot /></a>' } } }
+    global: { stubs: { VideoMediaPlayer: true, CarouselMediaStage: true, RouterLink: defineComponent({ props: { custom: Boolean }, setup: (props, { slots }) => () => props.custom ? slots.default?.({ href: '/post/1', navigate: navigatePhoto }) : h('a', slots.default?.()) }) } }
   });
 }
 
@@ -44,8 +46,19 @@ describe('CinemaPost', () => {
       place: { id: 2, slug: 'denver', name: 'Denver', kind: 'city', isApproximate: false } });
     expect(wrapper.get('.cinema-post__caption').text()).toBe('Family evening');
     expect(wrapper.get('time').attributes('datetime')).toBe('2023-11-14T22:13:20.000Z');
-    expect(wrapper.get('a').text()).toBe('Denver');
+    expect(wrapper.text()).toContain('Denver');
     expect(wrapper.text()).not.toContain('1600');
+  });
+  it('opens photos over the current album while leaving video clicks alone', async () => {
+    navigatePhoto.mockClear();
+    const wrapper = render();
+    await wrapper.get('.cinema-post__photo').trigger('click');
+    expect(useAppStore().imageModalBackgroundPath).toBe('/folder/trip?view=scroll&photo=1');
+    expect(navigatePhoto).toHaveBeenCalledOnce();
+    wrapper.unmount();
+    const video = render({ mediaType: 'video' });
+    expect(video.find('.cinema-post__photo').exists()).toBe(false);
+    video.unmount();
   });
   it('renders initially muted video controls without looping', () => {
     const wrapper = render({ mediaType: 'video' });
@@ -120,6 +133,31 @@ describe('Cinema audio coordination', () => {
     expect(players.map(player => player.props('muted'))).toEqual([true, true]);
     expect(useAppStore().videoMuted).toBe(feedMuted);
     wrapper.unmount();
+  });
+  it('only autoplays videos when at least half the media is visible', async () => {
+    let visibility!: IntersectionObserverCallback;
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) { visibility = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    try {
+      const wrapper = render({ mediaType: 'video' });
+      const player = wrapper.findComponent({ name: 'VideoMediaPlayer' });
+      visibility([{ isIntersecting: true, intersectionRatio: 0.1 } as IntersectionObserverEntry], {} as IntersectionObserver);
+      await nextTick();
+      expect(player.props('autoplay')).toBe(false);
+      visibility([{ isIntersecting: true, intersectionRatio: 0.8 } as IntersectionObserverEntry], {} as IntersectionObserver);
+      await nextTick();
+      expect(player.props('autoplay')).toBe(true);
+      player.vm.$emit('toggle-mute');
+      await nextTick();
+      visibility([{ isIntersecting: true, intersectionRatio: 0.1 } as IntersectionObserverEntry], {} as IntersectionObserver);
+      await nextTick();
+      expect(player.props('autoplay')).toBe(false);
+      expect(player.props('muted')).toBe(true);
+      wrapper.unmount();
+    } finally { vi.unstubAllGlobals(); }
   });
   it('releases sound when the audible post leaves the viewport', async () => {
     let visibility!: IntersectionObserverCallback;

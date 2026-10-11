@@ -2,6 +2,7 @@
   <header class="cinema-header">
     <slot name="leading" />
     <h1>{{ title }}</h1>
+    <slot name="trailing" />
   </header>
 </template>
 

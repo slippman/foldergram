@@ -1,13 +1,13 @@
 <template>
   <section
     v-if="image"
-    :class="['viewer relative', { 'viewer--modal': isModal }]"
+    :class="['viewer relative', { 'viewer--modal': isModal, 'viewer--cinema': cinema }]"
     @wheel="handleWheel"
   >
     <!-- Close button (modal only) -->
     <button
       v-if="isModal"
-      class="viewer__modal-close"
+      :class="['viewer__modal-close', { 'media-action': cinema }]"
       type="button"
       :aria-label="t('post.viewer.close')"
       @click="$emit('close')"
@@ -87,7 +87,7 @@
     <button
       v-if="isModalSidebarCollapsible"
       ref="sidebarToggleElement"
-      class="viewer__sidebar-toggle"
+      :class="['viewer__sidebar-toggle', { 'media-action': cinema }]"
       type="button"
       :aria-expanded="isSidebarExpanded"
       :aria-label="
@@ -97,7 +97,9 @@
     >
       <span
         :class="
-          isSidebarExpanded
+          cinema
+            ? 'i-fluent-info-20-regular'
+            : isSidebarExpanded
             ? 'i-fluent-panel-left-contract-16-filled'
             : 'i-fluent-panel-left-expand-16-filled'
         "
@@ -339,7 +341,7 @@
               <h2 class="viewer__sidebar-title m-0 text-[0.9rem] font-semibold truncate">
                 {{ displayFolderTitle }}
               </h2>
-              <p class="viewer__sidebar-breadcrumb m-0 text-muted truncate">
+              <p v-if="!cinema || folderBreadcrumbLabel" class="viewer__sidebar-breadcrumb m-0 text-muted truncate">
                 {{ folderBreadcrumbLabel }}
               </p>
             </div>
@@ -350,10 +352,10 @@
         </div>
 
         <!-- Description -->
-        <div class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
+        <div v-if="!cinema || caption || authStore.canManageLibrary" class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
           <div class="flex items-start gap-[0.35rem]">
-            <p class="viewer__sidebar-caption m-0 text-text">
-              <strong class="mr-[0.35rem]">{{ displayFolderTitle }}</strong>
+            <p v-if="!cinema || caption" class="viewer__sidebar-caption m-0 text-text">
+              <strong v-if="!cinema" class="mr-[0.35rem]">{{ displayFolderTitle }}</strong>
               {{ caption }}
             </p>
             <button
@@ -367,7 +369,7 @@
               <span class="i-fluent-edit-16-regular w-4 h-4" aria-hidden="true" />
             </button>
           </div>
-          <p class="viewer__sidebar-path mt-3 text-muted">
+          <p v-if="!cinema" class="viewer__sidebar-path mt-3 text-muted">
             <span class="viewer__sidebar-path-label">{{ t('post.viewer.folderPath') }}</span>
             <span class="viewer__sidebar-path-value">{{ image.relativePath }}</span>
           </p>
@@ -586,6 +588,7 @@
       <PostCaptionModal
         v-if="isEditingCaption && image"
         :filename="captionFallbackFilename"
+        :use-filename-fallback="!cinema"
         :caption="image.caption"
         :error="captionError"
         :loading="captionSaving"
@@ -626,6 +629,7 @@
   const props = defineProps<{
     image: ImageDetail | null
     folder?: FolderSummary | null
+    cinema?: boolean
     isModal?: boolean
     deleting?: boolean
   }>()
@@ -789,12 +793,12 @@
   })
 
   const folderAvatar = computed(() => props.folder?.avatarUrl ?? null)
-  const caption = computed(() => (props.image ? resolveDisplayCaption(props.image) : ""))
+  const caption = computed(() => (props.cinema ? props.image?.caption?.trim() ?? "" : props.image ? resolveDisplayCaption(props.image) : ""))
   const displayFolderTitle = computed(() =>
     props.image ? formatFolderTitle(props.folder ?? props.image, appStore.nestedFolderTitleFormat) : "",
   )
   const folderBreadcrumbLabel = computed(() =>
-    props.folder?.breadcrumb ?? props.image?.folderBreadcrumb ?? t('folder.shared.topLevelSourceFolder'),
+    props.folder?.breadcrumb ?? props.image?.folderBreadcrumb ?? (props.cinema ? '' : t('folder.shared.topLevelSourceFolder')),
   )
   const mediaTypeLabel = computed(() => {
     if (!props.image) {
@@ -1211,7 +1215,7 @@
       return
     }
 
-    const nextCollapsible = window.innerWidth <= MODAL_SIDEBAR_COLLAPSE_BREAKPOINT
+    const nextCollapsible = props.cinema === true || window.innerWidth <= MODAL_SIDEBAR_COLLAPSE_BREAKPOINT
     const wasCollapsible = isSidebarCollapsible.value
 
     isSidebarCollapsible.value = nextCollapsible

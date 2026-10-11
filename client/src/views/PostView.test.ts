@@ -141,4 +141,21 @@ describe('PostView', () => {
 
     expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('2');
   });
+  it('keeps the current Cinema photo visible while the next post loads', async () => {
+    const viewerStore = useViewerStore();
+    vi.spyOn(viewerStore, 'loadImage').mockImplementation(async (id: number) => {
+      if (id === 1) viewerStore.image = createImageDetail(1);
+      else viewerStore.loading = true;
+    });
+    const wrapper = mount(PostView, { props: { id: '1', modal: true, cinema: true } });
+    await flushPromises();
+    await wrapper.setProps({ id: '2' });
+    expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('1');
+    expect(wrapper.text()).not.toContain('Loading post...');
+    viewerStore.image = createImageDetail(2);
+    viewerStore.loading = false;
+    await flushPromises();
+    expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('2');
+  });
+
 });
