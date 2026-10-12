@@ -12,14 +12,16 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
 }
 
-// Only configured origins can appear in crawler-facing absolute URLs.
+// Prefer the matching public address, but proxies may rewrite the upstream Host.
+// The fallback also comes only from explicit configuration, never forwarded headers.
 function previewOrigin(request: express.Request): string | null {
   const host = request.get('host');
-  if (!host || !/^[a-zA-Z0-9.:[\]-]+$/.test(host)) return null;
-  for (const origin of appConfig.csrfTrustedOrigins) {
-    if (new URL(origin).host === host) return origin;
-  }
-  if (appConfig.nodeEnv !== 'production' && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) return `http://${host}`;
+  const matchingOrigin = appConfig.csrfTrustedOrigins.find(origin => new URL(origin).host === host);
+  if (matchingOrigin) return matchingOrigin;
+  const configuredOrigin = appConfig.csrfTrustedOrigins.find(origin => origin.startsWith('https://'))
+    ?? appConfig.csrfTrustedOrigins[0];
+  if (configuredOrigin) return configuredOrigin;
+  if (appConfig.nodeEnv !== 'production' && host && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) return `http://${host}`;
   return null;
 }
 
@@ -50,8 +52,8 @@ sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/
       const coverUrl = `${origin}/share-preview/${encodeURIComponent(folder.slug)}/cover?preview=${encodeURIComponent(String(request.query.preview))}`;
       tags.push(`<meta property="og:image" content="${escapeHtml(coverUrl)}" />`);
     }
-    html = html.replace('<title>Foldergram</title>', `<title>${title}</title>`);
-    html = html.replace('</head>', `${tags.join('\n')}</head>`);
+    html = html.replace('<title>Foldergram</title>', () => `<title>${title}</title>`);
+    html = html.replace('</head>', () => `${tags.join('\n')}</head>`);
   }
   if (appConfig.nodeEnv !== 'production') {
     html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');

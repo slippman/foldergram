@@ -254,6 +254,26 @@ describe.sequential('folder share API routes', () => {
     expect((await requestApp(app, 'GET', `/share-preview/folder-b/cover?preview=${preview}`)).status).toBe(404);
     expect((await requestApp(app, 'GET', `/share-preview/folder-a/cover?preview=${preview}x`)).status).toBe(404);
     expect((await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`, { Host: 'evil.example' })).body).not.toContain('og:image');
+    const { appConfig } = await import('../src/config/env.js');
+    const originalOrigins = [...appConfig.csrfTrustedOrigins];
+    appConfig.csrfTrustedOrigins.push('https://photos.example.test');
+    try {
+      const rewrittenHostPage = await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`, { Host: 'backend:4141' });
+      expect(rewrittenHostPage.body).toContain('https://photos.example.test/share-preview/folder-a/cover');
+      const spoofedHostPage = await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`, {
+        Host: 'evil.example', 'X-Forwarded-Host': 'evil.example'
+      });
+      expect(spoofedHostPage.body).toContain('https://photos.example.test/share-preview/folder-a/cover');
+      expect(spoofedHostPage.body).not.toContain('https://evil.example');
+      const replacementTitle = 'Trip $& $` $\' <script>test</script>';
+      folderRepository.upsert({ slug: 'folder-a', name: replacementTitle, folderPath: 'folder-a' });
+      const literalTitlePage = await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`);
+      expect(literalTitlePage.body).toContain('<title>Trip $&amp; $` $&#39; &lt;script&gt;test&lt;/script&gt;</title>');
+      expect(literalTitlePage.body).toContain('property="og:title" content="Trip $&amp; $` $&#39; &lt;script&gt;test&lt;/script&gt;"');
+      expect(literalTitlePage.body.match(/<!doctype html>/gi)).toHaveLength(1);
+    } finally {
+      appConfig.csrfTrustedOrigins.splice(0, appConfig.csrfTrustedOrigins.length, ...originalOrigins);
+    }
     folderShareService.revokeLink('folder-a', link.link.id);
     expect((await requestApp(app, 'GET', `/share-preview/folder-a/cover?preview=${preview}`)).status).toBe(404);
     expect((await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`)).body).not.toContain('og:title');
