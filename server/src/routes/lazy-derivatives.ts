@@ -208,9 +208,9 @@ async function serveOrGenerate(
       sendDerivativeNotFound(response);
       return;
     }
-    const message = error instanceof Error ? error.message : 'Failed to generate derivative.';
+    log.error('Lazy derivative generation failed', error);
     applyDerivativeErrorHeaders(response);
-    response.status(500).json({ message });
+    response.status(500).json({ message: 'Failed to generate derivative.' });
     return;
   }
 
@@ -298,9 +298,9 @@ export async function serveDerivativeForImage(
       sendDerivativeNotFound(response);
       return;
     }
-    const message = error instanceof Error ? error.message : 'Failed to generate derivative.';
+    log.error('Lazy derivative generation failed', error);
     applyDerivativeErrorHeaders(response);
-    response.status(500).json({ message });
+    response.status(500).json({ message: 'Failed to generate derivative.' });
     return;
   }
 

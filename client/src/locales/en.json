@@ -56,6 +56,8 @@
     }
   },
   "nav": {
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
     "primary": "Primary navigation",
     "foldergramHome": "Foldergram home",
     "home": "Home",
@@ -353,7 +355,7 @@
         "label": "Album theme",
         "description": "Choose how albums appear on computers and phones. Applies to all viewers; Home and Reels stay the same.",
         "classic": "Classic · Grid",
-        "cinema": "Cinema · Vertical scroll",
+        "cinema": "Cinema",
         "saved": "Folder display theme saved.",
         "note": "Applies to library folders without a rescan.",
         "closeMenuAria": "Close folder theme menu",
@@ -831,6 +833,8 @@
       "sections": "Folder sections"
     },
     "cinema": {
+      "openPhoto": "Open photo in full screen",
+      "scrollHint": "Scroll to browse",
       "backToGrid": "Back to album grid",
       "back": "Back to library",
       "empty": "No posts in this folder",
@@ -946,7 +950,11 @@
       "setAsCover": "Set as folder cover",
       "downloadOriginalFile": "Download original file",
       "openOriginalFile": "Open original file",
-      "deletePost": "Delete post"
+      "deletePost": "Delete post",
+      "shareFile": "Share photo",
+      "preparingShare": "Preparing photo…",
+      "shareReady": "Tap to share",
+      "shareFailed": "Could not prepare photo. Try Download."
     },
     "feedCard": {
       "openStories": "Open {name} stories",
@@ -1087,6 +1095,7 @@
     }
   },
   "libraryPage": {
+    "shareAlbum": "Share album",
     "eyebrow": "Albums",
     "title": "All Albums",
     "description": "Browse and search albums",

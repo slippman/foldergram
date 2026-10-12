@@ -233,6 +233,15 @@
           <span>{{ t('libraryPage.openFolder') }}</span>
         </button>
         <button
+          v-if="authStore.canManageLibrary"
+          class="flex items-center gap-[0.8rem] w-full px-4 py-[0.95rem] border-0 border-b border-border text-text bg-transparent cursor-pointer text-left"
+          type="button"
+          @click="shareFolder = menuFolder; menuFolder = null"
+        >
+          <span class="i-fluent-share-20-regular w-[1.15rem] h-[1.15rem] shrink-0" aria-hidden="true" />
+          <span>{{ t('libraryPage.shareAlbum') }}</span>
+        </button>
+        <button
           v-if="authStore.canDeleteMedia"
           class="flex items-center gap-[0.8rem] w-full px-4 py-[0.95rem] border-0 border-b border-border text-[#d93025] bg-transparent cursor-pointer text-left"
           type="button"
@@ -318,10 +327,14 @@
         </p>
       </template>
     </ConfirmDialog>
+    <Teleport to="body">
+      <FolderShareModal v-if="shareFolder && authStore.canManageLibrary" :folder="shareFolder" @cancel="shareFolder = null" />
+    </Teleport>
   </section>
 </template>
 
 <script setup lang="ts">
+  import FolderShareModal from "../components/FolderShareModal.vue"
   import { computed, onMounted, ref } from "vue"
   import { useI18n } from "vue-i18n"
   import { RouterLink, useRouter } from "vue-router"
@@ -358,6 +371,7 @@
   const { t, locale } = useI18n()
   const searchQuery = ref("")
   const sortMode = ref<LibrarySort>("album-date-desc")
+  const shareFolder = ref<FolderSummary | null>(null)
   const menuFolder = ref<FolderSummary | null>(null)
   const confirmDeleteFolder = ref<FolderSummary | null>(null)
   const deleting = ref(false)

@@ -83,6 +83,7 @@ export default defineConfig(async ({ command, mode }) => {
     },
     server: {
       host: devHost,
+      allowedHosts: env.DEV_ALLOWED_HOSTS?.split(',').map(host => host.trim()).filter(Boolean),
       port: resolvedDevClientPort,
       proxy: {
         '/api': `http://localhost:${devServerPort}`,

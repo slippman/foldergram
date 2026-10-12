@@ -34,6 +34,22 @@ Generated derivatives are now stored under stable asset-key shards instead of mi
 
 ## Features
 
+Cinema can be selected separately for albums and the Home feed in General Settings.
+Album grids open into a vertical scroll with adjacent-image previews. Clicking a
+photo opens a screen-filling viewer; Close or Escape returns to the album. Camera
+and exposure details are available through Info, including for public viewers;
+GPS coordinates and internal file paths remain hidden from public JSON responses.
+Original downloads and native photo shares preserve the source file, including
+any embedded location metadata; JSON redaction does not sanitize those files.
+On desktop, click a navigation icon to expand the sidebar, and click outside to
+collapse it. Admins can create album shares from the album menu.
+On phones, photo controls offer native file sharing when supported, with the
+iPhone or Android share icon. Browsers without file sharing offer Download
+instead; desktop controls retain Download. Sharing requires HTTPS, and large
+photos may need a second tap after the original file is prepared.
+Mobile Cinema uses a stable viewport height to avoid resizing media as browser
+toolbars move; Info shows the same camera details in scroll and zoom views.
+
 - **Instagram-Inspired UI:** Enjoy a familiar feed layout, dedicated app folders (profiles), and a media viewer.
 - Home feed with `Recent`, `Rediscover`, and `Random` modes.
 - A dedicated `/reels` route with a video-only queue. Settings can default it to `Recommended`, `Recent`, or `Random`.

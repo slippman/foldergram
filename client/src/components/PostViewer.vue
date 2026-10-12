@@ -1,13 +1,13 @@
 <template>
   <section
     v-if="image"
-    :class="['viewer relative', { 'viewer--modal': isModal }]"
+    :class="['viewer relative', { 'viewer--modal': isModal, 'viewer--cinema': cinema }]"
     @wheel="handleWheel"
   >
     <!-- Close button (modal only) -->
     <button
       v-if="isModal"
-      class="viewer__modal-close"
+      :class="['viewer__modal-close', { 'media-action': cinema }]"
       type="button"
       :aria-label="t('post.viewer.close')"
       @click="$emit('close')"
@@ -87,7 +87,7 @@
     <button
       v-if="isModalSidebarCollapsible"
       ref="sidebarToggleElement"
-      class="viewer__sidebar-toggle"
+      :class="['viewer__sidebar-toggle', { 'media-action': cinema }]"
       type="button"
       :aria-expanded="isSidebarExpanded"
       :aria-label="
@@ -97,7 +97,9 @@
     >
       <span
         :class="
-          isSidebarExpanded
+          cinema
+            ? 'i-fluent-info-20-regular'
+            : isSidebarExpanded
             ? 'i-fluent-panel-left-contract-16-filled'
             : 'i-fluent-panel-left-expand-16-filled'
         "
@@ -339,7 +341,7 @@
               <h2 class="viewer__sidebar-title m-0 text-[0.9rem] font-semibold truncate">
                 {{ displayFolderTitle }}
               </h2>
-              <p class="viewer__sidebar-breadcrumb m-0 text-muted truncate">
+              <p v-if="!cinema || folderBreadcrumbLabel" class="viewer__sidebar-breadcrumb m-0 text-muted truncate">
                 {{ folderBreadcrumbLabel }}
               </p>
             </div>
@@ -350,10 +352,10 @@
         </div>
 
         <!-- Description -->
-        <div class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
+        <div v-if="!cinema || caption || authStore.canManageLibrary" class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
           <div class="flex items-start gap-[0.35rem]">
-            <p class="viewer__sidebar-caption m-0 text-text">
-              <strong class="mr-[0.35rem]">{{ displayFolderTitle }}</strong>
+            <p v-if="!cinema || caption" class="viewer__sidebar-caption m-0 text-text">
+              <strong v-if="!cinema" class="mr-[0.35rem]">{{ displayFolderTitle }}</strong>
               {{ caption }}
             </p>
             <button
@@ -367,7 +369,7 @@
               <span class="i-fluent-edit-16-regular w-4 h-4" aria-hidden="true" />
             </button>
           </div>
-          <p class="viewer__sidebar-path mt-3 text-muted">
+          <p v-if="!cinema" class="viewer__sidebar-path mt-3 text-muted">
             <span class="viewer__sidebar-path-label">{{ t('post.viewer.folderPath') }}</span>
             <span class="viewer__sidebar-path-value">{{ image.relativePath }}</span>
           </p>
@@ -491,9 +493,11 @@
             >
               <span :class="[isCurrentCover ? 'i-fluent-folder-add-20-filled text-accent' : 'i-fluent-folder-add-20-regular', 'w-[1.5rem] h-[1.5rem]']" aria-hidden="true" />
             </button>
+            <MobileMediaShare v-if="(activeMediaItem?.mediaType ?? image?.mediaType) === 'image'" :url="downloadOriginalMediaUrl" />
             <!-- Download original -->
             <a
               class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer text-text transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
+              :class="{ 'photo-download-desktop': (activeMediaItem?.mediaType ?? image?.mediaType) === 'image' }"
               :href="downloadOriginalMediaUrl"
               download
               :aria-label="t('post.viewer.downloadOriginalFile')"
@@ -586,6 +590,7 @@
       <PostCaptionModal
         v-if="isEditingCaption && image"
         :filename="captionFallbackFilename"
+        :use-filename-fallback="!cinema"
         :caption="image.caption"
         :error="captionError"
         :loading="captionSaving"
@@ -612,8 +617,10 @@
   import { useAuthStore } from "../stores/auth"
   import { useLikesStore } from "../stores/likes"
   import { useFoldersStore } from "../stores/folders"
+  import { formatExifDetails } from '../utils/media-details'
   import { resolveDisplayCaption } from "../utils/caption"
   import { formatFolderTitle } from "../utils/folder-titles"
+  import MobileMediaShare from './MobileMediaShare.vue';
   import { getOriginalMediaDownloadUrl, getOriginalMediaUrl } from "../utils/original-media"
   import Avatar from "./Avatar.vue"
   import CarouselMediaStage from "./CarouselMediaStage.vue"
@@ -626,6 +633,7 @@
   const props = defineProps<{
     image: ImageDetail | null
     folder?: FolderSummary | null
+    cinema?: boolean
     isModal?: boolean
     deleting?: boolean
   }>()
@@ -690,11 +698,6 @@
   const SHEET_SWIPE_MAX_HORIZONTAL_DISTANCE = 96
   const SHEET_SWIPE_MIN_VERTICAL_RATIO = 1.15
   const SHEET_MAX_DRAG_OFFSET = 240
-
-  type MetadataDetail = {
-    label: string
-    value: string
-  }
 
   let videoMuteSyncToken = 0
   let playerReady = false
@@ -767,9 +770,13 @@
     }
   })
 
-  watch(() => props.image?.id, () => {
-    carouselIndex.value = 0
-  })
+  watch(() => [props.image?.id, route.query.media], () => {
+    const mediaId = Number(route.query.media)
+    const index = Number.isSafeInteger(mediaId) && mediaId > 0
+      ? props.image?.mediaItems?.findIndex(item => item.imageId === mediaId) ?? -1
+      : -1
+    carouselIndex.value = Math.max(0, index)
+  }, { immediate: true })
 
   const locallySetCover = ref(false)
 
@@ -789,12 +796,12 @@
   })
 
   const folderAvatar = computed(() => props.folder?.avatarUrl ?? null)
-  const caption = computed(() => (props.image ? resolveDisplayCaption(props.image) : ""))
+  const caption = computed(() => (props.cinema ? props.image?.caption?.trim() ?? "" : props.image ? resolveDisplayCaption(props.image) : ""))
   const displayFolderTitle = computed(() =>
     props.image ? formatFolderTitle(props.folder ?? props.image, appStore.nestedFolderTitleFormat) : "",
   )
   const folderBreadcrumbLabel = computed(() =>
-    props.folder?.breadcrumb ?? props.image?.folderBreadcrumb ?? t('folder.shared.topLevelSourceFolder'),
+    props.folder?.breadcrumb ?? props.image?.folderBreadcrumb ?? (props.cinema ? '' : t('folder.shared.topLevelSourceFolder')),
   )
   const mediaTypeLabel = computed(() => {
     if (!props.image) {
@@ -821,84 +828,7 @@
   const formattedDuration = computed(() =>
     formatMediaDuration(activeMediaDurationMs.value),
   )
-  const exifDetails = computed<MetadataDetail[]>(() => {
-    const exif = activeMediaItem.value?.exif ?? props.image?.exif
-    if (!exif) {
-      return []
-    }
-
-    const details: MetadataDetail[] = []
-    const location = formatLocation(
-      exif.latitude,
-      exif.longitude,
-      exif.altitudeMeters,
-    )
-    const camera = formatCameraLabel(exif.cameraMake, exif.cameraModel)
-    const aperture =
-      typeof exif.fNumber === "number" && Number.isFinite(exif.fNumber)
-        ? `f/${formatExifNumber(exif.fNumber, 2)}`
-        : null
-    const shutter = formatExposureTime(exif.exposureTimeSeconds)
-    const iso =
-      typeof exif.iso === "number" && Number.isFinite(exif.iso)
-        ? formatExifNumber(exif.iso, 0)
-        : null
-    const focalLength = formatFocalLength(
-      exif.focalLengthMm,
-      exif.focalLength35mmMm,
-    )
-
-    if (location) {
-      details.push({
-        label: t('post.viewer.metadata.location'),
-        value: location,
-      })
-    }
-
-    if (camera) {
-      details.push({
-        label: t('post.viewer.metadata.camera'),
-        value: camera,
-      })
-    }
-
-    if (exif.lensModel) {
-      details.push({
-        label: t('post.viewer.metadata.lens'),
-        value: exif.lensModel,
-      })
-    }
-
-    if (aperture) {
-      details.push({
-        label: t('post.viewer.metadata.aperture'),
-        value: aperture,
-      })
-    }
-
-    if (shutter) {
-      details.push({
-        label: t('post.viewer.metadata.shutter'),
-        value: shutter,
-      })
-    }
-
-    if (iso) {
-      details.push({
-        label: t('post.viewer.metadata.iso'),
-        value: iso,
-      })
-    }
-
-    if (focalLength) {
-      details.push({
-        label: t('post.viewer.metadata.focalLength'),
-        value: focalLength,
-      })
-    }
-
-    return details
-  })
+  const exifDetails = computed(() => formatExifDetails(activeMediaItem.value?.exif ?? props.image?.exif, t))
 
   function openCaptionEditor() {
     clearCaptionError()
@@ -1033,97 +963,6 @@
     }
   }
 
-  function formatExifNumber(
-    value: number | null | undefined,
-    maximumFractionDigits = 1,
-  ) {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      return null
-    }
-
-    return new Intl.NumberFormat(undefined, {
-      maximumFractionDigits,
-    }).format(value)
-  }
-
-  function formatCameraLabel(
-    make: string | null | undefined,
-    model: string | null | undefined,
-  ) {
-    if (make && model) {
-      return model.toLowerCase().startsWith(make.toLowerCase())
-        ? model
-        : `${make} ${model}`
-    }
-
-    return make ?? model ?? null
-  }
-
-  function formatExposureTime(seconds: number | null | undefined) {
-    if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
-      return null
-    }
-
-    if (seconds >= 1) {
-      return `${formatExifNumber(seconds, seconds >= 10 ? 0 : 1)} s`
-    }
-
-    const reciprocal = Math.round(1 / seconds)
-    if (
-      reciprocal > 1 &&
-      Math.abs(1 / reciprocal - seconds) <= Math.max(seconds * 0.08, 0.0005)
-    ) {
-      return `1/${reciprocal} s`
-    }
-
-    return `${formatExifNumber(seconds, 3)} s`
-  }
-
-  function formatFocalLength(
-    focalLengthMm: number | null | undefined,
-    focalLength35mmMm: number | null | undefined,
-  ) {
-    const focalLength = formatExifNumber(focalLengthMm, 2)
-    const focalLength35mm = formatExifNumber(focalLength35mmMm, 0)
-
-    if (focalLength && focalLength35mm) {
-      return `${focalLength} mm (${focalLength35mm} mm equiv.)`
-    }
-
-    if (focalLength) {
-      return `${focalLength} mm`
-    }
-
-    if (focalLength35mm) {
-      return `${focalLength35mm} mm equiv.`
-    }
-
-    return null
-  }
-
-  function formatLocation(
-    latitude: number | null | undefined,
-    longitude: number | null | undefined,
-    altitudeMeters: number | null | undefined,
-  ) {
-    if (
-      typeof latitude !== "number" ||
-      !Number.isFinite(latitude) ||
-      typeof longitude !== "number" ||
-      !Number.isFinite(longitude)
-    ) {
-      return null
-    }
-
-    const coordinates = `${formatExifNumber(latitude, 5)}, ${formatExifNumber(
-      longitude,
-      5,
-    )}`
-    const altitude = formatExifNumber(altitudeMeters, 1)
-
-    return altitude ? `${coordinates} (alt ${altitude} m)` : coordinates
-  }
-
   function focusSidebarToggle(force = false) {
     if (!force) {
       const activeElement = document.activeElement
@@ -1211,7 +1050,7 @@
       return
     }
 
-    const nextCollapsible = window.innerWidth <= MODAL_SIDEBAR_COLLAPSE_BREAKPOINT
+    const nextCollapsible = props.cinema === true || window.innerWidth <= MODAL_SIDEBAR_COLLAPSE_BREAKPOINT
     const wasCollapsible = isSidebarCollapsible.value
 
     isSidebarCollapsible.value = nextCollapsible

@@ -112,8 +112,8 @@ function handleImageNavigation(event: MouseEvent, navigate: () => void) {
 .cinema-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-bottom: 1rem; }
 .cinema-grid__tile { height: clamp(180px, 22vw, 280px); min-width: 0; }
 @media (max-width: 767px) {
-  .cinema-grid { --cinema-tile-width: 110px; gap: 0.25rem; }
-  .cinema-grid__tile { height: 140px; }
+  .cinema-grid { --cinema-tile-width: 137.5px; gap: 0.25rem; }
+  .cinema-grid__tile { height: 175px; }
 }
 .cinema-grid__tile:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 </style>

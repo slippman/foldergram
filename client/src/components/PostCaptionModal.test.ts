@@ -17,6 +17,27 @@ describe('PostCaptionModal', () => {
     expect(wrapper.emitted('save')).toEqual([['Family trip']]);
   });
 
+  it('consumes Escape from the caption field and cancels only the dialog', async () => {
+    const wrapper = mount(PostCaptionModal, { props: { filename: 'photo.jpg' } });
+    await wrapper.get('textarea').trigger('keydown', { key: 'Escape' });
+    expect(wrapper.emitted('cancel')).toEqual([[]]);
+  });
+
+  it('moves focus from the viewer into the editor and restores it on close', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    const wrapper = mount(PostCaptionModal, { attachTo: document.body, props: { filename: 'photo.jpg' } });
+    expect(document.activeElement).toBe(wrapper.get('textarea').element);
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.activeElement?.dispatchEvent(escape);
+    expect(wrapper.emitted('cancel')).toEqual([[]]);
+    expect(escape.defaultPrevented).toBe(true);
+    wrapper.unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
   it('emits a trimmed caption when saving', async () => {
     const wrapper = mount(PostCaptionModal, {
       props: {

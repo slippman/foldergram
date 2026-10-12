@@ -14,8 +14,8 @@
   <AuthGate v-else-if="authStore.requiresLogin" />
   <AppShell v-else>
     <RouterView :route="displayRoute" />
-    <div v-if="showImageModal" class="app__image-modal-layer" @click.self="closeImageModal">
-      <PostView :id="String(route.params.id ?? '')" modal @close="closeImageModal" />
+    <div v-if="showImageModal" :class="['app__image-modal-layer', { 'app__image-modal-layer--cinema': isCinemaImageModal }]" @click.self="closeImageModal">
+      <PostView :id="String(route.params.id ?? '')" modal :cinema="isCinemaImageModal" @close="closeImageModal" />
     </div>
   </AppShell>
   <AdminUnlockDialog v-if="authStore.unlockDialogOpen" />
@@ -93,6 +93,10 @@ const modalBackgroundRoute = computed<RouteLocationNormalizedLoaded | null>(() =
 });
 const showImageModal = computed(
   () => route.name === 'image' && modalBackgroundRoute.value !== null && modalBackgroundRoute.value.fullPath !== route.fullPath
+);
+const isCinemaImageModal = computed(() =>
+  (modalBackgroundRoute.value?.name === 'folder' && appStore.folderDisplayTheme === 'cinema') ||
+  (modalBackgroundRoute.value?.name === 'home' && appStore.feedDisplayTheme === 'cinema')
 );
 const isPublicShareRoute = computed(() => routeAllowsPublicShareAccess(route));
 const displayRoute = computed<RouteLocationNormalizedLoaded | undefined>(() =>
@@ -277,6 +281,18 @@ watch(
   }
 );
 
+function handleImageModalEscape(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || event.defaultPrevented || !showImageModal.value) return;
+  if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+  event.preventDefault();
+  void closeImageModal();
+}
+watch(showImageModal, (visible) => {
+  if (visible) window.addEventListener('keydown', handleImageModalEscape);
+  else window.removeEventListener('keydown', handleImageModalEscape);
+}, { immediate: true });
+onUnmounted(() => window.removeEventListener('keydown', handleImageModalEscape));
+
 async function closeImageModal() {
   const targetPath = appStore.imageModalBackgroundPath ?? '/';
   await router.replace(targetPath);
@@ -309,4 +325,9 @@ async function closeImageModal() {
     padding: 2rem;
   }
 }
+.app__image-modal-layer--cinema {
+  padding: 0;
+  background: #000;
+}
+.app__image-modal-layer--cinema :deep(.image-view) { width: 100%; }
 </style>

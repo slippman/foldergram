@@ -317,9 +317,9 @@ describe.sequential('folder share API routes', () => {
       }
       if (!value || typeof value !== 'object') return;
       const record = value as Record<string, unknown>;
-      expect(Object.keys(record)).not.toEqual(expect.arrayContaining([
-        'absolutePath', 'exif', 'exifJson', 'originalUrl', 'relativePath', 'sourcePath'
-      ]));
+      for (const key of ['absolutePath', 'exif', 'exifJson', 'originalUrl', 'relativePath', 'sourcePath']) {
+        expect(record).not.toHaveProperty(key);
+      }
       Object.values(record).forEach(expectRecursivelyRedacted);
     };
     const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
@@ -380,7 +380,7 @@ describe.sequential('folder share API routes', () => {
     expectRecursivelyRedacted(passwordDetailRes.body);
   });
 
-  it('redacts paths and EXIF recursively for anonymous public feed and detail payloads', async () => {
+  it('retains public camera metadata while redacting paths and coordinates recursively', async () => {
     const { postRepository } = await import('../src/db/repositories.js');
     const carousel = postRepository.findBySourcePath('folder-a/carousels/trip')!;
     authService.setViewerAccess('public');
@@ -392,9 +392,14 @@ describe.sequential('folder share API routes', () => {
       }
       if (!value || typeof value !== 'object') return;
       const record = value as Record<string, unknown>;
-      expect(Object.keys(record)).not.toEqual(expect.arrayContaining([
-        'absolutePath', 'exif', 'exifJson', 'relativePath', 'sourcePath'
-      ]));
+      for (const key of ['absolutePath', 'exifJson', 'relativePath', 'sourcePath', 'latitude', 'longitude', 'altitudeMeters']) {
+        expect(record).not.toHaveProperty(key);
+      }
+      if (record.exif) {
+        for (const key of Object.keys(record.exif as object)) {
+          expect(['cameraMake', 'cameraModel', 'lensModel', 'fNumber', 'exposureTimeSeconds', 'iso', 'focalLengthMm', 'focalLength35mmMm']).toContain(key);
+        }
+      }
       Object.values(record).forEach(assertNoSensitiveKeys);
     };
 
@@ -417,6 +422,7 @@ describe.sequential('folder share API routes', () => {
       carouselTitle: 'trip'
     });
     assertNoSensitiveKeys(detailRes.body);
+    expect(detailRes.body.mediaItems[0].exif).toEqual({ cameraModel: 'Private Camera' });
 
     const adminResponse = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
     authService.setAuthenticatedSession(

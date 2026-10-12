@@ -1,10 +1,18 @@
 <template>
   <aside
-    class="sidebar group flex h-full w-[4.85rem] flex-col overflow-visible bg-bg px-[0.95rem] py-5 text-text transition-[width] duration-220 ease hover:w-60"
+    class="sidebar flex h-full flex-col overflow-visible bg-bg px-[0.95rem] py-5 text-text"
+    :class="{ 'sidebar--expanded': expanded }"
+    @click="expandFromNavigation"
   >
+    <button type="button" class="sidebar__toggle" :aria-expanded="expanded"
+      :aria-label="t(expanded ? 'nav.collapseSidebar' : 'nav.expandSidebar')"
+      @click="emit('update:expanded', !expanded)">
+      <span class="w-5 h-5" :class="expanded ? 'i-fluent-chevron-left-20-regular' : 'i-fluent-navigation-20-regular'" aria-hidden="true" />
+    </button>
     <RouterLink
       class="sidebar__brand relative inline-flex items-center justify-center w-12 h-12 p-[0.3rem] rounded-[1rem] color-inherit transition-[background-color,transform,opacity] duration-180 hover:bg-surface-hover hover:-translate-y-px"
       to="/"
+      @click.stop="emit('update:expanded', true)"
       :aria-label="t('nav.foldergramHome')"
     >
       <span
@@ -24,7 +32,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.45rem] h-[1.45rem]"
@@ -34,7 +42,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -54,7 +62,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.45rem] h-[1.45rem]"
@@ -66,7 +74,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -86,7 +94,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.45rem] h-[1.45rem]"
@@ -98,7 +106,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -118,7 +126,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.45rem] h-[1.45rem]"
@@ -130,7 +138,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -151,7 +159,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive || isPlacesRoute ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.45rem] h-[1.45rem]"
@@ -163,7 +171,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -184,7 +192,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.58rem] h-[1.58rem]"
@@ -196,7 +204,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -205,7 +213,7 @@
             >{{ likesStore.collectionLabel }}</span
           >
           <small
-            class="sidebar__badge sidebar__meta ml-auto max-w-0 min-w-[1.5rem] overflow-hidden whitespace-nowrap rounded-full bg-white/12 px-[0.45rem] py-[0.1rem] text-center text-[0.72rem] font-bold text-white/86 opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__badge sidebar__meta ml-auto max-w-0 min-w-[1.5rem] overflow-hidden whitespace-nowrap rounded-full bg-white/12 px-[0.45rem] py-[0.1rem] text-center text-[0.72rem] font-bold text-white/86 opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -226,7 +234,7 @@
           :href="href"
           class="sidebar__link sidebar-item"
           :class="isActive || isCollectionsRoute ? sidebarActiveClass : ''"
-          @click="navigate"
+          @click.stop="handleNavigation($event, navigate)"
         >
           <span
             class="sidebar__icon flex-shrink-0 w-[1.52rem] h-[1.52rem]"
@@ -238,7 +246,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -250,7 +258,7 @@
       </RouterLink>
 
       <span
-        class="sidebar__section-label sidebar__meta inline-flex min-h-[1rem] items-center self-start mt-7 max-w-0 overflow-hidden whitespace-nowrap px-[0.75rem] text-[0.68rem] leading-[1.2] font-semibold uppercase tracking-[0.12em] text-muted opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+        class="sidebar__section-label sidebar__meta inline-flex min-h-[1rem] items-center self-start mt-7 max-w-0 overflow-hidden whitespace-nowrap px-[0.75rem] text-[0.68rem] leading-[1.2] font-semibold uppercase tracking-[0.12em] text-muted opacity-0"
         style="
           transition:
             opacity 0.18s ease,
@@ -277,7 +285,7 @@
                 ? `${folder.breadcrumb} / ${folder.name}`
                 : folder.name
             "
-            @click="navigate"
+            @click.stop="handleNavigation($event, navigate)"
           >
             <Avatar
               :name="formatFeaturedFolderTitle(folder)"
@@ -285,7 +293,7 @@
               class="h-[1.75rem] w-[1.75rem]"
             />
             <span
-              class="sidebar__folder-copy sidebar__meta flex min-w-0 max-w-0 flex-col gap-[0.05rem] overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+              class="sidebar__folder-copy sidebar__meta flex min-w-0 max-w-0 flex-col gap-[0.05rem] overflow-hidden whitespace-nowrap opacity-0"
               style="
                 transition:
                   opacity 0.18s ease,
@@ -318,7 +326,7 @@
             v-if="authStore.canDeleteMedia"
             class="flex items-center gap-[0.95rem] px-[1.2rem] py-[1rem] text-[0.98rem] text-text transition-colors duration-150 hover:bg-surface-hover"
             :to="{ name: 'trash' }"
-            @click="closeMoreMenu"
+            @click.stop="closeMoreMenu(); emit('update:expanded', true)"
           >
             <span class="i-fluent-delete-16-regular w-[1.18rem] h-[1.18rem] shrink-0" aria-hidden="true" />
             <span>{{ t('nav.trash') }}</span>
@@ -328,7 +336,7 @@
             <a
               :href="href"
               class="flex items-center gap-[0.95rem] px-[1.2rem] py-[1rem] text-[0.98rem] text-text transition-colors duration-150 hover:bg-surface-hover"
-              @click="handleSettingsNavigate($event, navigate)"
+              @click.stop="handleSettingsNavigate($event, navigate)"
               >
                 <span
                   class="w-[1.18rem] h-[1.18rem] shrink-0"
@@ -401,7 +409,7 @@
             aria-hidden="true"
           />
           <span
-            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0 group-hover:max-w-[12rem] group-hover:opacity-100"
+            class="sidebar__label max-w-0 overflow-hidden whitespace-nowrap text-[0.9rem] opacity-0"
             style="
               transition:
                 opacity 0.18s ease,
@@ -430,6 +438,9 @@
   import { selectSidebarFolders } from "../utils/sidebar-folders"
   import Avatar from "./Avatar.vue"
   import BrandMark from "./BrandMark.vue"
+
+  defineProps<{ expanded: boolean }>()
+  const emit = defineEmits<{ 'update:expanded': [value: boolean] }>()
 
   const { t } = useI18n()
   const appVersion = __APP_VERSION__
@@ -472,6 +483,18 @@
   const sidebarActiveClass =
     "router-link-active bg-[color-mix(in_srgb,var(--surface)_92%,transparent_8%)] font-bold"
 
+  function expandFromNavigation(event: MouseEvent) {
+    if (event.target instanceof Element && event.target.closest('.sidebar-item, .sidebar__brand')) {
+      emit('update:expanded', true)
+    }
+  }
+
+  function handleNavigation(event: MouseEvent, navigate: (event?: MouseEvent) => void) {
+    emit('update:expanded', true)
+    closeMoreMenu()
+    navigate(event)
+  }
+
   function closeMoreMenu() {
     moreMenuOpen.value = false
   }
@@ -491,8 +514,7 @@
   }
 
   function handleSettingsNavigate(event: MouseEvent, navigate: (event?: MouseEvent) => void) {
-    closeMoreMenu()
-    navigate(event)
+    handleNavigation(event, navigate)
   }
 
   async function handleSignOut() {
@@ -527,3 +549,24 @@
     window.removeEventListener("keydown", handleWindowKeydown)
   })
 </script>
+
+<style scoped>
+.sidebar { width: var(--desktop-sidebar-width, 4.85rem); }
+.sidebar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 2.5rem;
+  margin-bottom: 0.5rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.sidebar__toggle:hover { background: var(--surface-hover); }
+.sidebar--expanded .sidebar__label,
+.sidebar--expanded .sidebar__meta { max-width: 12rem; opacity: 1; }
+</style>

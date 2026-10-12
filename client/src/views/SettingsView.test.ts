@@ -557,7 +557,7 @@ describe('SettingsView', () => {
     await openGeneralSettingsSidebarTab(wrapper);
     expect(wrapper.get('#folder-display-theme').text()).toContain('Classic');
     await wrapper.get('#folder-display-theme').trigger('click');
-    const cinema = wrapper.findAll('button').find(button => button.text().includes('Cinema · Vertical scroll'));
+    const cinema = wrapper.findAll('button').find(button => button.text().includes('Cinema'));
     expect(cinema).toBeDefined();
     await cinema!.trigger('click');
     await flushPromises();

@@ -5,15 +5,16 @@
     class="app-shell flex min-h-screen overflow-x-clip"
     :class="{
       'app-shell--standalone': isStandaloneDisplay,
+      'app-shell--sidebar-expanded': sidebarExpanded,
       'app-shell--explore': isExploreShell,
       'app-shell--reels': isReelsShell,
       'app-shell--cinema': (route.name === 'folder' && appStore.folderDisplayTheme === 'cinema') || (route.name === 'home' && appStore.feedDisplayTheme === 'cinema')
     }"
   >
     <!-- Sidebar: fixed on desktop, hidden on mobile -->
-    <SidebarNav class="hidden md:flex fixed top-0 left-0 h-screen z-30" />
+    <SidebarNav v-model:expanded="sidebarExpanded" class="hidden md:flex fixed top-0 left-0 h-screen z-30" />
     <!-- Content: margin-left matches sidebar width on desktop -->
-    <div class="app-shell__content flex flex-1 min-h-screen min-w-0 flex-col md:ml-[4.85rem]">
+    <div class="app-shell__content flex flex-1 min-h-screen min-w-0 flex-col">
       <TopNav />
       <main
         class="app-shell__main flex-1 min-h-0"
@@ -82,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import SidebarNav from './SidebarNav.vue';
@@ -98,6 +99,7 @@ import {
 } from '../utils/scan-progress';
 
 const appStore = useAppStore();
+const sidebarExpanded = ref(false);
 const route = useRoute();
 const isStandaloneDisplay = ref(false);
 const isExploreShell = computed(() => route.meta.shell === 'explore');
@@ -124,7 +126,16 @@ const stickyScanActionLine = computed(() => getScanActionLine(activeScan.value))
 const stickyScanMetricLine = computed(() => getScanMetricLine(activeScan.value));
 const stickyScanBarState = computed(() => getScanBarState(activeScan.value));
 
+function collapseSidebarOutside(event: MouseEvent) {
+  if (event.target instanceof Element && !event.target.closest('.sidebar')) {
+    sidebarExpanded.value = false;
+  }
+}
+
+onBeforeUnmount(() => document.removeEventListener('click', collapseSidebarOutside, true));
+
 onMounted(() => {
+  document.addEventListener('click', collapseSidebarOutside, true);
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
   isStandaloneDisplay.value =
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -219,5 +230,13 @@ onMounted(() => {
 }
 @media (max-width: 767px) {
   .app-shell--cinema .app-shell__main { padding: 0 0.5rem calc(var(--mobile-bottom-nav-height) + 1rem); }
+}
+</style>
+
+<style scoped>
+@media (min-width: 768px) {
+  .app-shell { --desktop-sidebar-width: 4.85rem; }
+  .app-shell--sidebar-expanded { --desktop-sidebar-width: 15rem; }
+  .app-shell__content { margin-left: var(--desktop-sidebar-width); }
 }
 </style>

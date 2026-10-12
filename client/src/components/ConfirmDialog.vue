@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-60 flex items-center justify-center p-6 bg-black/55" @click.self="$emit('cancel')">
+  <div class="fixed inset-0 z-60 flex items-center justify-center p-6 bg-black/55" @click.self="$emit('cancel')" @keydown.esc.stop.prevent="$emit('cancel')">
     <section class="w-[min(100%,26rem)] p-[1.4rem] bg-surface border border-border rounded-[1.2rem] shadow-[var(--shadow)]" role="dialog" aria-modal="true" :aria-labelledby="titleId">
       <!-- Icon -->
       <div class="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-full text-[#d93025] bg-[rgba(217,48,37,0.1)]" aria-hidden="true">
@@ -22,7 +22,7 @@
       </div>
       <!-- Actions -->
       <div class="flex justify-end gap-3 mt-[1.4rem]">
-        <button class="min-h-[2.5rem] px-4 py-[0.6rem] border border-transparent rounded-[0.75rem] font-semibold cursor-pointer bg-surface-hover text-text disabled:opacity-70 disabled:cursor-wait" type="button" @click="$emit('cancel')">
+        <button ref="cancelButton" class="min-h-[2.5rem] px-4 py-[0.6rem] border border-transparent rounded-[0.75rem] font-semibold cursor-pointer bg-surface-hover text-text disabled:opacity-70 disabled:cursor-wait" type="button" @click="$emit('cancel')">
           {{ cancelLabel }}
         </button>
         <button class="min-h-[2.5rem] px-4 py-[0.6rem] border border-transparent rounded-[0.75rem] font-semibold cursor-pointer bg-[#d93025] text-white disabled:opacity-70 disabled:cursor-wait" type="button" :disabled="loading" @click="$emit('confirm')">
@@ -34,6 +34,18 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+
+const cancelButton = ref<HTMLButtonElement | null>(null);
+let previousFocus: HTMLElement | null = null;
+onMounted(() => {
+  previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  cancelButton.value?.focus({ preventScroll: true });
+});
+onBeforeUnmount(() => {
+  if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+});
+
 withDefaults(
   defineProps<{
     title: string;

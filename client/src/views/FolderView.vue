@@ -29,6 +29,11 @@
             <span class="i-fluent-arrow-left-20-regular" aria-hidden="true" />
           </RouterLink>
           </template>
+          <template v-if="isCinemaScroll && foldersStore.currentImages.length > 1" #trailing>
+            <span class="folder-cinema__scroll-hint">
+              {{ t('folder.cinema.scrollHint') }} <span aria-hidden="true">↑ ↓</span>
+            </span>
+          </template>
         </CinemaHeader>
         <FolderGrid v-if="!isCinemaScroll" :items="foldersStore.currentImages" variant="cinema" />
         <div v-else>
@@ -226,16 +231,22 @@
   const foldersStore = useFoldersStore()
   const route = useRoute()
   const router = useRouter()
+  // Keep the album's scroll view mounted while its photo viewer uses another route.
+  const albumRoute = computed(() =>
+    route.name === 'image' && appStore.imageModalBackgroundPath
+      ? router.resolve(appStore.imageModalBackgroundPath)
+      : route,
+  )
   const { t } = useI18n()
   const isCinema = computed(() => appStore.folderDisplayTheme === 'cinema')
-  const isCinemaScroll = computed(() => isCinema.value && route.query.view === 'scroll')
+  const isCinemaScroll = computed(() => isCinema.value && albumRoute.value.query.view === 'scroll')
   const cinemaGridRoute = computed(() => ({
     name: 'folder', params: { slug: props.slug },
-    query: Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'view' && key !== 'photo')),
+    query: Object.fromEntries(Object.entries(albumRoute.value.query).filter(([key]) => key !== 'view' && key !== 'photo')),
   }))
   async function focusCinemaPhoto() {
     if (!isCinemaScroll.value) return
-    const id = Number(route.query.photo)
+    const id = Number(albumRoute.value.query.photo)
     if (!Number.isSafeInteger(id) || id <= 0) return
     // A bookmarked photo can be on a later page. Load through it before scrolling.
     while (isCinemaScroll.value && !foldersStore.currentImages.some(item => item.id === id) && foldersStore.currentHasMore && !foldersStore.loadingFolder) {
@@ -244,14 +255,23 @@
       if (foldersStore.currentPage === page || foldersStore.folderError) break
     }
     await nextTick()
-    if (!isCinemaScroll.value || Number(route.query.photo) !== id) return
-    document.getElementById(`cinema-post-${id}`)?.scrollIntoView({ block: 'start' })
+    if (!isCinemaScroll.value || Number(albumRoute.value.query.photo) !== id) return
+    const selected = document.getElementById(`cinema-post-${id}`)
+    const previousMedia = selected?.previousElementSibling?.querySelector('.cinema-post__media')
+    const header = document.querySelector('.folder-cinema .cinema-header')
+    if (previousMedia && header) {
+      // Keep a smaller adjacent-image hint on phones to leave room for the photo.
+      const previousPeek = window.matchMedia('(max-width: 767px)').matches ? 20 : 36
+      window.scrollTo({ top: Math.max(0, window.scrollY + previousMedia.getBoundingClientRect().bottom - header.getBoundingClientRect().height - previousPeek) })
+    } else {
+      selected?.scrollIntoView({ block: 'start' })
+    }
   }
-  watch(() => [route.query.view, route.query.photo], focusCinemaPhoto)
+  watch([() => albumRoute.value.query.view, () => albumRoute.value.query.photo], focusCinemaPhoto)
   const hasLoadedOnce = ref(false)
   const activeStoryViewerId = ref<string | null>(null)
   const activeTab = computed(() =>
-    route.query.tab === "reels" ? "reels" : "posts",
+    albumRoute.value.query.tab === "reels" ? "reels" : "posts",
   )
   const hasReelsTab = computed(
     () => (foldersStore.currentFolder?.videoCount ?? 0) > 0,
@@ -277,7 +297,7 @@
         name: "folder",
         params: { slug: props.slug },
         query: Object.fromEntries(
-          Object.entries(route.query).filter(([key]) => key !== "tab"),
+          Object.entries(albumRoute.value.query).filter(([key]) => key !== "tab"),
         ),
       })
       return
@@ -304,9 +324,9 @@
 
     const nextQuery =
       tab === "reels"
-        ? { ...route.query, tab: "reels" }
+        ? { ...albumRoute.value.query, tab: "reels" }
         : Object.fromEntries(
-            Object.entries(route.query).filter(([key]) => key !== "tab"),
+            Object.entries(albumRoute.value.query).filter(([key]) => key !== "tab"),
           )
 
     await router.replace({
@@ -349,6 +369,14 @@
 
 <style scoped>
 .folder-cinema { width: 100%; }
+.folder-cinema__scroll-hint {
+  margin-left: auto;
+  padding-right: 0.5rem;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
 .folder-cinema__back { display: inline-flex; padding: 0.6rem; color: inherit; border-radius: 50%; }
 .folder-cinema__back span { width: 1.1rem; height: 1.1rem; }
 .folder-cinema__back:hover { background: var(--surface-hover); }

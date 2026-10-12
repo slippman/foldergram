@@ -6,6 +6,7 @@
       :image="activeImage"
       :folder="folder"
       :is-modal="modal"
+      :cinema="cinema"
       :deleting="viewerStore.deleting"
       @close="emit('close')"
       @delete="openDeleteDialog"
@@ -59,6 +60,7 @@ import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import ErrorState from '../components/ErrorState.vue';
 import PostViewer from '../components/PostViewer.vue';
+import type { ImageDetail } from '../types/api';
 import { useAppStore } from '../stores/app';
 import { useFeedStore } from '../stores/feed';
 import { useLikesStore } from '../stores/likes';
@@ -69,6 +71,7 @@ import { useViewerStore } from '../stores/viewer';
 const props = defineProps<{
   id: string;
   modal?: boolean;
+  cinema?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -84,12 +87,21 @@ const momentsStore = useMomentsStore();
 const route = useRoute();
 const router = useRouter();
 const confirmDeleteOpen = ref(false);
+const deleteTarget = ref<Pick<ImageDetail, 'id' | 'mediaType'> | null>(null);
 const deleteOriginalFromDisk = ref(false);
 const deleteError = ref<string | null>(null);
 
 const imageId = computed(() => Number(props.id));
 const activeMediaType = computed(() => (route.query.tab === 'reels' ? 'video' : undefined));
-const activeImage = computed(() => (viewerStore.image?.id === imageId.value ? viewerStore.image : null));
+const lastDisplayedImage = ref<ImageDetail | null>(null);
+watch(() => viewerStore.image, (image) => {
+  if (image?.id === imageId.value) lastDisplayedImage.value = image;
+}, { immediate: true });
+const activeImage = computed(() =>
+  viewerStore.image?.id === imageId.value
+    ? viewerStore.image
+    : props.cinema && viewerStore.loading ? lastDisplayedImage.value : null
+);
 const folder = computed(() =>
   activeImage.value ? foldersStore.items.find((entry) => entry.slug === activeImage.value?.folderSlug) ?? null : null
 );
@@ -109,17 +121,19 @@ async function loadImage() {
 watch(() => [imageId.value, activeMediaType.value] as const, loadImage, { immediate: true });
 
 function openDeleteDialog() {
+  if (!activeImage.value) return;
+  deleteTarget.value = { id: activeImage.value.id, mediaType: activeImage.value.mediaType };
   deleteOriginalFromDisk.value = false;
   deleteError.value = null;
   confirmDeleteOpen.value = true;
 }
 
 async function handleDelete() {
-  if (!viewerStore.image) {
+  if (!confirmDeleteOpen.value || !deleteTarget.value || viewerStore.deleting) {
     return;
   }
 
-  const currentImage = viewerStore.image;
+  const currentImage = deleteTarget.value;
   deleteError.value = null;
 
   try {
