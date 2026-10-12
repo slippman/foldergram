@@ -1,7 +1,7 @@
 {
   "name": "foldergram",
   "private": true,
-  "version": "1.2.2-slippman.1",
+  "version": "1.2.2-slippman.1.1.0",
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.28.0",
   "workspaces": [

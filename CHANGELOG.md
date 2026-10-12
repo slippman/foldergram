@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.2-slippman.1.1.0 — 2026-10-11
 
 ### New features
 
