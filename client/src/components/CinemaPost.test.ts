@@ -11,7 +11,8 @@ import type { FeedItem } from '../types/api';
 
 vi.mock('vidstack/bundle', () => ({}));
 const navigatePhoto = vi.fn();
-vi.mock('vue-router', () => ({ useRoute: () => ({ name: 'folder', fullPath: '/folder/trip?view=scroll&photo=1' }), useRouter: () => ({ push: vi.fn() }) }));
+const mockRoute = vi.hoisted(() => ({ name: 'folder', fullPath: '/folder/trip?view=scroll&photo=1' }));
+vi.mock('vue-router', () => ({ useRoute: () => mockRoute, useRouter: () => ({ push: vi.fn() }) }));
 const item: FeedItem = {
   id: 1, folderId: 1, folderSlug: 'trip', folderName: 'Trip', folderPath: 'Trip',
   folderBreadcrumb: null, filename: 'PXL_20261001.jpg', caption: null,
@@ -27,7 +28,7 @@ function render(overrides: Partial<FeedItem> = {}) {
 }
 
 describe('CinemaPost', () => {
-  beforeEach(() => setActivePinia(createPinia()));
+  beforeEach(() => { setActivePinia(createPinia()); mockRoute.name = 'folder'; });
   it('does not show filenames or indexing dates as captions or capture dates', () => {
     const wrapper = render();
     expect(wrapper.text()).not.toContain('PXL');
@@ -61,6 +62,7 @@ describe('CinemaPost', () => {
     video.unmount();
   });
   it('includes the selected carousel photo in the zoom route', async () => {
+    mockRoute.name = 'home';
     const wrapper = render({ postType: 'carousel', mediaItems: [
       { imageId: 10, position: 1, mediaType: 'image', width: 100, height: 100 },
       { imageId: 11, position: 2, mediaType: 'image', width: 100, height: 100 }
@@ -69,6 +71,7 @@ describe('CinemaPost', () => {
     await nextTick();
     const route = wrapper.findAllComponents({ name: 'RouterLink' }).find(link => link.props('custom'));
     expect(route?.props('to').query).toEqual({ media: '11' });
+    expect(wrapper.get('.cinema-post__zoom--carousel').attributes('href')).toBe('/post/1');
   });
 
   it('renders initially muted video controls without looping', () => {

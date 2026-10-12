@@ -31,8 +31,8 @@
             :aria-label="infoLabel" :title="infoLabel" @click="toggleInfo">
             <span class="i-fluent-info-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
           </button>
-          <RouterLink v-if="route.name === 'folder' && (activeMedia?.mediaType ?? item.mediaType) === 'image'" custom :to="photoRoute" v-slot="{ href, navigate }">
-            <a class="media-action cinema-post__zoom" :href="href" :aria-label="t('folder.cinema.openPhoto')"
+          <RouterLink v-if="(route.name === 'folder' || item.postType === 'carousel') && (activeMedia?.mediaType ?? item.mediaType) === 'image'" custom :to="photoRoute" v-slot="{ href, navigate }">
+            <a class="media-action cinema-post__zoom" :class="{ 'cinema-post__zoom--carousel': item.postType === 'carousel' }" :href="href" :aria-label="t('folder.cinema.openPhoto')"
               :title="t('folder.cinema.openPhoto')" @click="openPhoto($event, navigate)">
               <span class="i-fluent-zoom-in-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
             </a>
@@ -248,6 +248,7 @@ onBeforeUnmount(() => {
 .cinema-post__info dt { color: var(--muted); }
 .cinema-post__info dd { margin: 0; overflow-wrap: anywhere; min-width: 0; }
 .cinema-post__zoom { display: none; }
+.cinema-post__zoom--carousel { display: inline-flex; }
 @media (max-width: 767px) {
   .cinema-post__zoom { display: inline-flex; }
   /* Keep Safari toolbar changes from resizing the scrollable album. */
