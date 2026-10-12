@@ -1,0 +1,75 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+import express from 'express';
+
+import { appConfig, repositoryRoot } from '../config/env.js';
+import { folderShareService } from '../services/folder-share-service.js';
+import { galleryService } from '../services/gallery-service.js';
+import { serveDerivativeForImage } from './lazy-derivatives.js';
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
+}
+
+// Only configured origins can appear in crawler-facing absolute URLs.
+function previewOrigin(request: express.Request): string | null {
+  const host = request.get('host');
+  if (!host || !/^[a-zA-Z0-9.:[\]-]+$/.test(host)) return null;
+  for (const origin of appConfig.csrfTrustedOrigins) {
+    if (new URL(origin).host === host) return origin;
+  }
+  if (appConfig.nodeEnv !== 'production' && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) return `http://${host}`;
+  return null;
+}
+
+export const sharePreviewRouter = express.Router();
+
+sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/images/:id'], (request, response, next) => {
+  const indexPath = appConfig.nodeEnv === 'production'
+    ? path.join(repositoryRoot, 'client/dist/index.html')
+    : path.join(repositoryRoot, 'client/index.html');
+  if (!fs.existsSync(indexPath)) return next();
+  response.setHeader('Cache-Control', 'no-store');
+  response.setHeader('Referrer-Policy', 'no-referrer');
+  response.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  let html = fs.readFileSync(indexPath, 'utf8');
+  const slug = request.params.slug;
+  const folder = typeof slug === 'string' ? folderShareService.getPreviewFolder(slug, request.query.preview) : null;
+  const origin = previewOrigin(request);
+  if (folder && origin) {
+    const summary = galleryService.getFolderBySlug(folder.slug);
+    const title = escapeHtml(folder.name);
+    const tags = [
+      `<meta property="og:title" content="${title}" />`,
+      '<meta property="og:type" content="website" />',
+      '<meta property="og:description" content="View this photo album" />',
+      '<meta name="twitter:card" content="summary_large_image" />'
+    ];
+    if (summary?.avatarImageId) {
+      const coverUrl = `${origin}/share-preview/${encodeURIComponent(folder.slug)}/cover?preview=${encodeURIComponent(String(request.query.preview))}`;
+      tags.push(`<meta property="og:image" content="${escapeHtml(coverUrl)}" />`);
+    }
+    html = html.replace('<title>Foldergram</title>', `<title>${title}</title>`);
+    html = html.replace('</head>', `${tags.join('\n')}</head>`);
+  }
+  if (appConfig.nodeEnv !== 'production') {
+    html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
+  }
+  response.type('html').send(html);
+});
+
+// This credential grants the cover only, never album browsing or originals.
+sharePreviewRouter.get('/share-preview/:slug/cover', async (request, response) => {
+  response.setHeader('Cache-Control', 'no-store');
+  response.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  const slug = request.params.slug;
+  const folder = typeof slug === 'string' ? folderShareService.getPreviewFolder(slug, request.query.preview) : null;
+  const summary = folder ? galleryService.getFolderBySlug(folder.slug) : null;
+  const image = summary?.avatarImageId ? galleryService.getShareDerivativeImage(summary.avatarImageId) : null;
+  if (!folder || !image || image.folder_id !== folder.id) {
+    response.status(404).end();
+    return;
+  }
+  await serveDerivativeForImage(response, image, 'thumbnail', { noStore: true });
+});

@@ -9,6 +9,7 @@ import { handleRequestError } from './middleware/error-handler.js';
 import { requireTrustedMutationRequest } from './middleware/csrf-protection.js';
 import { blockPublicDemoMutations } from './middleware/public-demo-mode.js';
 import { apiRouter } from './routes/api.js';
+import { sharePreviewRouter } from './routes/share-preview.js';
 import { authService } from './services/auth-service.js';
 import { lazyThumbnailsRouter, lazyPreviewsRouter } from './routes/lazy-derivatives.js';
 import { createProtectedStaticOptions } from './utils/media-response.js';
@@ -24,6 +25,7 @@ export function createApp() {
   const app = express();
 
   app.use(express.json());
+  app.use(sharePreviewRouter);
 
   if (appConfig.derivativeMode === 'lazy') {
     app.use('/thumbnails', requireMediaAuthentication, lazyThumbnailsRouter);

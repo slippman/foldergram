@@ -21,7 +21,8 @@
       <p v-if="item.caption?.trim()" class="cinema-post__caption">{{ item.caption }}</p>
       <div class="cinema-post__toolbar">
         <div class="cinema-post__actions">
-          <button v-if="authStore.canUseSavedItems" type="button" class="media-action"
+          <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="item.id" />
+          <button v-if="!sharedSlug && authStore.canUseSavedItems" type="button" class="media-action"
             :class="{ 'media-action--liked': likesStore.isLiked(item.id) }"
             :aria-label="likeLabel" :title="likeLabel" :aria-pressed="likesStore.isLiked(item.id)"
             :disabled="likesStore.isPending(item.id)" @click="likesStore.toggleLike(item)">
@@ -31,7 +32,7 @@
             :aria-label="infoLabel" :title="infoLabel" @click="toggleInfo">
             <span class="i-fluent-info-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
           </button>
-          <RouterLink v-if="(route.name === 'folder' || item.postType === 'carousel') && (activeMedia?.mediaType ?? item.mediaType) === 'image'" custom :to="photoRoute" v-slot="{ href, navigate }">
+          <RouterLink v-if="(route.name === 'folder' || sharedSlug || item.postType === 'carousel') && (activeMedia?.mediaType ?? item.mediaType) === 'image'" custom :to="photoRoute" v-slot="{ href, navigate }">
             <a class="media-action cinema-post__zoom" :class="{ 'cinema-post__zoom--carousel': item.postType === 'carousel' }" :href="href" :aria-label="t('folder.cinema.openPhoto')"
               :title="t('folder.cinema.openPhoto')" @click="openPhoto($event, navigate)">
               <span class="i-fluent-zoom-in-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
@@ -39,22 +40,22 @@
           </RouterLink>
         </div>
         <div class="cinema-post__metadata">
-          <RouterLink v-if="showAlbumName" class="cinema-post__album" :to="{ name: 'folder', params: { slug: item.folderSlug } }">
+          <RouterLink v-if="showAlbumName" class="cinema-post__album" :to="{ name: sharedSlug ? 'shared-folder' : 'folder', params: { slug: sharedSlug || item.folderSlug } }">
             {{ item.folderName }}
             <span class="i-fluent-chevron-right-16-regular cinema-post__album-chevron" aria-hidden="true" />
           </RouterLink>
 
           <time v-if="captureDate" :datetime="captureDate.toISOString()">{{ formattedDate }}</time>
-          <RouterLink v-if="item.place" :to="{ name: 'place', params: { slug: item.place.slug } }">{{ item.place.name }}</RouterLink>
+          <RouterLink v-if="!sharedSlug && item.place" :to="{ name: 'place', params: { slug: item.place.slug } }">{{ item.place.name }}</RouterLink>
         </div>
         <div class="cinema-post__actions">
-          <button v-if="authStore.canManageLibrary" type="button" class="media-action"
+          <button v-if="!sharedSlug && authStore.canManageLibrary" type="button" class="media-action"
             :aria-label="t('post.viewer.editCaption')" :title="t('post.viewer.editCaption')" @click="openCaptionEditor">
             <span class="i-fluent-edit-16-regular w-5 h-5" aria-hidden="true" />
           </button>
-          <MobileMediaShare v-if="(activeMedia?.mediaType ?? item.mediaType) === 'image'" :url="downloadUrl" />
+          <MobileMediaShare v-if="(activeMedia?.mediaType ?? item.mediaType) === 'image'" :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
           <a class="media-action" :class="{ 'photo-download-desktop': (activeMedia?.mediaType ?? item.mediaType) === 'image' }" :href="downloadUrl" download
-            :aria-label="t('post.viewer.downloadOriginalFile')" :title="t('post.viewer.downloadOriginalFile')">
+            :aria-label="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')" :title="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')">
             <svg class="w-[1.45rem] h-[1.45rem]" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 4.75v9.5m0 0 3.5-3.5M12 14.25l-3.5-3.5M5.75 16.75v1.5A1.75 1.75 0 0 0 7.5 20h9a1.75 1.75 0 0 0 1.75-1.75v-1.5"
                 fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
@@ -81,7 +82,7 @@
 
 <script setup lang="ts">
 import { formatExifDetails } from '../utils/media-details';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import CarouselMediaStage from './CarouselMediaStage.vue';
@@ -93,17 +94,19 @@ import { useImageCaptionEditor } from '../composables/useImageCaptionEditor';
 import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import { useLikesStore } from '../stores/likes';
-import { fetchImage } from '../api/gallery';
+import { fetchImage, fetchSharedPost } from '../api/gallery';
+import SharedFavoriteButton from './SharedFavoriteButton.vue';
 import MobileMediaShare from './MobileMediaShare.vue';
 import { getOriginalMediaDownloadUrl } from '../utils/original-media';
+import { sharedImageDetail } from '../utils/shared-media';
 import type { FeedItem, ImageDetail } from '../types/api';
 
-const props = defineProps<{ item: FeedItem; showAlbumName?: boolean }>();
+const props = defineProps<{ item: FeedItem; showAlbumName?: boolean; sharedSlug?: string }>();
 const appStore = useAppStore();
 const route = useRoute();
 const router = useRouter();
 const photoRoute = computed(() => ({
-  name: 'image', params: { id: String(props.item.id) },
+  name: props.sharedSlug ? 'shared-post' : 'image', params: props.sharedSlug ? { slug: props.sharedSlug, id: String(props.item.id) } : { id: String(props.item.id) },
   query: activeMedia.value ? { media: String(activeMedia.value.imageId) } : {}
 }));
 function openCarouselPhoto(event: MouseEvent) {
@@ -129,7 +132,7 @@ const detail = ref<ImageDetail | null>(null);
 const infoId = computed(() => `cinema-info-${props.item.id}`);
 const activeMedia = computed(() => detail.value?.mediaItems?.[carouselIndex.value] ?? props.item.mediaItems?.[carouselIndex.value]);
 const exifDetails = computed(() => formatExifDetails(activeMedia.value?.exif ?? detail.value?.exif, t));
-const downloadUrl = computed(() => getOriginalMediaDownloadUrl(activeMedia.value?.imageId ?? props.item.id));
+const downloadUrl = computed(() => props.sharedSlug ? activeMedia.value?.previewUrl ?? props.item.previewUrl : getOriginalMediaDownloadUrl(activeMedia.value?.imageId ?? props.item.id));
 const likeLabel = computed(() => likesStore.toggleAriaLabel(likesStore.isLiked(props.item.id)));
 const infoLabel = computed(() => t(showInfo.value ? 'post.viewer.hideDetails' : 'post.viewer.showDetails'));
 const formattedFileSize = computed(() => {
@@ -141,11 +144,12 @@ async function toggleInfo() {
   if (!showInfo.value || detail.value || loadingInfo.value) return;
   loadingInfo.value = true;
   infoError.value = null;
-  try { detail.value = await fetchImage(props.item.id); }
+  try { detail.value = props.sharedSlug ? sharedImageDetail(await fetchSharedPost(props.item.id)) : await fetchImage(props.item.id); }
   catch (error) { infoError.value = error instanceof Error ? error.message : t('folder.cinema.infoError'); }
   finally { loadingInfo.value = false; }
 }
-const isVisible = ref(false);
+const isInViewport = ref(false);
+const isVisible = computed(() => isInViewport.value && route.name !== 'image' && route.name !== 'shared-post');
 const audiblePostId = useCinemaAudio();
 const videoMuted = computed(() => audiblePostId.value !== props.item.id);
 function releaseAudio() {
@@ -185,21 +189,21 @@ async function save(caption: string | null) {
     // The caption dialog displays the save error and preserves the draft.
   }
 }
+watch(isVisible, async (visible) => {
+  if (!visible) releaseAudio();
+  await nextTick();
+  postElement.value?.querySelectorAll('media-player').forEach(element => {
+    const player = element as HTMLElement & { play?: () => Promise<void>; pause?: () => void };
+    if (visible) player.play?.()?.catch(() => {});
+    else player.pause?.();
+  });
+});
 let observer: IntersectionObserver | null = null;
 onMounted(() => {
   if (!postElement.value || typeof IntersectionObserver === 'undefined') return;
-  observer = new IntersectionObserver(async ([entry]) => {
-    isVisible.value = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+  observer = new IntersectionObserver(([entry]) => {
+    isInViewport.value = entry.isIntersecting && entry.intersectionRatio >= 0.5;
     if (!isVisible.value) releaseAudio();
-    await nextTick();
-    postElement.value?.querySelectorAll('media-player').forEach(element => {
-      const player = element as HTMLElement & { play?: () => Promise<void>; pause?: () => void };
-      if (isVisible.value) {
-        player.play?.()?.catch(() => {});
-      } else {
-        player.pause?.();
-      }
-    });
   }, { threshold: [0, 0.5] });
   const mediaElement = postElement.value.querySelector('.cinema-post__media');
   if (mediaElement) observer.observe(mediaElement);

@@ -357,6 +357,21 @@ export const folderShareService = {
     };
   },
 
+  createPreviewToken(linkId: number): string {
+    return `${linkId}.${signValue(`cover-preview:${linkId}`, getShareSessionSecret())}`;
+  },
+
+  getPreviewFolder(slug: string, token: unknown): FolderRecord | null {
+    if (typeof token !== 'string' || !/^\d+\.[A-Za-z0-9_-]{43}$/.test(token)) return null;
+    const linkId = Number(token.split('.')[0]);
+    if (!Number.isSafeInteger(linkId) || linkId <= 0) return null;
+    const expected = this.createPreviewToken(linkId);
+    if (token.length !== expected.length || !timingSafeEqual(Buffer.from(token), Buffer.from(expected))) return null;
+    const link = folderShareLinkRepository.getById(linkId);
+    const folder = folderRepository.getNormalBySlug(slug);
+    return link && folder && link.folder_id === folder.id && isLinkUsable(link) ? folder : null;
+  },
+
   revokeLink(slug: string, linkId: number): PublicFolderShareLink | null {
     const folder = folderRepository.getNormalBySlug(slug);
     if (!folder) {

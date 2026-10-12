@@ -226,6 +226,42 @@ describe.sequential('folder share API routes', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('exposes only the cover and escaped title through an active preview credential', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const { folderRepository } = await import('../src/db/repositories.js');
+    const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
+    const preview = folderShareService.createPreviewToken(link.link.id);
+    const folder = folderRepository.getNormalBySlug('folder-a')!;
+    // Album names are untrusted text, including in crawler metadata.
+    folderRepository.upsert({ slug: 'folder-a', name: 'Trip <script>alert(1)</script>', folderPath: 'folder-a' });
+    const page = await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`);
+    expect(page.status).toBe(200);
+    expect(page.body).toContain('og:title');
+    expect(page.body).toContain('Trip &lt;script&gt;');
+    expect(page.body).not.toContain('Trip <script>');
+    expect(page.body).toContain(`/share-preview/folder-a/cover?preview=${preview}`);
+    expect(page.headers.get('referrer-policy')).toBe('no-referrer');
+    const { galleryService } = await import('../src/services/gallery-service.js');
+    const coverImage = galleryService.getShareDerivativeImage(galleryService.getFolderBySlug('folder-a')!.avatarImageId!)!;
+    const coverPath = path.join(tempRoot, 'thumbnails', coverImage.thumbnail_path);
+    await fs.mkdir(path.dirname(coverPath), { recursive: true });
+    await sharp({ create: { width: 32, height: 32, channels: 3, background: '#334455' } }).webp().toFile(coverPath);
+    const cover = await requestApp(app, 'GET', `/share-preview/folder-a/cover?preview=${preview}`);
+    expect(cover.status).toBe(200);
+    expect(cover.headers.get('content-type')).toContain('image/');
+    expect((await requestApp(app, 'GET', `/api/share/folders/folder-a?preview=${preview}`)).status).toBe(401);
+    expect(folderShareService.verifyLinkToken('folder-a', preview)).toBeNull();
+    expect((await requestApp(app, 'GET', `/share-preview/folder-b/cover?preview=${preview}`)).status).toBe(404);
+    expect((await requestApp(app, 'GET', `/share-preview/folder-a/cover?preview=${preview}x`)).status).toBe(404);
+    expect((await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`, { Host: 'evil.example' })).body).not.toContain('og:image');
+    folderShareService.revokeLink('folder-a', link.link.id);
+    expect((await requestApp(app, 'GET', `/share-preview/folder-a/cover?preview=${preview}`)).status).toBe(404);
+    expect((await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`)).body).not.toContain('og:title');
+    const expired = folderShareService.createLink('folder-a', { expiresAt: new Date(Date.now() - 1000) })!;
+    expect(folderShareService.getPreviewFolder('folder-a', folderShareService.createPreviewToken(expired.link.id))).toBeNull();
+    expect(folder.id).toBe(link.folder.id);
+  });
+
   it('rejects share session cookies on admin endpoints with 401 and viewer cookies with 403', async () => {
     const { folderShareService } = await import('../src/services/folder-share-service.js');
     const { folderRepository } = await import('../src/db/repositories.js');
@@ -308,7 +344,8 @@ describe.sequential('folder share API routes', () => {
 
   it('redacts sensitive metadata from shared JSON endpoints', async () => {
     const { folderShareService } = await import('../src/services/folder-share-service.js');
-    const { postRepository } = await import('../src/db/repositories.js');
+    const { postRepository, appSettingsRepository } = await import('../src/db/repositories.js');
+    appSettingsRepository.set('folder.display_theme', 'cinema');
     const carousel = postRepository.findBySourcePath('folder-a/carousels/trip')!;
     const expectRecursivelyRedacted = (value: unknown): void => {
       if (Array.isArray(value)) {
@@ -317,8 +354,13 @@ describe.sequential('folder share API routes', () => {
       }
       if (!value || typeof value !== 'object') return;
       const record = value as Record<string, unknown>;
-      for (const key of ['absolutePath', 'exif', 'exifJson', 'originalUrl', 'relativePath', 'sourcePath']) {
+      for (const key of ['absolutePath', 'exifJson', 'originalUrl', 'relativePath', 'sourcePath', 'latitude', 'longitude', 'altitudeMeters']) {
         expect(record).not.toHaveProperty(key);
+      }
+      if (record.exif) {
+        for (const key of Object.keys(record.exif as object)) {
+          expect(['cameraMake', 'cameraModel', 'lensModel', 'fNumber', 'exposureTimeSeconds', 'iso', 'focalLengthMm', 'focalLength35mmMm']).toContain(key);
+        }
       }
       Object.values(record).forEach(expectRecursivelyRedacted);
     };
@@ -334,6 +376,7 @@ describe.sequential('folder share API routes', () => {
       Cookie: `foldergram_share_session=${shareCookie}`
     });
     expect(folderRes.status).toBe(200);
+    expect(folderRes.body.displayTheme).toBe('cinema');
     expect(folderRes.body).not.toHaveProperty('folderPath');
     expect(folderRes.body).not.toHaveProperty('absolutePath');
 
@@ -342,6 +385,7 @@ describe.sequential('folder share API routes', () => {
       Cookie: `foldergram_share_session=${shareCookie}`
     });
     expect(imagesRes.status).toBe(200);
+    expect(imagesRes.body.folder.displayTheme).toBe('cinema');
     expect(imagesRes.body.items[0]).not.toHaveProperty('folderPath');
     expect(imagesRes.body.items[0]).not.toHaveProperty('relativePath');
     expect(imagesRes.body.items[0]).not.toHaveProperty('exif');
@@ -355,13 +399,17 @@ describe.sequential('folder share API routes', () => {
     expect(imageDetailRes.body).not.toHaveProperty('folderPath');
     expect(imageDetailRes.body).not.toHaveProperty('relativePath');
     expect(imageDetailRes.body).not.toHaveProperty('absolutePath');
-    expect(imageDetailRes.body).not.toHaveProperty('exif');
+    expect(imageDetailRes.body.exif).toEqual({ cameraMake: 'Canon' });
+    expect(imageDetailRes.body.displayTheme).toBe('cinema');
+    expectRecursivelyRedacted(imageDetailRes.body);
 
     const carouselDetailRes = await requestApp(app, 'GET', `/api/share/posts/${carousel.id}`, {
       Cookie: `foldergram_share_session=${shareCookie}`
     });
     expect(carouselDetailRes.status).toBe(200);
     expect(carouselDetailRes.body.mediaItems).toHaveLength(3);
+    expect(carouselDetailRes.body.mediaItems[0].exif).toEqual({ cameraModel: 'Private Camera' });
+    expect(carouselDetailRes.body.mediaItems[2].playbackStrategy).toBe('preview');
     expectRecursivelyRedacted(carouselDetailRes.body);
 
     folderShareService.setPassword('folder-a', 'carousel-password');
@@ -381,7 +429,8 @@ describe.sequential('folder share API routes', () => {
   });
 
   it('retains public camera metadata while redacting paths and coordinates recursively', async () => {
-    const { postRepository } = await import('../src/db/repositories.js');
+    const { postRepository, appSettingsRepository } = await import('../src/db/repositories.js');
+    appSettingsRepository.set('folder.display_theme', 'cinema');
     const carousel = postRepository.findBySourcePath('folder-a/carousels/trip')!;
     authService.setViewerAccess('public');
 

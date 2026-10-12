@@ -1,7 +1,7 @@
 <template>
   <main class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
-    <section class="mx-auto grid w-full max-w-[66rem] gap-6">
-      <header class="flex items-center justify-between gap-4 border-b border-border pb-4">
+    <section class="mx-auto grid w-full gap-6" :class="isCinema ? 'max-w-[100rem]' : 'max-w-[66rem]'">
+      <header v-if="!isCinema" class="flex items-center justify-between gap-4 border-b border-border pb-4">
         <RouterLink class="inline-flex items-center gap-2 text-text no-underline" :to="{ name: 'home' }">
           <span class="i-fluent-folder-24-filled h-6 w-6 text-accent" aria-hidden="true" />
           <span class="text-[1rem] font-semibold tracking-[-0.02em]">Foldergram</span>
@@ -9,7 +9,17 @@
       </header>
 
       <section v-if="shareStore.access?.granted && shareStore.folder" class="grid gap-6">
-        <div class="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-6 max-sm:grid-cols-1 max-sm:text-center">
+        <CinemaHeader v-if="isCinema" :title="displayFolderTitle">
+          <template v-if="isScroll" #leading>
+            <RouterLink :to="{ name: 'shared-folder', params: { slug } }" class="p-2" :aria-label="t('folder.cinema.backToGrid')">
+              <span class="i-fluent-arrow-left-20-regular block h-5 w-5" aria-hidden="true" />
+            </RouterLink>
+          </template>
+          <template v-if="isScroll && shareStore.images.length > 1" #trailing>
+            <span class="ml-auto text-xs text-muted">{{ t('folder.cinema.scrollHint') }} <span aria-hidden="true">↑ ↓</span></span>
+          </template>
+        </CinemaHeader>
+        <div v-else class="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-6 max-sm:grid-cols-1 max-sm:text-center">
           <div class="grid place-items-center">
             <Avatar class="h-[7.25rem] w-[7.25rem]" :name="displayFolderTitle" :src="shareStore.folder.avatarThumbnailUrl" />
           </div>
@@ -31,7 +41,11 @@
           description="This folder share is valid, but there are no visible posts right now."
         />
         <section v-else class="grid gap-5">
-          <FolderGrid :items="shareStore.images" variant="posts" :shared-slug="slug" />
+          <div v-if="isCinema && isScroll">
+            <CinemaPost v-for="item in shareStore.images" :key="item.id" :id="`shared-photo-${item.id}`"
+              :item="sharedFeedItem(item)" :shared-slug="slug" />
+          </div>
+          <FolderGrid v-else :items="shareStore.images" :variant="isCinema ? 'cinema' : 'posts'" :shared-slug="slug" />
           <InfiniteLoader :loading="shareStore.loading" :has-more="shareStore.hasMore" @load-more="loadMore" />
         </section>
       </section>
@@ -90,10 +104,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
+import { provideCinemaAudio } from '../composables/useCinemaAudio';
+import { useAppStore } from '../stores/app';
+import CinemaHeader from '../components/CinemaHeader.vue';
+import CinemaPost from '../components/CinemaPost.vue';
+import { sharedFeedItem } from '../utils/shared-media';
 import Avatar from '../components/Avatar.vue';
 import EmptyState from '../components/EmptyState.vue';
 import ErrorState from '../components/ErrorState.vue';
@@ -107,6 +126,39 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const shareStore = useShareStore();
+provideCinemaAudio();
+const appStore = useAppStore();
+const router = useRouter();
+const route = useRoute();
+const albumRoute = computed(() => {
+  if (route.name === 'shared-post' && appStore.imageModalBackgroundPath) {
+    const background = router.resolve(appStore.imageModalBackgroundPath);
+    if (background.name === 'shared-folder' && background.params.slug === props.slug) return background;
+  }
+  return route;
+});
+const isCinema = computed(() => shareStore.folder?.displayTheme === 'cinema');
+const isScroll = computed(() => albumRoute.value.query.view === 'scroll');
+async function scrollToPhoto() {
+  if (!isCinema.value || !isScroll.value) return;
+  const id = Number(albumRoute.value.query.photo);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  while (isScroll.value && !shareStore.images.some(item => item.id === id) && shareStore.hasMore && !shareStore.loading) {
+    const page = shareStore.page;
+    await loadMore();
+    if (shareStore.page === page || shareStore.error) break;
+  }
+  await nextTick();
+  if (!isScroll.value || Number(albumRoute.value.query.photo) !== id) return;
+  const target = document.getElementById(`shared-photo-${id}`);
+  const previous = target?.previousElementSibling?.querySelector('.cinema-post__media');
+  const header = document.querySelector('.cinema-header');
+  if (previous && header) {
+    const peek = window.matchMedia('(max-width: 767px)').matches ? 20 : 36;
+    window.scrollTo({ top: Math.max(0, window.scrollY + previous.getBoundingClientRect().bottom - header.getBoundingClientRect().height - peek) });
+  } else target?.scrollIntoView({ block: 'start' });
+}
+watch([() => albumRoute.value.query.view, () => albumRoute.value.query.photo], scrollToPhoto);
 const password = ref('');
 const linkUnlockFailed = ref(false);
 const displayFolderTitle = computed(() => (shareStore.folder ? shareStore.folder.name : 'Shared folder'));
@@ -153,6 +205,7 @@ async function initializeShare() {
 
   if (shareStore.access?.granted) {
     await shareStore.loadFolder(props.slug, true);
+    await scrollToPhoto();
   }
 }
 
@@ -171,6 +224,7 @@ async function unlockPassword() {
 
     if (shareStore.access?.granted) {
       await shareStore.loadFolder(props.slug, true);
+      await scrollToPhoto();
     }
   } catch {
     // The store-owned error is rendered under the password field.

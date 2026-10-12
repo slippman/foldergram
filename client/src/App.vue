@@ -10,7 +10,12 @@
       <p class="m-0 text-muted">{{ t('app.authLoading.description') }}</p>
     </div>
   </section>
-  <RouterView v-else-if="isPublicShareRoute" />
+  <template v-else-if="isPublicShareRoute">
+    <RouterView :route="displayRoute" />
+    <div v-if="showImageModal" class="app__image-modal-layer app__image-modal-layer--cinema" @click.self="closeImageModal">
+      <SharedPostView :slug="String(route.params.slug ?? '')" :id="String(route.params.id ?? '')" modal @close="closeImageModal" />
+    </div>
+  </template>
   <AuthGate v-else-if="authStore.requiresLogin" />
   <AppShell v-else>
     <RouterView :route="displayRoute" />
@@ -30,6 +35,7 @@ import AppShell from './components/AppShell.vue';
 import AdminUnlockDialog from './components/AdminUnlockDialog.vue';
 import AuthGate from './components/AuthGate.vue';
 import { canAccessRoute, routeAllowsPublicShareAccess } from './router';
+import SharedPostView from './views/SharedPostView.vue';
 import PostView from './views/PostView.vue';
 import { useAppStore } from './stores/app';
 import { useAuthStore } from './stores/auth';
@@ -92,7 +98,7 @@ const modalBackgroundRoute = computed<RouteLocationNormalizedLoaded | null>(() =
   return resolveDisplayRoute(appStore.imageModalBackgroundPath);
 });
 const showImageModal = computed(
-  () => route.name === 'image' && modalBackgroundRoute.value !== null && modalBackgroundRoute.value.fullPath !== route.fullPath
+  () => modalBackgroundRoute.value !== null && modalBackgroundRoute.value.fullPath !== route.fullPath && (route.name === 'image' || (route.name === 'shared-post' && modalBackgroundRoute.value.name === 'shared-folder' && modalBackgroundRoute.value.params.slug === route.params.slug))
 );
 const isCinemaImageModal = computed(() =>
   (modalBackgroundRoute.value?.name === 'folder' && appStore.folderDisplayTheme === 'cinema') ||
@@ -271,7 +277,7 @@ watch(
     unlockModalScroll();
 
     requestAnimationFrame(() => {
-      if (route.name !== 'image') {
+      if (route.name !== 'image' && route.name !== 'shared-post') {
         appStore.clearImageModalBackground();
       }
     });

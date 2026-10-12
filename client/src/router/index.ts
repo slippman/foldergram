@@ -31,9 +31,10 @@ function shouldPreserveModalScroll(to: RouteLocationNormalized, from: RouteLocat
     return false;
   }
 
-  const isOpeningModal = to.name === 'image' && from.fullPath === backgroundPath;
-  const isClosingModal = from.name === 'image' && to.fullPath === backgroundPath;
-  const isNavigatingWithinModal = to.name === 'image' && from.name === 'image';
+  const modalNames = ['image', 'shared-post'];
+  const isOpeningModal = modalNames.includes(String(to.name)) && from.fullPath === backgroundPath;
+  const isClosingModal = modalNames.includes(String(from.name)) && to.fullPath === backgroundPath;
+  const isNavigatingWithinModal = to.name === from.name && modalNames.includes(String(to.name));
 
   return isOpeningModal || isClosingModal || isNavigatingWithinModal;
 }
@@ -173,7 +174,7 @@ export const router = createRouter({
     }
 
     // Cinema positions the selected photo after loading its album page.
-    if (to.name === 'folder' && to.query.view === 'scroll') {
+    if ((to.name === 'folder' || to.name === 'shared-folder') && to.query.view === 'scroll') {
       return false;
     }
 

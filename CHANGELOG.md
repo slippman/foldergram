@@ -1,35 +1,49 @@
 # Changelog
 
+## Unreleased
+
+### New features
+
+- New album share links provide the album cover and name for compatible messaging apps when the site is publicly reachable. Preview access is limited to the cover and title and expires or stops working when the link is revoked.
+
+### Bug fixes
+
+- Shared album links now follow the album’s Cinema theme, with the same photo grid, scrolling hints, video controls, image-focused zoom, camera Info, and mobile sharing as regular albums. Favorites in shared albums stay in the visitor’s browser.
+
 ## 1.2.2-slippman.1 — 2026-10-11
 
-First release of the Slippman fork, based on upstream Foldergram 1.2.2.
+### New features
 
-- Add Cinema themes for albums and the Home feed on computers and phones,
-  with larger media, capture-date ordering, adjacent-photo previews, and a
-  photo-focused zoom viewer.
-- Use album names, item counts, and capture-date ranges in browsing views.
-- Add public camera/exposure details, admin album sharing, and native mobile
-  photo sharing with a Download fallback.
-- Improve desktop navigation, mobile scrolling, carousel selection, keyboard
-  accessibility, dialog focus, and deletion confirmation during navigation.
-- Repair capture timestamps from photo and Apple QuickTime metadata, and improve
-  video previews, derivative cache validation, and Classic carousel audio.
-- Hide internal paths in error responses and update vulnerable dependencies.
+- Cinema gives photos and videos more room on computers and phones. Choose it
+  separately for albums and the Home feed. Album grids open into a scrolling
+  view, with a glimpse of nearby photos to help you find your way.
+- Click a photo to open a screen-filling viewer. Camera and exposure details are
+  available from Info without taking space away from the photo.
+- Browse albums using item counts and the dates the photos were taken, including
+  date ranges for albums spanning several days. Album date is the default sort.
+- Share albums from the admin menu. On supported phones, share a photo through
+  the phone's share sheet; Download remains available when sharing isn't supported.
+- Expand desktop navigation with a click. It moves content aside and closes when
+  you click outside it.
 
-Known limitation: original downloads and native shares preserve embedded source
-metadata, which can include GPS. GPS removal is deferred; API responses redact
-coordinates and internal paths.
+### Bug fixes
 
-## Fork versioning
-
-The upstream base remains visible in `UPSTREAM-slippman.N`. Increment `N` for
-each fork release; when adopting a new upstream release, update the base and
-restart the fork counter at 1. These are fork releases, not upstream releases.
-Only the root package version is the app release version; workspace package
-versions are internal.
-
-Fork Git tags use `fork-vVERSION`, for example
-`fork-v1.2.2-slippman.1`. Docker images built for deployment use
-`slippman/foldergram:VERSION`. Pin production to the versioned image rather than
-`latest`. The fork tag prefix keeps the upstream `v*.*.*` GHCR workflow separate
-from the local production build/deploy workflow.
+- Photos and Apple Photos video exports use their original capture dates when
+  available, rather than export dates. Missing capture dates no longer appear as
+  if they were genuine camera timestamps.
+- Fixed failed video previews and reuse of empty cached previews. Videos shown
+  only as a small scrolling preview stay paused, and Classic carousels respect
+  the mute setting.
+- Reduced jumping during iPhone scrolling as Safari's toolbar changes size.
+  Long photo details can now be scrolled on mobile.
+- Zooming a carousel opens the selected photo instead of returning to its first
+  slide. Home carousel photos can also be opened using the keyboard.
+- Escape closes the caption editor or deletion dialog before closing the photo
+  viewer, and keyboard focus returns to the button that opened the dialog.
+- Confirming deletion targets the photo that opened the dialog, even if another
+  photo finishes loading before you confirm. This applies to both Trash and
+  permanent deletion.
+- A failed attempt to share a photo on mobile now offers a working Download
+  button instead of suggesting an unavailable action.
+- Error messages no longer expose private file locations. Fixed known security
+  issues in the libraries used to serve and process media.

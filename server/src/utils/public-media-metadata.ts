@@ -23,7 +23,7 @@ export function redactPublicMediaMetadata(value: unknown): unknown {
   );
 }
 
-function publicCameraMetadata(value: unknown): unknown {
+export function publicCameraMetadata(value: unknown): unknown {
   if (!value || typeof value !== 'object') return null;
   const allowed = new Set(['cameraMake', 'cameraModel', 'lensModel', 'fNumber',
     'exposureTimeSeconds', 'iso', 'focalLengthMm', 'focalLength35mmMm']);
