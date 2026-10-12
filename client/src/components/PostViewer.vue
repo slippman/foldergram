@@ -38,8 +38,8 @@
           : 'absolute top-1/2 z-2 -mt-[1.1rem] left-[-3.25rem] max-md:left-[-2.75rem]',
       ]"
       :to="{
-        name: 'image',
-        params: { id: String(previousNavigationImageId) },
+        name: sharedSlug ? 'shared-post' : 'image',
+        params: sharedSlug ? { slug: sharedSlug, id: String(previousNavigationImageId) } : { id: String(previousNavigationImageId) },
         query: route.query,
       }"
       :aria-label="t('post.viewer.previous')"
@@ -66,8 +66,8 @@
           : 'absolute top-1/2 z-2 -mt-[1.1rem] right-[-3.25rem] max-md:right-[-2.75rem]',
       ]"
       :to="{
-        name: 'image',
-        params: { id: String(nextNavigationImageId) },
+        name: sharedSlug ? 'shared-post' : 'image',
+        params: sharedSlug ? { slug: sharedSlug, id: String(nextNavigationImageId) } : { id: String(nextNavigationImageId) },
         query: route.query,
       }"
       :aria-label="t('post.viewer.next')"
@@ -329,7 +329,7 @@
         >
           <RouterLink
             class="viewer__sidebar-folder-link flex items-center gap-[0.85rem] min-w-0"
-            :to="{ name: 'folder', params: { slug: image.folderSlug } }"
+            :to="{ name: sharedSlug ? 'shared-folder' : 'folder', params: { slug: sharedSlug || image.folderSlug } }"
             :aria-label="t('post.viewer.openFolder')"
           >
             <Avatar
@@ -352,14 +352,14 @@
         </div>
 
         <!-- Description -->
-        <div v-if="!cinema || caption || authStore.canManageLibrary" class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
+        <div v-if="!cinema || caption || !sharedSlug && authStore.canManageLibrary" class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
           <div class="flex items-start gap-[0.35rem]">
             <p v-if="!cinema || caption" class="viewer__sidebar-caption m-0 text-text">
               <strong v-if="!cinema" class="mr-[0.35rem]">{{ displayFolderTitle }}</strong>
               {{ caption }}
             </p>
             <button
-              v-if="authStore.canManageLibrary"
+              v-if="!sharedSlug && authStore.canManageLibrary"
               class="inline-flex items-center justify-center mt-[0.05rem] w-6 h-6 p-0 border-0 rounded-full bg-transparent text-muted cursor-pointer transition-colors hover:text-text"
               type="button"
               :aria-label="t('post.viewer.editCaption')"
@@ -452,9 +452,10 @@
           class="viewer__sidebar-actions flex items-center justify-between gap-3 px-5 pt-[0.7rem] pb-5 mt-auto"
         >
           <div class="viewer__sidebar-actions-group flex items-center gap-[0.55rem]">
+            <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="image.id" />
             <!-- Like -->
             <button
-              v-if="authStore.canUseSavedItems"
+              v-if="!sharedSlug && authStore.canUseSavedItems"
               class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer transition-[opacity,transform,color] duration-180 hover:opacity-72 hover:-translate-y-px disabled:opacity-45 disabled:cursor-wait disabled:transform-none"
               :class="{ 'text-[#e5484d]': likesStore.isLiked(image.id) }"
               type="button"
@@ -474,7 +475,7 @@
               />
             </button>
             <CollectionBookmark
-              v-if="image"
+              v-if="image && !sharedSlug"
               :item="image"
               placement="viewer"
             />
@@ -483,7 +484,7 @@
           <div class="viewer__sidebar-actions-group flex items-center gap-[0.55rem]">
             <!-- Set as cover -->
             <button
-              v-if="authStore.canManageLibrary"
+              v-if="!sharedSlug && authStore.canManageLibrary"
               class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer text-text transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px disabled:opacity-45 disabled:cursor-wait disabled:transform-none"
               type="button"
               :aria-label="t('post.viewer.setAsCover')"
@@ -493,15 +494,15 @@
             >
               <span :class="[isCurrentCover ? 'i-fluent-folder-add-20-filled text-accent' : 'i-fluent-folder-add-20-regular', 'w-[1.5rem] h-[1.5rem]']" aria-hidden="true" />
             </button>
-            <MobileMediaShare v-if="(activeMediaItem?.mediaType ?? image?.mediaType) === 'image'" :url="downloadOriginalMediaUrl" />
+            <MobileMediaShare v-if="(activeMediaItem?.mediaType ?? image?.mediaType) === 'image'" :url="downloadOriginalMediaUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
             <!-- Download original -->
             <a
               class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer text-text transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
               :class="{ 'photo-download-desktop': (activeMediaItem?.mediaType ?? image?.mediaType) === 'image' }"
               :href="downloadOriginalMediaUrl"
               download
-              :aria-label="t('post.viewer.downloadOriginalFile')"
-              :title="t('post.viewer.downloadOriginalFile')"
+              :aria-label="t(sharedSlug ? 'post.viewer.download' : 'post.viewer.downloadOriginalFile')"
+              :title="t(sharedSlug ? 'post.viewer.download' : 'post.viewer.downloadOriginalFile')"
             >
               <svg
                 class="w-[1.55rem] h-[1.55rem]"
@@ -524,8 +525,8 @@
               :href="originalMediaUrl"
               target="_blank"
               rel="noreferrer"
-              :aria-label="t('post.viewer.openOriginalFile')"
-              :title="t('post.viewer.openOriginalFile')"
+              :aria-label="t(sharedSlug ? 'post.viewer.openFile' : 'post.viewer.openOriginalFile')"
+              :title="t(sharedSlug ? 'post.viewer.openFile' : 'post.viewer.openOriginalFile')"
             >
               <svg
                 class="w-[1.55rem] h-[1.55rem]"
@@ -560,7 +561,7 @@
             </a>
             <!-- Delete -->
             <button
-              v-if="authStore.canDeleteMedia"
+              v-if="!sharedSlug && authStore.canDeleteMedia"
               class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer text-[#d93025] transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px disabled:opacity-45 disabled:cursor-wait disabled:transform-none"
               type="button"
               :aria-label="t('post.viewer.deletePost')"
@@ -620,6 +621,7 @@
   import { formatExifDetails } from '../utils/media-details'
   import { resolveDisplayCaption } from "../utils/caption"
   import { formatFolderTitle } from "../utils/folder-titles"
+  import SharedFavoriteButton from './SharedFavoriteButton.vue';
   import MobileMediaShare from './MobileMediaShare.vue';
   import { getOriginalMediaDownloadUrl, getOriginalMediaUrl } from "../utils/original-media"
   import Avatar from "./Avatar.vue"
@@ -635,6 +637,7 @@
     folder?: FolderSummary | null
     cinema?: boolean
     isModal?: boolean
+    sharedSlug?: string
     deleting?: boolean
   }>()
 
@@ -691,8 +694,8 @@
     }
     return props.image?.filename ?? ''
   })
-  const originalMediaUrl = computed(() => activeMediaItem.value?.originalUrl ?? (activeMediaImageId.value ? getOriginalMediaUrl(activeMediaImageId.value) : ""))
-  const downloadOriginalMediaUrl = computed(() => activeMediaImageId.value ? getOriginalMediaDownloadUrl(activeMediaImageId.value) : "")
+  const originalMediaUrl = computed(() => props.sharedSlug ? activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "" : activeMediaItem.value?.originalUrl ?? (activeMediaImageId.value ? getOriginalMediaUrl(activeMediaImageId.value) : ""))
+  const downloadOriginalMediaUrl = computed(() => props.sharedSlug ? activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "" : activeMediaImageId.value ? getOriginalMediaDownloadUrl(activeMediaImageId.value) : "")
   const MODAL_SIDEBAR_COLLAPSE_BREAKPOINT = 960
   const SHEET_SWIPE_MIN_DISTANCE = 56
   const SHEET_SWIPE_MAX_HORIZONTAL_DISTANCE = 96
@@ -856,7 +859,7 @@
     () => props.isModal === true && isSidebarCollapsible.value,
   )
   const isLikesNavigationContext = computed(() => {
-    if (props.isModal !== true || !appStore.imageModalBackgroundPath) {
+    if (props.sharedSlug || props.isModal !== true || !appStore.imageModalBackgroundPath) {
       return false
     }
 
@@ -1509,8 +1512,8 @@
 
     navigationLockedUntil.value = Date.now() + NAVIGATION_COOLDOWN_MS
     await router.push({
-      name: "image",
-      params: { id: String(targetId) },
+      name: props.sharedSlug ? "shared-post" : "image",
+      params: props.sharedSlug ? { slug: props.sharedSlug, id: String(targetId) } : { id: String(targetId) },
       query: route.query,
     })
   }

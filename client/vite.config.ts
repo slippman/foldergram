@@ -87,6 +87,8 @@ export default defineConfig(async ({ command, mode }) => {
       port: resolvedDevClientPort,
       proxy: {
         '/api': `http://localhost:${devServerPort}`,
+        '/share/': `http://localhost:${devServerPort}`,
+        '/share-preview/': `http://localhost:${devServerPort}`,
         '/thumbnails': `http://localhost:${devServerPort}`,
         '/previews': `http://localhost:${devServerPort}`
       }

@@ -8,6 +8,7 @@ vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
   return {
     ...actual,
+    useRouter: () => ({ resolve: () => ({ name: 'shared-folder', params: { slug: 'travel-2024' }, query: {} }) }),
     useRoute: () => ({
       fullPath: '/share/travel-2024',
       hash: '',
@@ -19,6 +20,28 @@ vi.mock('vue-router', async () => {
 describe('SharedFolderView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+  });
+
+  it('uses the shared album theme without loading global settings', async () => {
+    const { useShareStore } = await import('../stores/share');
+    const store = useShareStore();
+    vi.spyOn(store, 'loadAccess').mockImplementation(async () => {
+      store.access = { exists: true, granted: true, hasPassword: false, publicAccess: false };
+      return store.access;
+    });
+    vi.spyOn(store, 'loadFolder').mockImplementation(async () => {
+      store.folder = { id: 1, slug: 'travel-2024', name: 'Travel', description: null,
+        imageCount: 1, postCount: 1, videoCount: 0, avatarThumbnailUrl: null,
+        sortTimestamp: 0, displayTheme: 'cinema' };
+      store.loading = true;
+    });
+    const wrapper = mount(SharedFolderView, {
+      props: { slug: 'travel-2024' },
+      global: { stubs: { Avatar: true, FolderGrid: true, InfiniteLoader: true, RouterLink: true } }
+    });
+    await flushPromises();
+    expect(wrapper.findComponent({ name: 'FolderGrid' }).props('variant')).toBe('cinema');
+    expect(wrapper.findComponent({ name: 'FolderGrid' }).props('sharedSlug')).toBe('travel-2024');
   });
 
   it('renders password prompt when access is not yet granted and folder requires password', async () => {

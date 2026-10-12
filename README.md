@@ -42,7 +42,19 @@ GPS coordinates and internal file paths remain hidden from public JSON responses
 Original downloads and native photo shares preserve the source file, including
 any embedded location metadata; JSON redaction does not sanitize those files.
 On desktop, click a navigation icon to expand the sidebar, and click outside to
-collapse it. Admins can create album shares from the album menu.
+collapse it. Admins can create album shares from the album menu. New share links
+include an album-cover and title preview for messaging apps. The preview credential
+allows only that cover and title; it cannot unlock the album. Expiring or revoking
+the link stops further preview requests, though messaging apps may retain cached
+previews. Link previews require a server reachable by the messaging service;
+internal-only development addresses cannot be fetched by external crawlers.
+Configure the public HTTPS address in `CSRF_TRUSTED_ORIGINS` so generated image
+URLs use a trusted host. Existing links keep working; create a new link to include
+the message preview. Shared links
+follow the current Album theme, including Cinema's grid, scrolling hints, video
+controls, photo zoom, and camera Info. Shared-album favorites stay in the visitor's
+browser. Shared downloads and native sharing use scoped previews, without giving
+access to originals, other albums, or admin controls.
 On phones, photo controls offer native file sharing when supported, with the
 iPhone or Android share icon. Browsers without file sharing offer Download
 instead; desktop controls retain Download. Sharing requires HTTPS, and large

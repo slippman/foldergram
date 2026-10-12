@@ -306,6 +306,7 @@ export interface FolderShareAccessState {
 }
 
 export interface SharedFolderSummary {
+  displayTheme?: 'classic' | 'cinema';
   id: number;
   slug: string;
   name: string;
@@ -333,12 +334,17 @@ export interface SharedFeedItem {
   thumbnailUrl: string;
   previewUrl: string;
   sortTimestamp: number;
+  takenAt?: number | null;
+  takenAtSource?: 'exif' | 'mtime' | 'first_seen' | 'sort_timestamp' | null;
   postType?: PostType;
   itemCount?: number;
   mediaItems?: PostMediaItem[];
 }
 
 export interface SharedImageDetail {
+  displayTheme?: 'classic' | 'cinema';
+  fileSize?: number;
+  exif?: ImageExifData | null;
   id: number;
   folderId: number;
   folderSlug: string;
@@ -355,6 +361,8 @@ export interface SharedImageDetail {
   thumbnailUrl: string;
   previewUrl: string;
   sortTimestamp: number;
+  takenAt?: number | null;
+  takenAtSource?: 'exif' | 'mtime' | 'first_seen' | 'sort_timestamp' | null;
   nextImageId: number | null;
   previousImageId: number | null;
   postType?: PostType;

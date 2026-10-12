@@ -948,6 +948,8 @@
       },
       "videoType": "视频（{mimeType}）",
       "setAsCover": "设为文件夹封面",
+      "download": "下载文件",
+      "openFile": "打开文件",
       "downloadOriginalFile": "下载原始文件",
       "openOriginalFile": "打开原始文件",
       "deletePost": "删除帖子",

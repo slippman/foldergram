@@ -72,7 +72,7 @@ function cinemaTileStyle(item: FeedItem | SharedFeedItem) {
 
 function buildImageRoute(id: number) {
   if (props.variant === 'cinema') {
-    return { name: 'folder', params: route.params, query: { ...route.query, view: 'scroll', photo: String(id) } };
+    return { name: props.sharedSlug ? 'shared-folder' : 'folder', params: props.sharedSlug ? { slug: props.sharedSlug } : route.params, query: { ...route.query, view: 'scroll', photo: String(id) } };
   }
   if (props.sharedSlug) {
     return {

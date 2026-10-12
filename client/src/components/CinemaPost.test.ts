@@ -29,6 +29,29 @@ function render(overrides: Partial<FeedItem> = {}) {
 
 describe('CinemaPost', () => {
   beforeEach(() => { setActivePinia(createPinia()); mockRoute.name = 'folder'; });
+  it('uses the shared Info API and preview download even in an admin session', async () => {
+    const normalFetch = vi.spyOn(galleryApi, 'fetchImage');
+    const sharedFetch = vi.spyOn(galleryApi, 'fetchSharedPost').mockResolvedValue({
+      ...item, mimeType: 'image/jpeg', fileSize: 1048576, displayTheme: 'cinema',
+      exif: { cameraMake: 'Apple', cameraModel: 'iPhone' }, nextImageId: null, previousImageId: null
+    });
+    const wrapper = render();
+    await wrapper.setProps({ sharedSlug: 'trip' });
+    expect(wrapper.find('button[aria-label="Edit caption"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-pressed]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-pressed]').attributes('aria-label')).toBe('Favorite post');
+    expect(wrapper.get('a[download]').attributes('href')).toBe('/preview.jpg');
+    await wrapper.get('button[aria-controls]').trigger('click');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(sharedFetch).toHaveBeenCalledWith(1);
+    expect(normalFetch).not.toHaveBeenCalled();
+    expect(wrapper.get('.cinema-post__info').text()).toContain('Apple iPhone');
+    const photo = wrapper.findAllComponents({ name: 'RouterLink' })[0];
+    expect(photo.props('to')).toMatchObject({ name: 'shared-post', params: { slug: 'trip', id: '1' } });
+    normalFetch.mockRestore();
+    sharedFetch.mockRestore();
+  });
+
   it('does not show filenames or indexing dates as captions or capture dates', () => {
     const wrapper = render();
     expect(wrapper.text()).not.toContain('PXL');

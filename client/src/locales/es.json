@@ -948,6 +948,8 @@
       },
       "videoType": "Video ({mimeType})",
       "setAsCover": "Establecer como portada de la carpeta",
+      "download": "Descargar archivo",
+      "openFile": "Abrir archivo",
       "downloadOriginalFile": "Descargar archivo original",
       "openOriginalFile": "Abrir archivo original",
       "deletePost": "Eliminar publicación",

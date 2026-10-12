@@ -1,21 +1,26 @@
 <template>
-  <main class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
+  <section v-if="isCinema" class="shared-cinema-viewer">
+    <ErrorState v-if="shareStore.imageError" :title="t('share.postErrorTitle')" :message="shareStore.imageError" />
+    <PostViewer v-else-if="viewerImage" :image="viewerImage" :folder="viewerFolder" :shared-slug="slug" cinema is-modal @close="close" />
+    <p v-else class="p-6 text-center">{{ t('common.loading') }}</p>
+  </section>
+  <main v-else class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
     <section class="mx-auto grid w-full max-w-[72rem] gap-5">
       <RouterLink
         class="inline-flex w-fit items-center gap-2 rounded-[0.8rem] border border-border bg-surface px-3 py-2 text-[0.86rem] font-semibold text-text no-underline hover:bg-surface-hover"
-        :to="{ name: 'shared-folder', params: { slug } }"
+        :to="{ name: 'shared-folder', params: { slug }, query: isCinema ? { view: 'scroll', photo: id } : {} }"
       >
         <span class="i-fluent-chevron-left-20-regular h-5 w-5" aria-hidden="true" />
         {{ t('share.backToFolder') }}
       </RouterLink>
 
-      <ErrorState v-if="shareStore.error" :title="t('share.postErrorTitle')" :message="shareStore.error" />
+      <ErrorState v-if="shareStore.imageError" :title="t('share.postErrorTitle')" :message="shareStore.imageError" />
 
       <section v-else-if="shareStore.image" class="relative">
         <RouterLink
           v-if="shareStore.image.previousImageId"
           class="shared-post-nav shared-post-nav--previous"
-          :to="{ name: 'shared-post', params: { slug, id: String(shareStore.image.previousImageId) } }"
+          :to="{ name: 'shared-post', params: { slug, id: String(shareStore.image.previousImageId) }, query: isCinema ? { cinema: '1' } : {} }"
           :aria-label="t('post.viewer.previous')"
         >
           <span class="i-fluent-chevron-left-20-regular h-5 w-5" aria-hidden="true" />
@@ -23,7 +28,7 @@
         <RouterLink
           v-if="shareStore.image.nextImageId"
           class="shared-post-nav shared-post-nav--next"
-          :to="{ name: 'shared-post', params: { slug, id: String(shareStore.image.nextImageId) } }"
+          :to="{ name: 'shared-post', params: { slug, id: String(shareStore.image.nextImageId) }, query: isCinema ? { cinema: '1' } : {} }"
           :aria-label="t('post.viewer.next')"
         >
           <span class="i-fluent-chevron-right-20-regular h-5 w-5" aria-hidden="true" />
@@ -54,7 +59,7 @@
               :alt="shareStore.image.filename"
             />
           </div>
-          <aside class="grid content-start gap-4 p-5">
+          <aside v-if="!isCinema" class="grid content-start gap-4 p-5">
             <div class="grid gap-1">
               <h1 class="m-0 text-[1.05rem] font-semibold tracking-[-0.02em]">{{ shareStore.image.folderName }}</h1>
               <p class="m-0 break-words text-[0.9rem] text-muted">{{ resolveDisplayCaption(shareStore.image) }}</p>
@@ -85,10 +90,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { RouterLink, useRoute } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
+import PostViewer from '../components/PostViewer.vue';
+import { sharedImageDetail } from '../utils/shared-media';
 import ErrorState from '../components/ErrorState.vue';
 import CarouselMediaStage from '../components/CarouselMediaStage.vue';
 import ResilientImage from '../components/ResilientImage.vue';
@@ -99,11 +106,29 @@ import { formatMediaDuration } from '../utils/media';
 const props = defineProps<{
   slug: string;
   id: string;
+  modal?: boolean;
 }>();
 
 const { t } = useI18n();
+const emit = defineEmits<{ close: [] }>();
+const router = useRouter();
 const route = useRoute();
 const shareStore = useShareStore();
+const isCinema = computed(() => (shareStore.image?.folderSlug === props.slug ? shareStore.image.displayTheme : shareStore.folder?.slug === props.slug ? shareStore.folder.displayTheme : 'classic') === 'cinema');
+const viewerImage = computed(() => shareStore.image?.folderSlug === props.slug ? sharedImageDetail(shareStore.image) : null);
+const viewerFolder = computed(() => shareStore.folder?.slug === props.slug && shareStore.folder ? { ...shareStore.folder, folderPath: '', breadcrumb: null, latestImageMtimeMs: null, avatarImageId: null, avatarUrl: shareStore.folder.avatarThumbnailUrl } : null);
+function handleEscape(event: KeyboardEvent) {
+  if (props.modal || !isCinema.value || event.key !== 'Escape' || event.defaultPrevented) return;
+  if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+  event.preventDefault();
+  close();
+}
+onMounted(() => window.addEventListener('keydown', handleEscape));
+onUnmounted(() => window.removeEventListener('keydown', handleEscape));
+function close() {
+  if (props.modal) { emit('close'); return; }
+  void router.replace({ name: 'shared-folder', params: { slug: props.slug }, query: isCinema.value ? { view: 'scroll', photo: props.id } : {} });
+}
 const imageId = computed(() => Number(props.id));
 const carouselIndex = ref(0);
 const isCarousel = computed(() => shareStore.image?.postType === 'carousel' && (shareStore.image.mediaItems?.length ?? 0) > 1);
@@ -120,6 +145,8 @@ watch(() => [props.slug, imageId.value] as const, loadImage, { immediate: true }
 </script>
 
 <style scoped>
+.shared-cinema-viewer { width: 100%; height: 100dvh; }
+.shared-cinema-viewer :deep(.viewer) { width: 100%; }
 .shared-post-nav {
   position: fixed;
   top: 50%;

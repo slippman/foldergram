@@ -681,7 +681,7 @@ router.post(
 
     response.status(201).json({
       ok: true,
-      shareUrl: `/share/${encodeURIComponent(created.folder.slug)}#token=${encodeURIComponent(created.rawToken)}`,
+      shareUrl: `/share/${encodeURIComponent(created.folder.slug)}?preview=${encodeURIComponent(folderShareService.createPreviewToken(created.link.id))}#token=${encodeURIComponent(created.rawToken)}`,
       link: created.link
     });
   }

@@ -1,3 +1,4 @@
+import { publicCameraMetadata } from '../utils/public-media-metadata.js';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
 import path from 'node:path';
@@ -585,9 +586,10 @@ function mapSharedMediaItem(item: PostMediaItem, derivativeVersion: string | nul
     isAnimated: Boolean(item.isAnimated),
     thumbnailUrl: buildShareThumbnailUrl(item.imageId, derivativeVersion),
     previewUrl: buildSharePreviewUrl(item.imageId, derivativeVersion),
-    playbackStrategy: item.playbackStrategy ?? 'preview',
+    playbackStrategy: 'preview',
     mimeType: item.mimeType,
-    fileSize: item.fileSize
+    fileSize: item.fileSize,
+    exif: publicCameraMetadata(item.exif) as PostMediaItem['exif']
   };
 }
 
@@ -610,6 +612,8 @@ function mapSharedFeedImage(image: IndexedFeedImage, derivativeVersion = getDeri
     thumbnailUrl: buildShareThumbnailUrl(representativeImageId, derivativeVersion),
     previewUrl: buildSharePreviewUrl(representativeImageId, derivativeVersion),
     sortTimestamp: image.sortTimestamp,
+    takenAt: image.takenAt,
+    takenAtSource: image.takenAtSource,
     postType: image.postType ?? 'single',
     itemCount: image.itemCount ?? (mediaItems.length || 1),
     mediaItems: mediaItems.map((item) => mapSharedMediaItem(item, derivativeVersion))
@@ -668,6 +672,9 @@ function mapSharedImageDetail(image: IndexedImageDetail, derivativeVersion = get
   const mediaItems = image.mediaItems ?? [];
   const representativeImageId = mediaItems[0]?.imageId ?? image.id;
   return {
+    displayTheme: getFolderDisplayTheme(),
+    fileSize: image.fileSize,
+    exif: publicCameraMetadata(image.exif) as SharedImageDetail['exif'],
     id: image.id,
     folderId: image.folderId,
     folderSlug: image.folderSlug,
@@ -684,6 +691,8 @@ function mapSharedImageDetail(image: IndexedImageDetail, derivativeVersion = get
     thumbnailUrl: buildShareThumbnailUrl(representativeImageId, derivativeVersion),
     previewUrl: buildSharePreviewUrl(representativeImageId, derivativeVersion),
     sortTimestamp: image.sortTimestamp,
+    takenAt: image.takenAt,
+    takenAtSource: image.takenAtSource,
     nextImageId: image.nextImageId,
     previousImageId: image.previousImageId,
     postType: image.postType ?? 'single',
@@ -761,6 +770,7 @@ function buildSharedFolderSummary(folder: FolderSummaryRecord): SharedFolderSumm
   const summary = buildFolderSummary(folder);
 
   return {
+    displayTheme: getFolderDisplayTheme(),
     id: summary.id,
     slug: summary.slug,
     name: summary.name,

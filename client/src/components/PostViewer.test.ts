@@ -200,6 +200,23 @@ describe('PostViewer', () => {
     document.body.innerHTML = '';
   });
 
+  it('keeps shared viewer actions and keyboard navigation inside the album', async () => {
+    const image = { ...createImageDetail(12, { previousImageId: 11, nextImageId: 13 }),
+      previewUrl: '/api/share/images/12/preview', originalUrl: '' };
+    const wrapper = mount(PostViewer, {
+      props: { image, sharedSlug: 'animal-planet', cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    expect(wrapper.find('button[aria-label="Edit caption"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Delete post"]').exists()).toBe(false);
+    expect(wrapper.findComponent({ name: 'CollectionBookmark' }).exists()).toBe(false);
+    expect(wrapper.get('a[download]').attributes('href')).toBe(image.previewUrl);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await flushPromises();
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'shared-post', params: { slug: 'animal-planet', id: '13' }, query: mockRouteQuery });
+  });
+
   it('uses the normal media shell for wide carousel photos without resizing when slides change', async () => {
     const image = {
       ...createImageDetail(12, { previousImageId: null, nextImageId: null }),

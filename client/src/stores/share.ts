@@ -20,6 +20,8 @@ interface ShareState {
   folder: SharedFolderSummary | null;
   images: SharedFeedItem[];
   image: SharedImageDetail | null;
+  loadingImage: boolean;
+  imageError: string | null;
   page: number;
   limit: number;
   hasMore: boolean;
@@ -30,6 +32,7 @@ interface ShareState {
 }
 
 let shareLoadToken = 0;
+let imageLoadToken = 0;
 
 export const useShareStore = defineStore('share', {
   state: (): ShareState => ({
@@ -37,6 +40,8 @@ export const useShareStore = defineStore('share', {
     folder: null,
     images: [],
     image: null,
+    loadingImage: false,
+    imageError: null,
     page: 1,
     limit: 24,
     hasMore: true,
@@ -48,10 +53,13 @@ export const useShareStore = defineStore('share', {
   actions: {
     reset() {
       shareLoadToken += 1;
+      imageLoadToken += 1;
       this.access = null;
       this.folder = null;
       this.images = [];
       this.image = null;
+      this.loadingImage = false;
+      this.imageError = null;
       this.page = 1;
       this.hasMore = true;
       this.loading = false;
@@ -132,29 +140,29 @@ export const useShareStore = defineStore('share', {
     },
 
     async loadImage(id: number, mediaType?: 'image' | 'video', options: { legacyImageAlias?: boolean } = {}) {
-      const requestToken = ++shareLoadToken;
-      this.loading = true;
-      this.error = null;
+      const requestToken = ++imageLoadToken;
+      this.loadingImage = true;
+      this.imageError = null;
 
       try {
         const image = options.legacyImageAlias
           ? await fetchSharedImage(id, mediaType)
           : await fetchSharedPost(id, mediaType);
-        if (requestToken !== shareLoadToken) {
+        if (requestToken !== imageLoadToken) {
           return;
         }
 
         this.image = image;
       } catch (error) {
-        if (requestToken !== shareLoadToken) {
+        if (requestToken !== imageLoadToken) {
           return;
         }
 
         this.image = null;
-        this.error = error instanceof Error ? error.message : 'Unable to load this shared post.';
+        this.imageError = error instanceof Error ? error.message : 'Unable to load this shared post.';
       } finally {
-        if (requestToken === shareLoadToken) {
-          this.loading = false;
+        if (requestToken === imageLoadToken) {
+          this.loadingImage = false;
         }
       }
     }

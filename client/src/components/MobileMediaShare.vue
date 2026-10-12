@@ -1,6 +1,6 @@
 <template>
   <span class="mobile-media-share">
-    <a v-if="!supportsSharing" class="media-action" :href="url" download :aria-label="t('post.viewer.downloadOriginalFile')" :title="t('post.viewer.downloadOriginalFile')"><span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" /></a>
+    <a v-if="!supportsSharing" class="media-action" :href="url" download :aria-label="t(downloadLabel ?? 'post.viewer.downloadOriginalFile')" :title="t(downloadLabel ?? 'post.viewer.downloadOriginalFile')"><span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" /></a>
     <button v-else type="button" class="media-action" :disabled="loading" :aria-label="label" :title="label" @click="share">
       <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <template v-if="isAndroid"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.7 7.6-4.4m-7.6 7 7.6 4.4"/></template>
@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-const props = defineProps<{ url: string }>();
+const props = defineProps<{ url: string; downloadLabel?: string }>();
 const { t } = useI18n();
 const isAndroid = /Android/i.test(navigator.userAgent);
 const supportsSharing = ref(Boolean(typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [new File([''], 'photo.jpg', { type: 'image/jpeg' })] })));
