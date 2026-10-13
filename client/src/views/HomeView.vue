@@ -198,7 +198,7 @@
           />
         </div>
         <div class="w-full max-w-[29.375rem] mx-auto">
-          <InfiniteLoader :loading="feedStore.loading" :has-more="feedStore.hasMore" @load-more="feedStore.loadMore" />
+          <InfiniteLoader :loading="feedStore.loading" :has-more="feedStore.hasMore" :show-complete="!isCinema" @load-more="feedStore.loadMore" />
         </div>
       </template>
 

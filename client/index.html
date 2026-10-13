@@ -20,7 +20,16 @@
       rel="stylesheet"
     />
     <title>Foldergram</title>
+    <script>
+      if (/^\/(share|f)\//.test(window.location.pathname)) document.documentElement.classList.add('shared-album-entry');
+    </script>
     <style>
+      :root { --ur-logo-filter: none; --ur-logo-blend: multiply; }
+      :root[data-theme="dark"] { --ur-logo-filter: invert(1) contrast(1.05); --ur-logo-blend: screen; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) { --ur-logo-filter: invert(1) contrast(1.05); --ur-logo-blend: screen; }
+        :root:not([data-theme="light"]).shared-album-entry #fg-splash { background: #0c1014; color: #8a96a9; }
+      }
       /* ── Splash screen — shown before Vue boots ──────────────────── */
       #fg-splash {
         position: fixed;
@@ -55,6 +64,18 @@
         animation: fg-splash-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
       }
 
+      .fg-splash__album { display: none; }
+      .shared-album-entry #fg-splash { background: var(--bg, #fafafa); color: var(--muted, #666); }
+      .shared-album-entry .fg-splash__ring, .shared-album-entry .fg-splash__logo { display: none; }
+      .shared-album-entry .fg-splash__album { display: flex; flex-direction: column; align-items: center; gap: 1rem; font: 0.95rem Inter, sans-serif; }
+      .fg-splash__album img { mix-blend-mode: var(--ur-logo-blend, multiply); filter: var(--ur-logo-filter, none); width: 144px; height: 144px; object-fit: contain; background: white; border-radius: 1rem; }
+      .fg-splash__album p { margin: 0; }
+      .fg-splash__indicator { width: 5rem; height: 3px; border-radius: 2px; background: var(--border, #ddd); overflow: hidden; }
+      .fg-splash__indicator::after { content: ''; display: block; width: 40%; height: 100%; background: var(--muted, #666); border-radius: inherit; animation: fg-album-loading 1.4s ease-in-out infinite alternate; }
+      .fg-splash__retry { padding: 0.55rem 1rem; border: 1px solid currentColor; border-radius: 0.6rem; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+      .fg-splash__retry[hidden] { display: none; }
+      @keyframes fg-album-loading { from { transform: translateX(0); } to { transform: translateX(150%); } }
+      @media (prefers-reduced-motion: reduce) { .fg-splash__indicator::after { animation: none; width: 100%; opacity: 0.5; } }
       @keyframes fg-splash-pop {
         from { opacity: 0; transform: scale(0.72); }
         to   { opacity: 1; transform: scale(1); }
@@ -67,7 +88,13 @@
   </head>
   <body>
     <!-- Branded splash: visible immediately, removed once Vue mounts -->
-    <div id="fg-splash" aria-hidden="true">
+    <div id="fg-splash" role="status" aria-live="polite">
+      <div class="fg-splash__album">
+        <img src="/branding/ur-logo-4e4dc1180945.png" width="144" height="144" alt="UR" />
+        <p>Loading album…</p>
+        <span class="fg-splash__indicator" aria-hidden="true"></span>
+        <button class="fg-splash__retry" type="button" hidden onclick="window.location.reload()">Retry loading album</button>
+      </div>
       <div class="fg-splash__ring"></div>
       <svg class="fg-splash__logo" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -88,25 +115,103 @@
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
     <script>
-      // Fade out splash once Vue has rendered its first element
+      // Album routes explicitly signal readiness; mounting an intermediate shell is insufficient.
       (function () {
-        var splash = document.getElementById('fg-splash');
-        var app = document.getElementById('app');
-        if (!splash || !app) return;
-        var observer = new MutationObserver(function () {
-          if (app.childElementCount > 0) {
-            observer.disconnect();
+        var initialSplash = document.getElementById('fg-splash');
+        if (!initialSplash) return;
+        var splashTemplate = initialSplash.cloneNode(true);
+        function run() {
+          var splash = document.getElementById('fg-splash');
+          var app = document.getElementById('app');
+          if (!splash || !app) return;
+          var albumEntry = document.documentElement.classList.contains('shared-album-entry');
+          var finishing = false;
+          function showRetry(message) {
+            var text = splash.querySelector('.fg-splash__album p');
+            var retry = splash.querySelector('.fg-splash__retry');
+            var indicator = splash.querySelector('.fg-splash__indicator');
+            if (text) text.textContent = message;
+            if (retry) retry.hidden = false;
+            if (indicator) indicator.hidden = true;
+          }
+          var startupDeadline = setTimeout(function () {
+            showRetry('This album is taking longer to load. Please try again.');
+          }, 20000);
+          function getImages(element) {
+            return Array.from(element.querySelectorAll('img')).filter(function (img) {
+              return img.getAttribute('src') || img.getAttribute('srcset');
+            });
+          }
+          function waitForImage(img) {
+            return new Promise(function (resolve, reject) {
+              var poll;
+              var wasConnected = img.isConnected;
+              function cleanup() {
+                clearInterval(poll);
+                img.removeEventListener('load', loaded);
+                img.removeEventListener('error', failed);
+              }
+              function loaded() {
+                cleanup();
+                if (img.naturalWidth) resolve();
+                else reject(new Error('Image unavailable'));
+              }
+              function failed() { cleanup(); reject(new Error('Image unavailable')); }
+              function check() {
+                if (wasConnected && !img.isConnected) { cleanup(); resolve(); return; }
+                if (img.complete) loaded();
+              }
+              // Observe before releasing lazy loading; cached reloads may omit a fresh event.
+              img.addEventListener('load', loaded);
+              img.addEventListener('error', failed);
+              poll = setInterval(check, 100);
+              img.loading = 'eager';
+              check();
+            });
+          }
+          function finish() {
+            if (finishing) return;
+            var state = app.querySelector('[data-album-state]');
+            if (!app.childElementCount || (albumEntry && (!state || state.dataset.albumState === 'loading'))) return;
+            finishing = true;
             requestAnimationFrame(function () {
-              requestAnimationFrame(function () {
+              var images = albumEntry && state.dataset.albumState === 'ready'
+                ? getImages(state) : [];
+              var posters = albumEntry && state.dataset.albumState === 'ready'
+                ? Array.from(state.querySelectorAll('[data-album-poster]')).map(function (post) {
+                    var img = new Image(); img.src = post.dataset.albumPoster; return img;
+                  }) : [];
+              Promise.all(images.concat(posters).map(waitForImage)).then(function () {
+                var current = app.querySelector('[data-album-state]');
+                if (albumEntry && (!current || current.dataset.albumState === 'loading')) { finishing = false; finish(); return; }
+                // Pagination may have appended a batch while readiness was being checked.
+                if (albumEntry && current.dataset.albumState === 'ready' && getImages(current).some(function (img) { return !img.complete || !img.naturalWidth; })) {
+                  finishing = false; finish(); return;
+                }
+                clearTimeout(startupDeadline);
+                observer.disconnect();
                 splash.classList.add('fg-splash--out');
                 setTimeout(function () {
-                  if (splash.parentNode) splash.parentNode.removeChild(splash);
+                  splash.remove();
+                  window.dispatchEvent(new Event('foldergram:album-ready'));
                 }, 340);
+              }).catch(function () {
+                clearTimeout(startupDeadline);
+                showRetry('Some images could not load. Please try again.');
               });
             });
           }
+          var observer = new MutationObserver(finish);
+          observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-album-state'] });
+          finish();
+        }
+        window.addEventListener('foldergram:album-view-loading', function () {
+          if (document.getElementById('fg-splash')) return;
+          document.documentElement.classList.add('shared-album-entry');
+          document.body.appendChild(splashTemplate.cloneNode(true));
+          requestAnimationFrame(run);
         });
-        observer.observe(app, { childList: true });
+        run();
       })();
     </script>
   </body>

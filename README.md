@@ -39,7 +39,7 @@ Album grids open into a vertical scroll with adjacent-image previews. Clicking a
 photo opens a screen-filling viewer; Close or Escape returns to the album. Camera
 and exposure details are available through Info, including for public viewers;
 GPS coordinates and internal file paths remain hidden from public JSON responses.
-Original downloads and native photo shares preserve the source file, including
+Original downloads and native file shares preserve the source file, including
 any embedded location metadata; JSON redaction does not sanitize those files.
 On desktop, click a navigation icon to expand the sidebar, and click outside to
 collapse it. Admins can create album shares from the album menu. New share links
@@ -55,10 +55,10 @@ follow the current Album theme, including Cinema's grid, scrolling hints, video
 controls, photo zoom, and camera Info. Shared-album favorites stay in the visitor's
 browser. Shared downloads and native sharing use scoped previews, without giving
 access to originals, other albums, or admin controls.
-On phones, photo controls offer native file sharing when supported, with the
-iPhone or Android share icon. Browsers without file sharing offer Download
+On phones, photo and video controls offer native file sharing when supported,
+with the same Foldergram share icon. Browsers without file sharing offer Download
 instead; desktop controls retain Download. Sharing requires HTTPS, and large
-photos may need a second tap after the original file is prepared.
+files may need a second tap after the file is prepared.
 Mobile Cinema uses a stable viewport height to avoid resizing media as browser
 toolbars move; Info shows the same camera details in scroll and zoom views.
 

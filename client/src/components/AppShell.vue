@@ -191,6 +191,8 @@ onMounted(() => {
 }
 
 .app-shell--cinema {
+  --ur-logo-filter: none;
+  --ur-logo-blend: multiply;
   color-scheme: light dark;
   background: var(--bg);
   color: var(--text);
@@ -209,6 +211,8 @@ onMounted(() => {
 
 @media (prefers-color-scheme: dark) {
   .app-shell--cinema {
+    --ur-logo-filter: invert(1) contrast(1.05);
+    --ur-logo-blend: screen;
     --bg: #000;
     --surface: #111;
     --surface-alt: #080808;

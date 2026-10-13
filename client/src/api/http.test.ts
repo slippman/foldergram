@@ -4,6 +4,7 @@ import { requestJson } from './http';
 
 describe('requestJson', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -26,6 +27,16 @@ describe('requestJson', () => {
     );
   });
 
+  it('aborts a stalled safe read and reports a retryable timeout', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_input, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    })));
+    const response = requestJson('/api/auth/status');
+    const assertion = expect(response).rejects.toMatchObject({ status: 408, message: 'Loading took too long. Please try again.' });
+    await vi.advanceTimersByTimeAsync(15000);
+    await assertion;
+  });
   it('preserves an explicit cache mode when one is provided', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

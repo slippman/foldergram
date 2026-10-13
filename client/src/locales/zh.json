@@ -850,6 +850,11 @@
     }
   },
   "share": {
+    "albumOverview": "相册概览",
+    "browseHint": "点击任意照片或视频以放大查看，然后滚动浏览相册。",
+    "loadingAlbum": "正在加载相册…",
+    "poweredBy": "由 Foldergram 提供支持",
+
     "loadingEyebrow": "文件夹共享",
     "loadingTitle": "正在打开共享文件夹",
     "passwordEyebrow": "文件夹共享",

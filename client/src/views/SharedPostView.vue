@@ -1,10 +1,10 @@
 <template>
-  <section v-if="isCinema" class="shared-cinema-viewer">
+  <section :data-album-state="shareStore.imageError ? 'settled' : viewerImage ? 'ready' : 'loading'" v-if="isCinema" class="shared-cinema-viewer">
     <ErrorState v-if="shareStore.imageError" :title="t('share.postErrorTitle')" :message="shareStore.imageError" />
     <PostViewer v-else-if="viewerImage" :image="viewerImage" :folder="viewerFolder" :shared-slug="slug" cinema is-modal @close="close" />
     <p v-else class="p-6 text-center">{{ t('common.loading') }}</p>
   </section>
-  <main v-else class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
+  <main :data-album-state="shareStore.imageError ? 'settled' : viewerImage ? 'ready' : 'loading'" v-else class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
     <section class="mx-auto grid w-full max-w-[72rem] gap-5">
       <RouterLink
         class="inline-flex w-fit items-center gap-2 rounded-[0.8rem] border border-border bg-surface px-3 py-2 text-[0.86rem] font-semibold text-text no-underline hover:bg-surface-hover"

@@ -850,6 +850,11 @@
     }
   },
   "share": {
+    "albumOverview": "Vista del álbum",
+    "browseHint": "Toca una foto o un vídeo para verlo más grande y luego desplázate por el álbum.",
+    "loadingAlbum": "Cargando álbum…",
+    "poweredBy": "Con tecnología de Foldergram",
+
     "loadingEyebrow": "Carpeta compartida",
     "loadingTitle": "Abriendo carpeta compartida",
     "passwordEyebrow": "Carpeta compartida",

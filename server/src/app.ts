@@ -24,6 +24,14 @@ export function applyApiNoStoreHeaders(response: Pick<express.Response, 'setHead
 export function createApp() {
   const app = express();
 
+  // Public, versioned branding only; library media retains its own access/cache policy.
+  app.use('/branding', express.static(path.join(repositoryRoot, 'client', appConfig.nodeEnv === 'production' ? 'dist' : 'public', 'branding'), {
+    maxAge: '1y', immutable: true, dotfiles: 'deny'
+  }));
+  app.use('/branding', (_request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    response.status(404).end();
+  });
   app.use(express.json());
   app.use(sharePreviewRouter);
 

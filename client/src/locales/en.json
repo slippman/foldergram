@@ -850,6 +850,11 @@
     }
   },
   "share": {
+    "albumOverview": "Album overview",
+    "browseHint": "Tap any photo or video to view it larger, then scroll through the album.",
+    "loadingAlbum": "Loading album…",
+    "poweredBy": "Powered by Foldergram",
+
     "loadingEyebrow": "Folder Share",
     "loadingTitle": "Opening shared folder",
     "passwordEyebrow": "Folder Share",

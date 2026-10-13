@@ -1,9 +1,10 @@
 import net from 'node:net';
+import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import UnoCSS from 'unocss/vite';
 import vue from '@vitejs/plugin-vue';
 import { vite as vidstack } from 'vidstack/plugins';
@@ -64,6 +65,21 @@ export default defineConfig(async ({ command, mode }) => {
       __INTLIFY_PROD_DEVTOOLS__: JSON.stringify(false)
     },
     plugins: [
+      {
+        name: 'foldergram-dev-fresh-modules',
+        apply: 'serve',
+        configureServer(server) {
+          server.middlewares.use((request, _response, next) => {
+            const pathname = request.url?.split('?')[0] ?? '';
+            if (['/src/', '/node_modules/', '/@', '/__uno'].some(prefix => pathname.startsWith(prefix))) {
+              // Avoid cached module revalidation stalls after interrupted mobile reloads.
+              delete request.headers['if-none-match'];
+              delete request.headers['if-modified-since'];
+            }
+            next();
+          });
+        }
+      } satisfies Plugin,
       UnoCSS(),
       vidstack({
         include: /src\/components\//
@@ -82,10 +98,18 @@ export default defineConfig(async ({ command, mode }) => {
       }
     },
     server: {
+      headers: { 'Cache-Control': 'no-store' },
       host: devHost,
       allowedHosts: env.DEV_ALLOWED_HOSTS?.split(',').map(host => host.trim()).filter(Boolean),
       port: resolvedDevClientPort,
       proxy: {
+        '/branding': {
+          target: `http://localhost:${devServerPort}`,
+          // Vite's asset imports are JS modules, not the public PNG response.
+          bypass(request: IncomingMessage) {
+            if (new URL(request.url ?? '/', 'http://localhost').searchParams.has('import')) return request.url;
+          }
+        },
         '/api': `http://localhost:${devServerPort}`,
         '/share/': `http://localhost:${devServerPort}`,
         '/share-preview/': `http://localhost:${devServerPort}`,

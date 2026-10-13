@@ -50,15 +50,19 @@ describe('mobile photo sharing', () => {
     expect(share).toHaveBeenCalledOnce();
     expect(fetch).toHaveBeenCalledOnce();
   });
-  it('uses Android’s connected-dot icon', () => {
-    vi.stubGlobal('navigator', { userAgent: 'Android', share: vi.fn(), canShare: vi.fn().mockReturnValue(true) });
-    expect(mountButton().findAll('circle')).toHaveLength(3);
+  it.each(['Android', 'iPhone'])('uses the standard Foldergram share icon on %s', userAgent => {
+    vi.stubGlobal('navigator', { userAgent, share: vi.fn(), canShare: vi.fn().mockReturnValue(true) });
+    expect(mountButton().find('.i-fluent-share-20-regular').exists()).toBe(true);
   });
-  it('uses the upward-arrow share icon on iPhone', () => {
-    vi.stubGlobal('navigator', { userAgent: 'iPhone', share: vi.fn(), canShare: vi.fn().mockReturnValue(true) });
+  it('shares video files with the same action', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { share, canShare: vi.fn().mockReturnValue(true), userActivation: { isActive: true } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('video', { headers: { 'Content-Type': 'video/mp4' } })));
     const wrapper = mountButton();
-    expect(wrapper.findAll('circle')).toHaveLength(0);
-    expect(wrapper.find('svg path').exists()).toBe(true);
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => expect(share).toHaveBeenCalled());
+    expect(share.mock.calls[0][0].files[0].type).toBe('video/mp4');
+    expect(wrapper.find('.i-fluent-share-20-regular').exists()).toBe(true);
   });
   it('falls back to downloading when file sharing is unavailable', async () => {
     vi.stubGlobal('navigator', {});

@@ -42,6 +42,39 @@ describe('SharedFolderView', () => {
     await flushPromises();
     expect(wrapper.findComponent({ name: 'FolderGrid' }).props('variant')).toBe('cinema');
     expect(wrapper.findComponent({ name: 'FolderGrid' }).props('sharedSlug')).toBe('travel-2024');
+    expect(wrapper.findComponent({ name: 'InfiniteLoader' }).props('showComplete')).toBe(false);
+    expect(wrapper.find('.album-header').exists()).toBe(true);
+    expect(wrapper.text()).toContain('UnReeled Photos');
+    expect(wrapper.find('.shared-album-brand__logo').exists()).toBe(false);
+  });
+
+  it('keeps one loading display while access succeeds and the album is still pending', async () => {
+    const { useShareStore } = await import('../stores/share');
+    const store = useShareStore();
+    window.history.replaceState(null, '', '/share/travel-2024#token=test-token');
+    const access = vi.spyOn(store, 'loadAccess').mockImplementation(async () => {
+      store.access = { exists: true, granted: true, hasPassword: false, publicAccess: false };
+      return store.access;
+    });
+    vi.spyOn(store, 'unlockLink').mockImplementation(async () => { await store.loadAccess('travel-2024'); });
+    let finish!: () => void;
+    vi.spyOn(store, 'loadFolder').mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    const wrapper = mount(SharedFolderView, {
+      props: { slug: 'travel-2024' },
+      global: { stubs: { ErrorState: { template: '<div class="error-state" />' }, RouterLink: true } }
+    });
+    const loading = wrapper.get('[role="status"]').element;
+    await flushPromises();
+    expect(access).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('[role="status"]').element).toBe(loading);
+    expect(wrapper.text()).toContain('Loading album…');
+    expect(wrapper.find('.error-state').exists()).toBe(false);
+    store.error = 'Album unavailable';
+    finish();
+    await flushPromises();
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+    expect(wrapper.find('.error-state').exists()).toBe(true);
+    wrapper.unmount();
   });
 
   it('renders password prompt when access is not yet granted and folder requires password', async () => {

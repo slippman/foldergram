@@ -128,7 +128,7 @@
                 <p v-if="link.status === 'active' && !link.canCopy" class="m-0 text-[0.78rem] text-muted">{{ t('folder.shareModal.legacyLinkHint') }}</p>
               </div>
               <div class="flex gap-2">
-                <button v-if="link.canCopy" class="share-icon-button cursor-pointer" type="button" :title="t('common.copy')" :aria-label="t('common.copy')" @click="copyExistingLink(link.id)">
+                <button v-if="link.canCopy" class="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[0.7rem] border border-border bg-surface px-3 text-[0.82rem] font-semibold text-text transition-all hover:bg-surface-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text/30 cursor-pointer" type="button" :title="t('common.copy')" :aria-label="t('common.copy')" @click="copyExistingLink(link.id)">
                   <span class="i-fluent-copy-20-regular h-4.5 w-4.5" aria-hidden="true" />
                   {{ t('common.copy') }}
                 </button>

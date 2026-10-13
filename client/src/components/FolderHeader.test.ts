@@ -110,6 +110,19 @@ describe('FolderHeader', () => {
     expect(viewerWrapper.find('button[aria-label="Share folder"]').exists()).toBe(false);
   });
 
+  it('uses the same header for shares without exposing admin controls or private paths', () => {
+    const folder = createFolder();
+    const wrapper = mount(FolderHeader, {
+      props: { folder, shared: true },
+      global: { stubs: { FolderProfileModal: true, FolderShareModal: true } }
+    });
+    expect(wrapper.findComponent({ name: 'AlbumHeader' }).props('title')).toBe(folder.name);
+    expect(wrapper.text()).toContain('UnReeled Photos');
+    expect(wrapper.find('button[aria-label="Share folder"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Edit');
+    expect(wrapper.text()).not.toContain(folder.folderPath);
+  });
+
   it('keeps the description expanded during same-folder description edits', async () => {
     const wrapper = mount(FolderHeader, {
       props: {

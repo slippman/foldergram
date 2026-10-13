@@ -77,7 +77,11 @@ async function bootstrap() {
     await router.replace({ name: 'home' });
   }
 
-  router.afterEach((to) => {
+  router.afterEach((to, from) => {
+    if ((to.name === 'folder' || to.name === 'shared-folder') && to.name === from.name
+      && to.params.slug === from.params.slug && to.query.view !== from.query.view) {
+      window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    }
     if (to.name === 'folder' && typeof to.params.slug === 'string') {
       appStore.recordOpenedFolder(to.params.slug);
     }
