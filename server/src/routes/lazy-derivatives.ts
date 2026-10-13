@@ -123,8 +123,11 @@ async function sendDerivativeFile(
   }
 
   if (options?.jpeg) {
-    const jpeg = await sharp(absolutePath).flatten({ background: '#ffffff' }).jpeg({ quality: 85 }).toBuffer();
-    if (response.destroyed) return 'aborted';
+    const jpeg = await generationLimit(async () => {
+      if (response.destroyed) return null;
+      return sharp(absolutePath).flatten({ background: '#ffffff' }).jpeg({ quality: 85 }).toBuffer();
+    });
+    if (!jpeg || response.destroyed) return 'aborted';
     response.type('jpeg').send(jpeg);
     return 'sent';
   }
