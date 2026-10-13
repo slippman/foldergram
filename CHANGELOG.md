@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.2-slippman.1.2.0 — 2026-10-12
+
+### New features
+
+- Copy an existing active album share link from the admin share menu without replacing it or changing its expiry. Links created before this update still work, but need a one-time replacement to enable copying.
+
+### Bug fixes
+
+- Album-cover link previews now serve a JPEG image with explicit image-type metadata to improve compatibility with messaging apps.
+- Cinema photos show “Loading image…” while downloading and an error message if loading fails after retries.
+- Longer fork version numbers no longer overlap the sidebar logo.
+
 ## 1.2.2-slippman.1.1.0 — 2026-10-11
 
 ### New features

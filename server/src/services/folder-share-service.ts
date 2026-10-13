@@ -1,7 +1,10 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 import type express from 'express';
 
+import { appConfig } from '../config/env.js';
 import { SHARE_SESSION_SECRET_SETTING_KEY } from '../constants/app-setting-keys.js';
 import {
   appSettingsRepository,
@@ -41,6 +44,7 @@ interface PasswordShareSessionPayload {
 type ShareSessionPayload = LinkShareSessionPayload | PasswordShareSessionPayload;
 
 export interface PublicFolderShareLink {
+  canCopy: boolean;
   id: number;
   folderId: number;
   tokenPrefix: string | null;
@@ -230,9 +234,38 @@ function isLinkUsable(link: FolderShareLinkRecord, now = Date.now()): boolean {
   return link.revoked_at === null && !isLinkExpired(link, now);
 }
 
+// Separate from preview/session signatures. The secret makes the token
+// recoverable by the admin without storing a plaintext album credential.
+function recoverLinkToken(link: FolderShareLinkRecord, secret = getLinkRecoverySecret()): string {
+  return signValue(`album-link:v1:${link.id}:${link.folder_id}:${link.created_at}`, secret);
+}
+
+function getLinkRecoverySecret(): Buffer {
+  const directory = path.join(appConfig.dataRoot, 'secrets');
+  const filename = path.join(directory, 'share-link-recovery.key');
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  try {
+    writeFileSync(filename, randomBytes(32), { flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
+  const secret = readFileSync(filename);
+  if (secret.length !== 32) throw new Error('Invalid share link recovery key');
+  return secret;
+}
+
 function mapShareLink(link: FolderShareLinkRecord, now = new Date()): PublicFolderShareLink {
+  let canCopy = false;
+  if (isLinkUsable(link, now.getTime())) {
+    try {
+      canCopy = hashShareToken(recoverLinkToken(link)) === link.token_hash;
+    } catch {
+      // Key failures must not block listing or revoking existing links.
+    }
+  }
   return {
     id: link.id,
+    canCopy,
     folderId: link.folder_id,
     tokenPrefix: link.token_prefix,
     expiresAt: link.expires_at,
@@ -342,12 +375,17 @@ export const folderShareService = {
       return null;
     }
 
-    const rawToken = randomBytes(TOKEN_BYTE_LENGTH).toString('base64url');
-    const link = folderShareLinkRepository.create({
+    const secret = getLinkRecoverySecret();
+    const reservationToken = randomBytes(TOKEN_BYTE_LENGTH).toString('base64url');
+    let rawToken = '';
+    const link = folderShareLinkRepository.createWithToken({
       folderId: folder.id,
-      tokenHash: hashShareToken(rawToken),
-      tokenPrefix: rawToken.slice(0, TOKEN_PREFIX_LENGTH),
+      tokenHash: hashShareToken(reservationToken),
+      tokenPrefix: reservationToken.slice(0, TOKEN_PREFIX_LENGTH),
       expiresAt: options.expiresAt ? options.expiresAt.toISOString() : null
+    }, (reserved) => {
+      rawToken = recoverLinkToken(reserved, secret);
+      return { tokenHash: hashShareToken(rawToken), tokenPrefix: rawToken.slice(0, TOKEN_PREFIX_LENGTH) };
     });
 
     return {
@@ -359,6 +397,15 @@ export const folderShareService = {
 
   createPreviewToken(linkId: number): string {
     return `${linkId}.${signValue(`cover-preview:${linkId}`, getShareSessionSecret())}`;
+  },
+
+  copyLink(slug: string, linkId: number): string | null {
+    const folder = folderRepository.getNormalBySlug(slug);
+    const link = folderShareLinkRepository.getById(linkId);
+    if (!folder || !link || link.folder_id !== folder.id || !isLinkUsable(link)) return null;
+    const token = recoverLinkToken(link);
+    if (hashShareToken(token) !== link.token_hash) return null;
+    return `/share/${encodeURIComponent(slug)}?preview=${encodeURIComponent(this.createPreviewToken(linkId))}#token=${encodeURIComponent(token)}`;
   },
 
   getPreviewFolder(slug: string, token: unknown): FolderRecord | null {

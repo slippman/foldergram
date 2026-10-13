@@ -11,7 +11,7 @@
         @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" />
       <RouterLink v-else custom :to="photoRoute" v-slot="{ href, navigate }">
         <a class="cinema-post__photo" :href="href" :aria-label="t('folder.cinema.openPhoto')" @click="openPhoto($event, navigate)">
-      <ResilientImage :src="item.previewUrl" :fallback-src="media?.originalUrl"
+      <ResilientImage show-loading :src="item.previewUrl" :fallback-src="media?.originalUrl"
         :alt="item.caption || ''" :width="item.width" :height="item.height" loading="lazy"
         :retry-while="appStore.isScanning" />
         </a>
@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
 .cinema-post { --cinema-viewport-height: 100dvh; --cinema-viewport-reserve: 17rem; scroll-margin-top: 3.75rem; margin: 0 0 1.25rem; color: var(--text); }
 .cinema-post__media { margin: 0 auto; max-height: calc(var(--cinema-viewport-height) - var(--cinema-viewport-reserve)); background: var(--surface-alt); }
 .cinema-post__media :deep(img), .cinema-post__media :deep(video) { width: 100%; height: 100%; object-fit: contain; }
-.cinema-post__photo { display: block; width: 100%; height: 100%; cursor: zoom-in; }
+.cinema-post__photo { position: relative; display: block; width: 100%; height: 100%; cursor: zoom-in; }
 .cinema-post__photo:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .cinema-post__details { margin: 0 auto; text-align: center; padding: 0.6rem 0 0; }
 .cinema-post__caption { margin: 0 0 0.35rem; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }

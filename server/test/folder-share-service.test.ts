@@ -96,7 +96,7 @@ describe.sequential('folder share service', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('stores only a token hash and returns the raw token only in the created URL payload', () => {
+  it('stores a token hash and can recover the same active link without rotating it', async () => {
     folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
 
     const created = folderShareService.createLink('family', {
@@ -112,6 +112,52 @@ describe.sequential('folder share service', () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].token_hash).not.toBe(created!.rawToken);
     expect(stored[0].token_hash).not.toContain(created!.rawToken);
+    expect(created!.link.canCopy).toBe(true);
+    const firstCopy = folderShareService.copyLink('family', created!.link.id);
+    expect(firstCopy).toContain(`#token=${created!.rawToken}`);
+    expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
+    expect(folderShareService.copyLink('other', created!.link.id)).toBeNull();
+    const keyPath = path.join(tempRoot, 'data/secrets/share-link-recovery.key');
+    expect((await fs.stat(keyPath)).mode & 0o777).toBe(0o600);
+    const key = await fs.readFile(keyPath);
+    expect(key).toHaveLength(32);
+    await fs.writeFile(keyPath, Buffer.alloc(32));
+    expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
+    await fs.writeFile(keyPath, key);
+    expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
+    folderShareService.revokeLink('family', created!.link.id);
+    expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
+  });
+
+  it('does not reserve links when the recovery key is invalid', async () => {
+    const folder = folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
+    await fs.mkdir(path.join(tempRoot, 'data/secrets'), { recursive: true });
+    await fs.writeFile(path.join(tempRoot, 'data/secrets/share-link-recovery.key'), 'invalid');
+    expect(() => folderShareService.createLink('family', { expiresAt: null })).toThrow('Invalid share link recovery key');
+    expect(folderShareLinkRepository.listByFolder(folder.id)).toHaveLength(0);
+  });
+
+  it('keeps listing and revocation available when the recovery key is invalid', async () => {
+    folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
+    const created = folderShareService.createLink('family', { expiresAt: null })!;
+    await fs.writeFile(path.join(tempRoot, 'data/secrets/share-link-recovery.key'), 'invalid');
+    expect(folderShareService.listLinks('family')!.links[0].canCopy).toBe(false);
+    expect(folderShareService.verifyLinkToken('family', created.rawToken)).not.toBeNull();
+    expect(folderShareService.revokeLink('family', created.link.id)!.status).toBe('revoked');
+  });
+
+  it('rolls back reservations when storing the final token fails', () => {
+    const folder = folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
+    const update = vi.spyOn(folderShareLinkRepository, 'updateToken').mockImplementationOnce(() => {
+      throw new Error('Token update failed');
+    });
+    try {
+      expect(() => folderShareService.createLink('family', { expiresAt: null })).toThrow('Token update failed');
+      expect(folderShareLinkRepository.listByFolder(folder.id)).toHaveLength(0);
+    } finally {
+      update.mockRestore();
+    }
+    expect(folderShareService.createLink('family', { expiresAt: null })!.link.canCopy).toBe(true);
   });
 
   it('creates a folder-scoped share session from a valid token', () => {

@@ -125,16 +125,23 @@
                 <p class="m-0 text-[0.78rem] text-muted">
                   {{ t('folder.shareModal.linkMeta', { prefix: link.tokenPrefix ?? 'unknown', date: formatDate(link.createdAt) }) }}
                 </p>
+                <p v-if="link.status === 'active' && !link.canCopy" class="m-0 text-[0.78rem] text-muted">{{ t('folder.shareModal.legacyLinkHint') }}</p>
               </div>
-              <button
-                class="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[0.7rem] border border-rose-500/25 bg-surface px-3 text-[0.82rem] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:bg-rose-500/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 cursor-pointer"
-                type="button"
-                :disabled="link.status === 'revoked' || foldersStore.loadingShare"
-                @click="revokeLink(link.id)"
-              >
-                <span class="i-fluent-prohibited-20-regular h-4.5 w-4.5" aria-hidden="true" />
-                {{ t('folder.shareModal.revoke') }}
-              </button>
+              <div class="flex gap-2">
+                <button v-if="link.canCopy" class="share-icon-button cursor-pointer" type="button" :title="t('common.copy')" :aria-label="t('common.copy')" @click="copyExistingLink(link.id)">
+                  <span class="i-fluent-copy-20-regular h-4.5 w-4.5" aria-hidden="true" />
+                  {{ t('common.copy') }}
+                </button>
+                <button
+                  class="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[0.7rem] border border-rose-500/25 bg-surface px-3 text-[0.82rem] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:bg-rose-500/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 cursor-pointer"
+                  type="button"
+                  :disabled="link.status === 'revoked' || foldersStore.loadingShare"
+                  @click="revokeLink(link.id)"
+                >
+                  <span class="i-fluent-prohibited-20-regular h-4.5 w-4.5" aria-hidden="true" />
+                  {{ t('folder.shareModal.revoke') }}
+                </button>
+              </div>
             </article>
             <p v-if="!foldersStore.loadingShare && foldersStore.shareLinks.length === 0" class="m-0 py-1 text-[0.86rem] text-muted text-center">
               {{ t('folder.shareModal.noLinks') }}
@@ -214,6 +221,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useFoldersStore } from '../stores/folders';
+import { copyFolderShareLink } from '../api/gallery';
 import type { FolderShareExpirationPreset, FolderShareLinkStatus, FolderSummary } from '../types/api';
 
 const props = defineProps<{
@@ -303,12 +311,13 @@ function statusClass(status: FolderShareLinkStatus) {
 
 async function copyText(value: string | null) {
   if (!value) {
-    return;
+    return false;
   }
 
   try {
     await navigator.clipboard.writeText(value);
     localError.value = null;
+    return true;
   } catch {
     const textArea = document.createElement('textarea');
     textArea.value = value;
@@ -316,8 +325,23 @@ async function copyText(value: string | null) {
     textArea.style.opacity = '0';
     document.body.append(textArea);
     textArea.select();
-    document.execCommand('copy');
-    textArea.remove();
+    try {
+      return document.execCommand('copy');
+    } finally {
+      textArea.remove();
+    }
+  }
+}
+
+async function copyExistingLink(linkId: number) {
+  try {
+    const { shareUrl } = await copyFolderShareLink(props.folder.slug, linkId);
+    foldersStore.lastCreatedShareUrl = shareUrl;
+    const copied = await copyText(toAbsoluteUrl(shareUrl));
+    localError.value = null;
+    localNotice.value = t(copied ? 'folder.shareModal.notices.linkCopied' : 'folder.shareModal.notices.copyManually');
+  } catch (error) {
+    localError.value = error instanceof Error ? error.message : t('folder.shareModal.copyLinkError');
   }
 }
 

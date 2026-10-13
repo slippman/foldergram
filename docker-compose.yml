@@ -15,6 +15,7 @@ services:
     volumes:
       - ./data/gallery:/app/data/gallery
       - ./data/db:/app/data/db
+      - ./data/secrets:/app/data/secrets
       - ./data/thumbnails:/app/data/thumbnails
       - ./data/previews:/app/data/previews
     restart: unless-stopped

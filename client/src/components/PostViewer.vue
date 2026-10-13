@@ -276,6 +276,7 @@
           :style="mediaShellStyle"
         >
           <ResilientImage
+            show-loading
             class="viewer__media-image"
             :src="image.previewUrl"
             :fallback-src="image.originalUrl"

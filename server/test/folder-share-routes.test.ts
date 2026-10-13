@@ -239,7 +239,7 @@ describe.sequential('folder share API routes', () => {
     expect(page.body).toContain('og:title');
     expect(page.body).toContain('Trip &lt;script&gt;');
     expect(page.body).not.toContain('Trip <script>');
-    expect(page.body).toContain(`/share-preview/folder-a/cover?preview=${preview}`);
+    expect(page.body).toContain(`/share-preview/folder-a/cover.jpg?preview=${preview}`);
     expect(page.headers.get('referrer-policy')).toBe('no-referrer');
     const { galleryService } = await import('../src/services/gallery-service.js');
     const coverImage = galleryService.getShareDerivativeImage(galleryService.getFolderBySlug('folder-a')!.avatarImageId!)!;
@@ -248,7 +248,14 @@ describe.sequential('folder share API routes', () => {
     await sharp({ create: { width: 32, height: 32, channels: 3, background: '#334455' } }).webp().toFile(coverPath);
     const cover = await requestApp(app, 'GET', `/share-preview/folder-a/cover?preview=${preview}`);
     expect(cover.status).toBe(200);
-    expect(cover.headers.get('content-type')).toContain('image/');
+    expect(cover.headers.get('content-type')).toContain('image/jpeg');
+    expect((await sharp(cover.bytes).metadata()).format).toBe('jpeg');
+    expect(cover.headers.get('cache-control')).toContain('no-store');
+    expect(page.body).toContain('property="og:image:type" content="image/jpeg"');
+    const repeatedCover = await requestApp(app, 'GET', `/share-preview/folder-a/cover.jpg?preview=${preview}`);
+    expect(repeatedCover.status).toBe(200);
+    expect(repeatedCover.headers.get('content-type')).toContain('image/jpeg');
+    expect(repeatedCover.bytes.equals(cover.bytes)).toBe(true);
     expect((await requestApp(app, 'GET', `/api/share/folders/folder-a?preview=${preview}`)).status).toBe(401);
     expect(folderShareService.verifyLinkToken('folder-a', preview)).toBeNull();
     expect((await requestApp(app, 'GET', `/share-preview/folder-b/cover?preview=${preview}`)).status).toBe(404);
@@ -280,6 +287,30 @@ describe.sequential('folder share API routes', () => {
     const expired = folderShareService.createLink('folder-a', { expiresAt: new Date(Date.now() - 1000) })!;
     expect(folderShareService.getPreviewFolder('folder-a', folderShareService.createPreviewToken(expired.link.id))).toBeNull();
     expect(folder.id).toBe(link.folder.id);
+  });
+
+  it('lets only admins re-copy an active link without replacing its token', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
+    const copyPath = `/api/admin/folders/folder-a/share-links/${link.link.id}/copy`;
+    const intent = { 'x-foldergram-intent': '1' };
+    expect((await requestApp(app, 'POST', copyPath, intent)).status).toBe(401);
+    const mockResponse = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockResponse as any, { secure: false, get: () => undefined } as any, 'viewer');
+    const viewerCookie = mockResponse.cookie.mock.calls.at(-1)?.[1];
+    expect((await requestApp(app, 'POST', copyPath, { ...intent, Cookie: `foldergram_session=${viewerCookie}` })).status).toBe(403);
+    authService.setAuthenticatedSession(mockResponse as any, { secure: false, get: () => undefined } as any, 'admin');
+    const cookie = mockResponse.cookie.mock.calls.at(-1)?.[1];
+    const headers = { ...intent, Cookie: `foldergram_session=${cookie}` };
+    const copy = await requestApp(app, 'POST', copyPath, headers);
+    expect(copy.status).toBe(200);
+    expect(copy.headers.get('cache-control')).toContain('no-store');
+    expect(copy.body.shareUrl).toContain(`#token=${link.rawToken}`);
+    expect((await requestApp(app, 'POST', copyPath, headers)).body.shareUrl).toBe(copy.body.shareUrl);
+    expect((await requestApp(app, 'POST', copyPath.replace('folder-a', 'folder-b'), headers)).status).toBe(404);
+    expect((await requestApp(app, 'POST', copyPath, { ...headers, Origin: 'https://evil.example' })).status).toBe(403);
+    folderShareService.revokeLink('folder-a', link.link.id);
+    expect((await requestApp(app, 'POST', copyPath, headers)).status).toBe(404);
   });
 
   it('rejects share session cookies on admin endpoints with 401 and viewer cookies with 403', async () => {

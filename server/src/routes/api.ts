@@ -687,6 +687,21 @@ router.post(
   }
 );
 
+router.post(
+  '/admin/folders/:slug/share-links/:linkId/copy',
+  requireCapability('canManageLibrary', 'Admin access is required.'),
+  (request, response) => {
+    response.setHeader('Cache-Control', 'private, no-store');
+    const params = slugSchema.merge(shareLinkIdSchema).parse(request.params);
+    const shareUrl = folderShareService.copyLink(params.slug, params.linkId);
+    if (!shareUrl) {
+      response.status(404).json({ message: 'This link cannot be copied. Create a new link.' });
+      return;
+    }
+    response.json({ shareUrl });
+  }
+);
+
 router.delete(
   '/admin/folders/:slug/share-links/:linkId',
   requireCapability('canManageLibrary', 'Admin access is required.'),

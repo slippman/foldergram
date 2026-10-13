@@ -21,7 +21,9 @@
       "itemCountOther": "{count} elementos",
       "latestDate": "Último {date}",
       "noRecentActivity": "Sin actividad reciente"
-    }
+    },
+    "loadingImage": "Cargando imagen…",
+    "imageLoadFailed": "No se pudo cargar la imagen"
   },
   "app": {
     "authLoading": {
@@ -818,14 +820,18 @@
         "passwordEnabled": "Acceso con contraseña habilitado.",
         "passwordEnabledWithLinks": "Acceso con contraseña habilitado. Los enlaces existentes siguen funcionando sin contraseña.",
         "passwordRemoved": "Acceso con contraseña eliminado.",
-        "passwordRemovedWithLinks": "Acceso con contraseña eliminado. Los enlaces activos siguen funcionando."
+        "passwordRemovedWithLinks": "Acceso con contraseña eliminado. Los enlaces activos siguen funcionando.",
+        "linkCopied": "Enlace copiado",
+        "copyManually": "Selecciona el enlace de abajo para copiarlo"
       },
       "errors": {
         "createLink": "No se pudo crear el enlace.",
         "savePassword": "No se pudo guardar la contraseña de la carpeta.",
         "revokeLink": "No se pudo revocar el enlace compartido.",
         "removePassword": "No se pudo eliminar el acceso con contraseña."
-      }
+      },
+      "legacyLinkHint": "Enlace anterior: crea un reemplazo una vez para poder copiarlo",
+      "copyLinkError": "No se pudo copiar el enlace"
     },
     "tabs": {
       "posts": "Publicaciones",

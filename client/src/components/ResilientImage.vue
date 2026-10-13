@@ -1,5 +1,6 @@
 <template>
   <img
+    v-bind="$attrs"
     v-if="resolvedSrc"
     :src="resolvedSrc"
     :alt="alt"
@@ -10,14 +11,22 @@
     @load="handleLoad"
     @error="handleError"
   />
+  <span v-if="showLoading && !loaded" class="image-loading" role="status">
+    {{ t(hiddenUntilRetry && !retryWhile && attempt >= maxRetries ? 'common.imageLoadFailed' : 'common.loadingImage') }}
+  </span>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+defineOptions({ inheritAttrs: false });
+const { t } = useI18n();
 
 const props = withDefaults(
   defineProps<{
     src: string | null;
+    showLoading?: boolean;
     fallbackSrc?: string | null;
     alt: string;
     width?: number;
@@ -134,3 +143,16 @@ watch(
 
 onBeforeUnmount(clearRetryTimer);
 </script>
+
+<style scoped>
+.image-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--color-muted, #888);
+  font-size: 0.875rem;
+}
+</style>

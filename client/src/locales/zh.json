@@ -21,7 +21,9 @@
       "itemCountOther": "{count} 项",
       "latestDate": "最新 {date}",
       "noRecentActivity": "最近没有活动"
-    }
+    },
+    "loadingImage": "正在加载图片…",
+    "imageLoadFailed": "无法加载图片"
   },
   "app": {
     "authLoading": {
@@ -818,14 +820,18 @@
         "passwordEnabled": "密码访问已启用。",
         "passwordEnabledWithLinks": "密码访问已启用。现有共享链接仍无需密码即可使用。",
         "passwordRemoved": "密码访问已移除。",
-        "passwordRemovedWithLinks": "密码访问已移除。有效共享链接仍可使用。"
+        "passwordRemovedWithLinks": "密码访问已移除。有效共享链接仍可使用。",
+        "linkCopied": "链接已复制",
+        "copyManually": "选择下方链接进行复制"
       },
       "errors": {
         "createLink": "无法创建共享链接。",
         "savePassword": "无法保存文件夹密码。",
         "revokeLink": "无法撤销共享链接。",
         "removePassword": "无法移除密码访问。"
-      }
+      },
+      "legacyLinkHint": "旧链接：创建一次替代链接即可启用复制",
+      "copyLinkError": "无法复制链接"
     },
     "tabs": {
       "posts": "帖子",
