@@ -96,7 +96,7 @@ describe.sequential('folder share service', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('stores a token hash and can recover the same active link without rotating it', () => {
+  it('stores a token hash and can recover the same active link without rotating it', async () => {
     folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
 
     const created = folderShareService.createLink('family', {
@@ -117,6 +117,14 @@ describe.sequential('folder share service', () => {
     expect(firstCopy).toContain(`#token=${created!.rawToken}`);
     expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
     expect(folderShareService.copyLink('other', created!.link.id)).toBeNull();
+    const keyPath = path.join(tempRoot, 'data/secrets/share-link-recovery.key');
+    expect((await fs.stat(keyPath)).mode & 0o777).toBe(0o600);
+    const key = await fs.readFile(keyPath);
+    expect(key).toHaveLength(32);
+    await fs.writeFile(keyPath, Buffer.alloc(32));
+    expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
+    await fs.writeFile(keyPath, key);
+    expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
     folderShareService.revokeLink('family', created!.link.id);
     expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
   });

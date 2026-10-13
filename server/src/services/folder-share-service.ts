@@ -1,7 +1,10 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 import type express from 'express';
 
+import { appConfig } from '../config/env.js';
 import { SHARE_SESSION_SECRET_SETTING_KEY } from '../constants/app-setting-keys.js';
 import {
   appSettingsRepository,
@@ -234,7 +237,21 @@ function isLinkUsable(link: FolderShareLinkRecord, now = Date.now()): boolean {
 // Separate from preview/session signatures. The secret makes the token
 // recoverable by the admin without storing a plaintext album credential.
 function recoverLinkToken(link: FolderShareLinkRecord): string {
-  return signValue(`album-link:v1:${link.id}:${link.folder_id}:${link.created_at}`, getShareSessionSecret());
+  return signValue(`album-link:v1:${link.id}:${link.folder_id}:${link.created_at}`, getLinkRecoverySecret());
+}
+
+function getLinkRecoverySecret(): Buffer {
+  const directory = path.join(appConfig.dataRoot, 'secrets');
+  const filename = path.join(directory, 'share-link-recovery.key');
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  try {
+    writeFileSync(filename, randomBytes(32), { flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
+  const secret = readFileSync(filename);
+  if (secret.length !== 32) throw new Error('Invalid share link recovery key');
+  return secret;
 }
 
 function mapShareLink(link: FolderShareLinkRecord, now = new Date()): PublicFolderShareLink {
