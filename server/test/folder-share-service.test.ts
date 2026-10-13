@@ -129,6 +129,28 @@ describe.sequential('folder share service', () => {
     expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
   });
 
+  it('does not reserve links when the recovery key is invalid', async () => {
+    const folder = folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
+    await fs.mkdir(path.join(tempRoot, 'data/secrets'), { recursive: true });
+    await fs.writeFile(path.join(tempRoot, 'data/secrets/share-link-recovery.key'), 'invalid');
+    expect(() => folderShareService.createLink('family', { expiresAt: null })).toThrow('Invalid share link recovery key');
+    expect(folderShareLinkRepository.listByFolder(folder.id)).toHaveLength(0);
+  });
+
+  it('rolls back reservations when storing the final token fails', () => {
+    const folder = folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
+    const update = vi.spyOn(folderShareLinkRepository, 'updateToken').mockImplementationOnce(() => {
+      throw new Error('Token update failed');
+    });
+    try {
+      expect(() => folderShareService.createLink('family', { expiresAt: null })).toThrow('Token update failed');
+      expect(folderShareLinkRepository.listByFolder(folder.id)).toHaveLength(0);
+    } finally {
+      update.mockRestore();
+    }
+    expect(folderShareService.createLink('family', { expiresAt: null })!.link.canCopy).toBe(true);
+  });
+
   it('creates a folder-scoped share session from a valid token', () => {
     authService.setAdminPassword('admin-pass-123');
     const folder = folderRepository.upsert({ slug: 'album', name: 'Album', folderPath: 'album' });

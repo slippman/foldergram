@@ -236,8 +236,8 @@ function isLinkUsable(link: FolderShareLinkRecord, now = Date.now()): boolean {
 
 // Separate from preview/session signatures. The secret makes the token
 // recoverable by the admin without storing a plaintext album credential.
-function recoverLinkToken(link: FolderShareLinkRecord): string {
-  return signValue(`album-link:v1:${link.id}:${link.folder_id}:${link.created_at}`, getLinkRecoverySecret());
+function recoverLinkToken(link: FolderShareLinkRecord, secret = getLinkRecoverySecret()): string {
+  return signValue(`album-link:v1:${link.id}:${link.folder_id}:${link.created_at}`, secret);
 }
 
 function getLinkRecoverySecret(): Buffer {
@@ -367,15 +367,18 @@ export const folderShareService = {
       return null;
     }
 
+    const secret = getLinkRecoverySecret();
     const reservationToken = randomBytes(TOKEN_BYTE_LENGTH).toString('base64url');
-    const reserved = folderShareLinkRepository.create({
+    let rawToken = '';
+    const link = folderShareLinkRepository.createWithToken({
       folderId: folder.id,
       tokenHash: hashShareToken(reservationToken),
       tokenPrefix: reservationToken.slice(0, TOKEN_PREFIX_LENGTH),
       expiresAt: options.expiresAt ? options.expiresAt.toISOString() : null
+    }, (reserved) => {
+      rawToken = recoverLinkToken(reserved, secret);
+      return { tokenHash: hashShareToken(rawToken), tokenPrefix: rawToken.slice(0, TOKEN_PREFIX_LENGTH) };
     });
-    const rawToken = recoverLinkToken(reserved);
-    const link = folderShareLinkRepository.updateToken(reserved.id, hashShareToken(rawToken), rawToken.slice(0, TOKEN_PREFIX_LENGTH));
 
     return {
       folder,

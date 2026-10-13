@@ -3605,6 +3605,19 @@ export const collectionRepository = {
 };
 
 export const folderShareLinkRepository = {
+  createWithToken(input: CreateFolderShareLinkInput, makeToken: (link: FolderShareLinkRecord) => { tokenHash: string; tokenPrefix: string }): FolderShareLinkRecord {
+    database.exec('BEGIN TRANSACTION;');
+    try {
+      const reserved = this.create(input);
+      const token = makeToken(reserved);
+      const link = this.updateToken(reserved.id, token.tokenHash, token.tokenPrefix);
+      database.exec('COMMIT;');
+      return link;
+    } catch (error) {
+      database.exec('ROLLBACK;');
+      throw error;
+    }
+  },
   updateToken(id: number, tokenHash: string, tokenPrefix: string): FolderShareLinkRecord {
     database.prepare('UPDATE folder_share_links SET token_hash = ?, token_prefix = ? WHERE id = ?')
       .run(tokenHash, tokenPrefix, id);
