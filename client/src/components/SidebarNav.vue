@@ -10,16 +10,17 @@
       <span class="w-5 h-5" :class="expanded ? 'i-fluent-chevron-left-20-regular' : 'i-fluent-navigation-20-regular'" aria-hidden="true" />
     </button>
     <RouterLink
-      class="sidebar__brand relative inline-flex items-center justify-center w-12 h-12 p-[0.3rem] rounded-[1rem] color-inherit transition-[background-color,transform,opacity] duration-180 hover:bg-surface-hover hover:-translate-y-px"
+      class="sidebar__brand relative inline-flex items-center justify-center w-12 h-12 mt-3 p-[0.3rem] rounded-[1rem] color-inherit transition-[background-color,transform,opacity] duration-180 hover:bg-surface-hover hover:-translate-y-px"
       to="/"
       @click.stop="emit('update:expanded', true)"
       :aria-label="t('nav.foldergramHome')"
     >
       <span
-        class="pointer-events-none absolute top-[0.16rem] left-1/2 -translate-x-1/2 text-[0.42rem] leading-none tracking-[0.08em] text-muted"
+        class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap text-[0.42rem] leading-tight text-center text-muted"
+        :title="appVersion"
         aria-hidden="true"
       >
-        {{ appVersion }}
+        {{ appVersion.split('-slippman.')[0] }}<template v-if="appVersion.includes('-slippman.')"><br />slippman.{{ appVersion.split('-slippman.')[1] }}</template>
       </span>
       <BrandMark />
     </RouterLink>

@@ -3605,6 +3605,11 @@ export const collectionRepository = {
 };
 
 export const folderShareLinkRepository = {
+  updateToken(id: number, tokenHash: string, tokenPrefix: string): FolderShareLinkRecord {
+    database.prepare('UPDATE folder_share_links SET token_hash = ?, token_prefix = ? WHERE id = ?')
+      .run(tokenHash, tokenPrefix, id);
+    return this.getById(id)!;
+  },
   create(input: CreateFolderShareLinkInput): FolderShareLinkRecord {
     return this.createLink(input);
   },

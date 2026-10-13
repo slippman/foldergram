@@ -3,6 +3,7 @@ import http from 'node:http';
 import type express from 'express';
 
 export interface TestHttpResponse {
+  bytes: Buffer;
   status: number;
   headers: Headers;
   body: any;
@@ -70,6 +71,7 @@ export async function requestTestApp(
             }
 
             resolve({
+              bytes: Buffer.concat(chunks),
               status: response.statusCode ?? 0,
               headers: responseHeaders,
               body: responseBody

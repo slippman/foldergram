@@ -21,7 +21,9 @@
       "itemCountOther": "{count} items",
       "latestDate": "Latest {date}",
       "noRecentActivity": "No recent activity"
-    }
+    },
+    "loadingImage": "Loading image…",
+    "imageLoadFailed": "Unable to load image"
   },
   "app": {
     "authLoading": {
@@ -818,14 +820,18 @@
         "passwordEnabled": "Password access enabled.",
         "passwordEnabledWithLinks": "Password access enabled. Existing share links still work without a password.",
         "passwordRemoved": "Password access removed.",
-        "passwordRemovedWithLinks": "Password access removed. Active share links still work."
+        "passwordRemovedWithLinks": "Password access removed. Active share links still work.",
+        "linkCopied": "Link copied",
+        "copyManually": "Select the link below to copy it"
       },
       "errors": {
         "createLink": "Unable to create share link.",
         "savePassword": "Unable to save folder password.",
         "revokeLink": "Unable to revoke share link.",
         "removePassword": "Unable to remove password access."
-      }
+      },
+      "legacyLinkHint": "Older link — create a replacement once to enable copying",
+      "copyLinkError": "Unable to copy link"
     },
     "tabs": {
       "posts": "Posts",

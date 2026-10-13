@@ -197,6 +197,10 @@ export function fetchFolderShareLinks(slug: string) {
   return requestJson<FolderShareLinksPayload>(`/api/admin/folders/${encodeURIComponent(slug)}/share-links`);
 }
 
+export function copyFolderShareLink(slug: string, linkId: number) {
+  return requestJson<{ shareUrl: string }>(`/api/admin/folders/${encodeURIComponent(slug)}/share-links/${linkId}/copy`, { method: 'POST' });
+}
+
 export function createFolderShareLink(slug: string, input: CreateFolderShareLinkInput) {
   return requestJson<CreateFolderShareLinkResult>(`/api/admin/folders/${encodeURIComponent(slug)}/share-links`, {
     method: 'POST',

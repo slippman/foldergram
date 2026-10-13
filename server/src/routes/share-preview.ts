@@ -49,8 +49,10 @@ sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/
       '<meta name="twitter:card" content="summary_large_image" />'
     ];
     if (summary?.avatarImageId) {
-      const coverUrl = `${origin}/share-preview/${encodeURIComponent(folder.slug)}/cover?preview=${encodeURIComponent(String(request.query.preview))}`;
+      const coverUrl = `${origin}/share-preview/${encodeURIComponent(folder.slug)}/cover.jpg?preview=${encodeURIComponent(String(request.query.preview))}`;
       tags.push(`<meta property="og:image" content="${escapeHtml(coverUrl)}" />`);
+      tags.push('<meta property="og:image:type" content="image/jpeg" />');
+      tags.push(`<meta name="twitter:image" content="${escapeHtml(coverUrl)}" />`);
     }
     html = html.replace('<title>Foldergram</title>', () => `<title>${title}</title>`);
     html = html.replace('</head>', () => `${tags.join('\n')}</head>`);
@@ -62,7 +64,7 @@ sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/
 });
 
 // This credential grants the cover only, never album browsing or originals.
-sharePreviewRouter.get('/share-preview/:slug/cover', async (request, response) => {
+sharePreviewRouter.get(['/share-preview/:slug/cover.jpg', '/share-preview/:slug/cover'], async (request, response) => {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Robots-Tag', 'noindex, nofollow');
   const slug = request.params.slug;
@@ -73,5 +75,5 @@ sharePreviewRouter.get('/share-preview/:slug/cover', async (request, response) =
     response.status(404).end();
     return;
   }
-  await serveDerivativeForImage(response, image, 'thumbnail', { noStore: true });
+  await serveDerivativeForImage(response, image, 'thumbnail', { noStore: true, jpeg: true });
 });

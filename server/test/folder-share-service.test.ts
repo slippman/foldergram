@@ -96,7 +96,7 @@ describe.sequential('folder share service', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('stores only a token hash and returns the raw token only in the created URL payload', () => {
+  it('stores a token hash and can recover the same active link without rotating it', () => {
     folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
 
     const created = folderShareService.createLink('family', {
@@ -112,6 +112,13 @@ describe.sequential('folder share service', () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].token_hash).not.toBe(created!.rawToken);
     expect(stored[0].token_hash).not.toContain(created!.rawToken);
+    expect(created!.link.canCopy).toBe(true);
+    const firstCopy = folderShareService.copyLink('family', created!.link.id);
+    expect(firstCopy).toContain(`#token=${created!.rawToken}`);
+    expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
+    expect(folderShareService.copyLink('other', created!.link.id)).toBeNull();
+    folderShareService.revokeLink('family', created!.link.id);
+    expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
   });
 
   it('creates a folder-scoped share session from a valid token', () => {

@@ -259,6 +259,7 @@ export type FolderShareLinkStatus = 'active' | 'expired' | 'revoked';
 export type FolderShareExpirationPreset = '1h' | '24h' | '7d' | 'custom' | 'unlimited';
 
 export interface FolderShareLink {
+  canCopy?: boolean;
   id: number;
   folderId: number;
   tokenPrefix: string | null;

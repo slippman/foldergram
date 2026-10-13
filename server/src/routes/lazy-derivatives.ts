@@ -1,5 +1,6 @@
 import express from 'express';
 import pLimit from 'p-limit';
+import sharp from 'sharp';
 
 import { appConfig } from '../config/env.js';
 import { imageRepository } from '../db/repositories.js';
@@ -110,15 +111,22 @@ function isConnectionTerminationError(error: unknown): boolean {
   return code === 'ECONNABORTED' || code === 'ECONNRESET' || code === 'ERR_STREAM_PREMATURE_CLOSE';
 }
 
-function sendDerivativeFile(
+async function sendDerivativeFile(
   response: express.Response,
   absolutePath: string,
-  options?: { noStore?: boolean }
+  options?: { noStore?: boolean; jpeg?: boolean }
 ): Promise<SendDerivativeResult> {
   if (options?.noStore) {
     applyNoStoreMediaHeaders(response);
   } else {
     applyProtectedMediaHeaders(response);
+  }
+
+  if (options?.jpeg) {
+    const jpeg = await sharp(absolutePath).flatten({ background: '#ffffff' }).jpeg({ quality: 85 }).toBuffer();
+    if (response.destroyed) return 'aborted';
+    response.type('jpeg').send(jpeg);
+    return 'sent';
   }
 
   return new Promise((resolve, reject) => {
@@ -238,7 +246,7 @@ export async function serveDerivativeForImage(
   response: express.Response,
   imageRecord: ImageRecord,
   kind: 'thumbnail' | 'preview',
-  options?: { noStore?: boolean }
+  options?: { noStore?: boolean; jpeg?: boolean }
 ): Promise<void> {
   const requestedPath = kind === 'thumbnail' ? imageRecord.thumbnail_path : imageRecord.preview_path;
   const rootDir = kind === 'thumbnail' ? appConfig.thumbnailsDir : appConfig.previewsDir;
