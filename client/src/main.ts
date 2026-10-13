@@ -7,6 +7,7 @@ import { canAccessRoute, router } from './router';
 import { useAppStore } from './stores/app';
 import { useAuthStore } from './stores/auth';
 import { pinia } from './stores/pinia';
+import { notifyAlbumLoading } from './utils/album-navigation';
 import './styles/base.css';
 import 'virtual:uno.css';
 
@@ -77,11 +78,8 @@ async function bootstrap() {
     await router.replace({ name: 'home' });
   }
 
-  router.afterEach((to, from) => {
-    if ((to.name === 'folder' || to.name === 'shared-folder') && to.name === from.name
-      && to.params.slug === from.params.slug && to.query.view !== from.query.view) {
-      window.dispatchEvent(new Event('foldergram:album-view-loading'));
-    }
+  router.afterEach(notifyAlbumLoading);
+  router.afterEach((to) => {
     if (to.name === 'folder' && typeof to.params.slug === 'string') {
       appStore.recordOpenedFolder(to.params.slug);
     }

@@ -26,6 +26,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('album startup splash', () => {
+  it.each(['/f/trip', '/folders/trip', '/share/trip'])('recognizes direct album entry at %s', (pathname) => {
+    document.documentElement.classList.remove('shared-album-entry');
+    const entryScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)][0][1];
+    new Function('window', entryScript)({ location: { pathname } });
+    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(true);
+  });
   it('stays through intermediate shells, album data loading, and visible thumbnail loading', async () => {
     start();
     const app = document.getElementById('app')!;
