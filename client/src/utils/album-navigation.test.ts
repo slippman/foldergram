@@ -35,7 +35,7 @@ describe('album navigation loading', () => {
       window.removeEventListener('foldergram:album-view-cancel', cancelled);
     }
   });
-  it.each(['image', 'shared-post'])('preserves the loaded album when closing a %s modal', async (name) => {
+  it.each(['image', 'shared-post', 'shared-image'])('preserves the loaded album when closing a %s modal', async (name) => {
     const router = createRouter({ history: createMemoryHistory(), routes: [
       { path: '/f/:slug', name: 'folder', component: {} },
       { path: '/modal/:id', name, component: {} }
@@ -55,5 +55,19 @@ describe('album navigation loading', () => {
       await router.push('/f/trip?view=scroll');
       expect(loading).toHaveBeenCalledOnce();
     } finally { window.removeEventListener('foldergram:album-view-loading', loading); }
+  });
+  it('cancels loading when leaving the shared image alias', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [
+      { path: '/', name: 'home', component: {} },
+      { path: '/share/:slug/images/:id', name: 'shared-image', component: {} }
+    ] });
+    router.afterEach(notifyAlbumLoading);
+    await router.push('/share/trip/images/1');
+    const cancelled = vi.fn();
+    window.addEventListener('foldergram:album-view-cancel', cancelled);
+    try {
+      await router.push('/');
+      expect(cancelled).toHaveBeenCalledOnce();
+    } finally { window.removeEventListener('foldergram:album-view-cancel', cancelled); }
   });
 });

@@ -1,11 +1,13 @@
 import type { NavigationFailure, RouteLocationNormalized } from 'vue-router';
 
+const imageRoutes = ['image', 'shared-post', 'shared-image'];
+
 export function notifyAlbumLoading(to: RouteLocationNormalized, from: RouteLocationNormalized, failure?: NavigationFailure | void, modalBackgroundPath?: string | null) {
   if (failure) return;
-  if ((from.name === 'image' || from.name === 'shared-post') && to.fullPath === modalBackgroundPath) return;
+  if (imageRoutes.includes(String(from.name)) && to.fullPath === modalBackgroundPath) return;
   if (to.name !== 'folder' && to.name !== 'shared-folder') {
-    if (['folder', 'shared-folder', 'shared-post', 'image'].includes(String(from.name))
-      && to.name !== 'image' && to.name !== 'shared-post') {
+    if (['folder', 'shared-folder', ...imageRoutes].includes(String(from.name))
+      && !imageRoutes.includes(String(to.name))) {
       window.dispatchEvent(new Event('foldergram:album-view-cancel'));
     }
     return;
