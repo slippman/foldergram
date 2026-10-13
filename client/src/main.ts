@@ -78,7 +78,7 @@ async function bootstrap() {
     await router.replace({ name: 'home' });
   }
 
-  router.afterEach(notifyAlbumLoading);
+  router.afterEach((to, from, failure) => notifyAlbumLoading(to, from, failure, appStore.imageModalBackgroundPath));
   router.afterEach((to) => {
     if (to.name === 'folder' && typeof to.params.slug === 'string') {
       appStore.recordOpenedFolder(to.params.slug);

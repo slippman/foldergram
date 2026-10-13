@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
+import ResilientImage from '../components/ResilientImage.vue';
 
 const html = readFileSync('index.html', 'utf8');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].find(match => match[1].includes('attributeFilter'))![1];
@@ -103,6 +105,39 @@ describe('album startup splash', () => {
     img.dispatchEvent(new Event('error')); await flush();
     expect(document.querySelector('.fg-splash--out')).toBeNull();
     expect((document.querySelector('.fg-splash__retry') as HTMLButtonElement).hidden).toBe(false);
+  });
+  it.each([true, false])('waits for resilient recovery with fallback=%s', async (fallback) => {
+    document.getElementById('app')!.innerHTML = '<main data-album-state="ready"></main>';
+    const wrapper = mount(ResilientImage, {
+      attachTo: document.querySelector('main')!,
+      props: { src: '/preview.jpg', fallbackSrc: fallback ? '/original.jpg' : null, alt: '', maxRetries: 1, retryDelayMs: 1500 }
+    });
+    try {
+      start(); await flush();
+      await wrapper.get('img').trigger('error');
+      await vi.advanceTimersByTimeAsync(1600);
+      expect(document.querySelector('.fg-splash--out')).toBeNull();
+      expect((document.querySelector('.fg-splash__retry') as HTMLButtonElement).hidden).toBe(true);
+      expect(wrapper.get('img').attributes('src')).toBe(fallback ? '/original.jpg' : '/preview.jpg?retry=1');
+      expect((wrapper.get('img').element as HTMLImageElement).loading).toBe('eager');
+      await wrapper.get('img').trigger('load');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+    } finally { wrapper.unmount(); }
+  });
+  it('offers retry when resilient recovery is exhausted', async () => {
+    document.getElementById('app')!.innerHTML = '<main data-album-state="ready"></main>';
+    const wrapper = mount(ResilientImage, {
+      attachTo: document.querySelector('main')!,
+      props: { src: '/broken.jpg', alt: '', maxRetries: 0 }
+    });
+    try {
+      start(); await flush();
+      await wrapper.get('img').trigger('error');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(document.querySelector('.fg-splash--out')).toBeNull();
+      expect((document.querySelector('.fg-splash__retry') as HTMLButtonElement).hidden).toBe(false);
+    } finally { wrapper.unmount(); }
   });
   it('waits for a video poster even when the viewer has no img element', async () => {
     const poster = document.createElement('img');

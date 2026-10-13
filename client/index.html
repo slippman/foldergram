@@ -149,7 +149,18 @@
           }, 20000);
           function getImages(element) {
             return Array.from(element.querySelectorAll('img')).filter(function (img) {
-              return img.getAttribute('src') || img.getAttribute('srcset');
+              return !img.hasAttribute('data-album-resilient') && (img.getAttribute('src') || img.getAttribute('srcset'));
+            });
+          }
+          function waitForComponent(marker) {
+            return new Promise(function (resolve, reject) {
+              var poll;
+              function check() {
+                if (cancelled || !marker.isConnected || marker.dataset.albumImageState === 'ready') { clearInterval(poll); resolve(); }
+                else if (marker.dataset.albumImageState === 'error') { clearInterval(poll); reject(new Error('Image unavailable')); }
+              }
+              poll = setInterval(check, 100);
+              check();
             });
           }
           function waitForImage(img) {
@@ -192,12 +203,15 @@
                 ? Array.from(state.querySelectorAll('[data-album-poster]')).map(function (post) {
                     var img = new Image(); img.src = post.dataset.albumPoster; return img;
                   }) : [];
-              Promise.all(images.concat(posters).map(waitForImage)).then(function () {
+              var components = albumEntry && state.dataset.albumState === 'ready'
+                ? Array.from(state.querySelectorAll('[data-album-image-state]')) : [];
+              Promise.all(images.concat(posters).map(waitForImage).concat(components.map(waitForComponent))).then(function () {
                 if (cancelled) return;
                 var current = app.querySelector('[data-album-state]');
                 if (albumEntry && (!current || current.dataset.albumState === 'loading')) { finishing = false; finish(); return; }
                 // Pagination may have appended a batch while readiness was being checked.
-                if (albumEntry && current.dataset.albumState === 'ready' && getImages(current).some(function (img) { return !img.complete || !img.naturalWidth; })) {
+                if (albumEntry && current.dataset.albumState === 'ready' && (getImages(current).some(function (img) { return !img.complete || !img.naturalWidth; })
+                  || Array.from(current.querySelectorAll('[data-album-image-state]')).some(function (marker) { return marker.dataset.albumImageState !== 'ready'; }))) {
                   finishing = false; finish(); return;
                 }
                 clearTimeout(startupDeadline);
@@ -216,10 +230,14 @@
               });
             });
           }
-          var observer = new MutationObserver(finish);
+          function changed() {
+            if (albumEntry) app.querySelectorAll('img').forEach(function (img) { img.loading = 'eager'; });
+            finish();
+          }
+          var observer = new MutationObserver(changed);
           window.addEventListener('foldergram:album-view-cancel', cancel);
           observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-album-state'] });
-          finish();
+          changed();
         }
         window.addEventListener('foldergram:album-view-loading', function () {
           if (document.getElementById('fg-splash')) return;
