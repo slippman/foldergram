@@ -126,6 +126,16 @@
           if (!splash || !app) return;
           var albumEntry = document.documentElement.classList.contains('shared-album-entry');
           var finishing = false;
+          var cancelled = false;
+          function cancel() {
+            cancelled = true;
+            clearTimeout(startupDeadline);
+            observer.disconnect();
+            window.removeEventListener('foldergram:album-view-cancel', cancel);
+            splash.remove();
+            document.documentElement.classList.remove('shared-album-entry');
+            window.dispatchEvent(new Event('foldergram:album-ready'));
+          }
           function showRetry(message) {
             var text = splash.querySelector('.fg-splash__album p');
             var retry = splash.querySelector('.fg-splash__retry');
@@ -158,6 +168,7 @@
               }
               function failed() { cleanup(); reject(new Error('Image unavailable')); }
               function check() {
+                if (cancelled) { cleanup(); resolve(); return; }
                 if (wasConnected && !img.isConnected) { cleanup(); resolve(); return; }
                 if (img.complete) loaded();
               }
@@ -170,7 +181,7 @@
             });
           }
           function finish() {
-            if (finishing) return;
+            if (cancelled || finishing) return;
             var state = app.querySelector('[data-album-state]');
             if (!app.childElementCount || (albumEntry && (!state || state.dataset.albumState === 'loading'))) return;
             finishing = true;
@@ -182,6 +193,7 @@
                     var img = new Image(); img.src = post.dataset.albumPoster; return img;
                   }) : [];
               Promise.all(images.concat(posters).map(waitForImage)).then(function () {
+                if (cancelled) return;
                 var current = app.querySelector('[data-album-state]');
                 if (albumEntry && (!current || current.dataset.albumState === 'loading')) { finishing = false; finish(); return; }
                 // Pagination may have appended a batch while readiness was being checked.
@@ -192,16 +204,20 @@
                 observer.disconnect();
                 splash.classList.add('fg-splash--out');
                 setTimeout(function () {
+                  if (cancelled) return;
+                  window.removeEventListener('foldergram:album-view-cancel', cancel);
                   splash.remove();
                   window.dispatchEvent(new Event('foldergram:album-ready'));
                 }, 340);
               }).catch(function () {
+                if (cancelled) return;
                 clearTimeout(startupDeadline);
                 showRetry('Some images could not load. Please try again.');
               });
             });
           }
           var observer = new MutationObserver(finish);
+          window.addEventListener('foldergram:album-view-cancel', cancel);
           observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-album-state'] });
           finish();
         }

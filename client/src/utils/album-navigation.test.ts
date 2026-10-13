@@ -12,7 +12,9 @@ describe('album navigation loading', () => {
     router.afterEach(notifyAlbumLoading);
     router.beforeEach(to => to.params.slug !== 'blocked');
     const loading = vi.fn();
+    const cancelled = vi.fn();
     window.addEventListener('foldergram:album-view-loading', loading);
+    window.addEventListener('foldergram:album-view-cancel', cancelled);
     try {
       await router.push('/');
       expect(loading).not.toHaveBeenCalled();
@@ -27,8 +29,10 @@ describe('album navigation loading', () => {
       await router.push('/folders/alias?photo=1');
       await router.push('/');
       expect(loading).not.toHaveBeenCalled();
+      expect(cancelled).toHaveBeenCalledOnce();
     } finally {
       window.removeEventListener('foldergram:album-view-loading', loading);
+      window.removeEventListener('foldergram:album-view-cancel', cancelled);
     }
   });
 });

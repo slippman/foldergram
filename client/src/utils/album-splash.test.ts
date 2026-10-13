@@ -80,6 +80,23 @@ describe('album startup splash', () => {
     await flush();
     expect(document.querySelector('.fg-splash--out')).not.toBeNull();
   });
+  it('cancels pending image loading when navigation leaves the album', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="ready"><img src="/pending.png"></main>';
+    visibleImage();
+    start(); await flush();
+    expect(document.querySelector('#fg-splash')).not.toBeNull();
+    app.innerHTML = '<main>Library</main>';
+    window.dispatchEvent(new Event('foldergram:album-view-cancel'));
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(false);
+    app.innerHTML = '<main data-album-state="settled">Another album</main>';
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
   it('keeps the splash and offers retry when an image fails', async () => {
     document.getElementById('app')!.innerHTML = '<main data-album-state="ready"><img src="/bad.png"></main>';
     const img = visibleImage(); start(); await flush();
