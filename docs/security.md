@@ -71,6 +71,7 @@ For share links:
 - SQLite stores only a SHA-256 token hash plus a short token prefix
 - reusable links are derived using a separate key at `<DATA_ROOT>/secrets/share-link-recovery.key`, created with owner-only permissions; a database copy alone cannot recover them
 - back up this key separately and protect it like a password; losing it prevents re-copying existing links but does not revoke links already sent
+- Docker deployments must persist `<DATA_ROOT>/secrets` across container replacements; the supplied Compose file mounts it separately, and mounting the whole data root also preserves it
 - older links remain valid but require a replacement once to enable copying
 - expired and revoked links stop creating or validating share sessions
 
