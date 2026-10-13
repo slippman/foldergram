@@ -137,6 +137,15 @@ describe.sequential('folder share service', () => {
     expect(folderShareLinkRepository.listByFolder(folder.id)).toHaveLength(0);
   });
 
+  it('keeps listing and revocation available when the recovery key is invalid', async () => {
+    folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
+    const created = folderShareService.createLink('family', { expiresAt: null })!;
+    await fs.writeFile(path.join(tempRoot, 'data/secrets/share-link-recovery.key'), 'invalid');
+    expect(folderShareService.listLinks('family')!.links[0].canCopy).toBe(false);
+    expect(folderShareService.verifyLinkToken('family', created.rawToken)).not.toBeNull();
+    expect(folderShareService.revokeLink('family', created.link.id)!.status).toBe('revoked');
+  });
+
   it('rolls back reservations when storing the final token fails', () => {
     const folder = folderRepository.upsert({ slug: 'family', name: 'Family', folderPath: 'family' });
     const update = vi.spyOn(folderShareLinkRepository, 'updateToken').mockImplementationOnce(() => {

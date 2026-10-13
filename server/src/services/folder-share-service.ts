@@ -255,9 +255,17 @@ function getLinkRecoverySecret(): Buffer {
 }
 
 function mapShareLink(link: FolderShareLinkRecord, now = new Date()): PublicFolderShareLink {
+  let canCopy = false;
+  if (isLinkUsable(link, now.getTime())) {
+    try {
+      canCopy = hashShareToken(recoverLinkToken(link)) === link.token_hash;
+    } catch {
+      // Key failures must not block listing or revoking existing links.
+    }
+  }
   return {
     id: link.id,
-    canCopy: isLinkUsable(link, now.getTime()) && hashShareToken(recoverLinkToken(link)) === link.token_hash,
+    canCopy,
     folderId: link.folder_id,
     tokenPrefix: link.token_prefix,
     expiresAt: link.expires_at,
