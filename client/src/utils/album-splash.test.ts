@@ -104,6 +104,20 @@ describe('album startup splash', () => {
     expect(document.querySelector('.fg-splash--out')).toBeNull();
     expect((document.querySelector('.fg-splash__retry') as HTMLButtonElement).hidden).toBe(false);
   });
+  it('waits for a video poster even when the viewer has no img element', async () => {
+    const poster = document.createElement('img');
+    Object.defineProperty(poster, 'complete', { value: false, configurable: true });
+    Object.defineProperty(poster, 'naturalWidth', { value: 640 });
+    vi.stubGlobal('Image', function () { return poster; });
+    document.getElementById('app')!.innerHTML = '<main data-album-state="ready"><video data-album-poster="/video-poster.jpg"></video></main>';
+    start(); await flush();
+    expect(poster.getAttribute('src')).toBe('/video-poster.jpg');
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    Object.defineProperty(poster, 'complete', { value: true });
+    poster.dispatchEvent(new Event('load'));
+    await flush();
+    expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+  });
   it('does not block on a pending decode promise after a cached image has loaded', async () => {
     document.getElementById('app')!.innerHTML = '<main data-album-state="ready"><img src="/cached.png"></main>';
     const img = document.querySelector('img')!;

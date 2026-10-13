@@ -49,6 +49,7 @@
               class="max-h-[78vh] w-full bg-black"
               :src="shareStore.image.previewUrl"
               :poster="shareStore.image.thumbnailUrl"
+              :data-album-poster="shareStore.image.thumbnailUrl"
               controls
               playsinline
             />

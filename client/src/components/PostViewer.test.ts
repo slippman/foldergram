@@ -353,6 +353,7 @@ describe('PostViewer', () => {
     const wrapper = mount(PostViewer, {
       props: {
         image: createVideoDetail(22),
+        sharedSlug: 'shared-video',
         isModal: true
       },
       global: {
@@ -363,6 +364,7 @@ describe('PostViewer', () => {
     await flushPromises();
 
     const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    expect(player.getAttribute('data-album-poster')).toBe('/thumbnails/22.webp');
     expect(player.playCallCount).toBeGreaterThanOrEqual(1);
     expect(player.paused).toBe(false);
     expect(wrapper.find('.viewer__pause-indicator').exists()).toBe(false);

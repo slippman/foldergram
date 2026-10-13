@@ -167,6 +167,7 @@
             <media-player
               ref="playerElement"
               class="viewer__player"
+              :data-album-poster="image.thumbnailUrl"
               :src.prop="videoSource"
               :title.prop="image.filename"
               :fullscreenOrientation.prop="'none'"
