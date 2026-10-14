@@ -46,7 +46,7 @@ const { t } = useI18n();
   .album-header { gap: 1.5rem; }
   .album-header :deep(h1) { font-size: 1rem; }
   .album-header__brand { font-size: 0.9rem; }
-  .album-header__hint { display: inline; }
+  .album-header__hint { display: inline; min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
 }
 .album-header__back { display: inline-flex; flex: none; align-items: center; justify-content: center; padding: 0.5rem; color: inherit; border-radius: 50%; }
 .album-header__back:hover { background: var(--surface-hover); }

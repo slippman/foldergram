@@ -64,6 +64,7 @@ describe('FolderHeader', () => {
     });
 
     expect(adminWrapper.find('button[aria-label="Share folder"]').exists()).toBe(true);
+    expect(adminWrapper.find('.album-header__hint').exists()).toBe(true);
 
     setActivePinia(createPinia());
     const authStore = useAuthStore();
@@ -118,6 +119,7 @@ describe('FolderHeader', () => {
     });
     expect(wrapper.findComponent({ name: 'AlbumHeader' }).props('title')).toBe(folder.name);
     expect(wrapper.text()).toContain('UnReeled Photos');
+    expect(wrapper.find('.album-header__hint').exists()).toBe(true);
     expect(wrapper.find('button[aria-label="Share folder"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('Edit');
     expect(wrapper.text()).not.toContain(folder.folderPath);

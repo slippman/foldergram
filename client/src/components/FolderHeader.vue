@@ -1,6 +1,6 @@
 <template>
   <section class="grid gap-3 pb-3">
-    <AlbumHeader :title="displayFolderTitle">
+    <AlbumHeader :title="displayFolderTitle" :show-hint="folder.imageCount > 0 || folder.videoCount > 0">
       <template #actions>
         <button v-if="!shared && hasAvatarStory" type="button" class="media-action" :aria-label="t('folder.header.openStories')" @click="emit('openAvatarStory')">
           <span class="i-fluent-play-circle-24-regular h-5 w-5" aria-hidden="true" />
