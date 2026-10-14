@@ -368,6 +368,79 @@ describe.sequential('folder share API routes', () => {
     expect(rejectedRes.status).toBe(401);
   });
 
+  it('serves exact originals and HEAD metadata only within an active album grant', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
+    const grant = folderShareService.verifyLinkToken('folder-a', link.rawToken)!;
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    folderShareService.setShareSession(mockRes as any, { secure: false, get: () => undefined } as any, grant);
+    const headers = { Cookie: `foldergram_share_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    const expected = await fs.readFile(path.join(tempRoot, 'gallery', 'folder-a', 'image-a.jpg'));
+    const allowed = await requestApp(app, 'GET', '/api/share/images/1/original', headers);
+    expect(allowed.status).toBe(200);
+    expect(allowed.bytes).toEqual(expected);
+    expect(allowed.headers.get('Content-Disposition')).toContain('image-a.jpg');
+    expect(allowed.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(allowed.headers.get('Vary')).toContain('Cookie');
+    const head = await requestApp(app, 'HEAD', '/api/share/images/1/original', headers);
+    expect(head.status).toBe(200);
+    expect(head.headers.get('Content-Length')).toBe(String(expected.length));
+    expect(head.headers.get('Content-Type')).toContain('image/jpeg');
+    expect(head.bytes.length).toBe(0);
+    const range = await requestApp(app, 'GET', '/api/share/images/1/original', { ...headers, Range: 'bytes=0-9' });
+    expect(range.status).toBe(206);
+    expect(range.bytes).toEqual(expected.subarray(0, 10));
+    for (const method of ['GET', 'HEAD']) {
+      expect((await requestApp(app, method, '/api/share/images/1/original')).status).toBe(401);
+      expect((await requestApp(app, method, '/api/share/images/2/original', headers)).status).toBe(401);
+      expect((await requestApp(app, method, '/api/originals/1?download=1', headers)).status).toBe(401);
+    }
+    // A crawler cover token never grants originals.
+    const preview = folderShareService.createPreviewToken(link.link.id);
+    expect((await requestApp(app, 'GET', `/api/share/images/1/original?preview=${preview}`)).status).toBe(401);
+    folderShareService.revokeLink('folder-a', link.link.id);
+    expect((await requestApp(app, 'GET', '/api/share/images/1/original', headers)).status).toBe(401);
+    expect((await requestApp(app, 'HEAD', '/api/share/images/1/original', headers)).status).toBe(401);
+  });
+
+  it('uses the carousel owning album grant for original downloads', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const { imageRepository } = await import('../src/db/repositories.js');
+    const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
+    const grant = folderShareService.verifyLinkToken('folder-a', link.rawToken)!;
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    folderShareService.setShareSession(mockRes as any, { secure: false, get: () => undefined } as any, grant);
+    const headers = { Cookie: `foldergram_share_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    const image = imageRepository.getById(5)!;
+    await fs.mkdir(path.dirname(image.absolute_path), { recursive: true });
+    await fs.writeFile(image.absolute_path, 'original movie bytes');
+    const allowed = await requestApp(app, 'GET', '/api/share/images/5/original', headers);
+    expect(allowed.status).toBe(200);
+    expect(allowed.body).toBe('original movie bytes');
+    expect(allowed.headers.get('Content-Type')).toContain('video/mp4');
+    expect(allowed.headers.get('Content-Disposition')).toContain('03-video.mp4');
+    await fs.unlink(image.absolute_path);
+    expect((await requestApp(app, 'GET', '/api/share/images/5/original', headers)).status).toBe(404);
+  });
+
+  it('rejects an expired link session for both original HEAD and GET requests', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const now = Date.now();
+    const link = folderShareService.createLink('folder-a', { expiresAt: new Date(now + 60_000) })!;
+    const grant = folderShareService.verifyLinkToken('folder-a', link.rawToken)!;
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    folderShareService.setShareSession(mockRes as any, { secure: false, get: () => undefined } as any, grant);
+    const headers = { Cookie: `foldergram_share_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 120_000);
+    try {
+      for (const method of ['GET', 'HEAD']) {
+        const denied = await requestApp(app, method, '/api/share/images/1/original', headers);
+        expect(denied.status).toBe(401);
+        expect(denied.headers.get('Cache-Control')).toBe('private, no-store');
+      }
+    } finally { clock.mockRestore(); }
+  });
+
   it('immediately revokes active share sessions when link is revoked', async () => {
     const { folderShareService } = await import('../src/services/folder-share-service.js');
     const link = folderShareService.createLink('folder-a', { expiresAt: null })!;

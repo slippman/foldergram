@@ -328,7 +328,7 @@
       </template>
     </ConfirmDialog>
     <Teleport to="body">
-      <FolderShareModal v-if="shareFolder && authStore.canManageLibrary" :folder="shareFolder" @cancel="shareFolder = null" />
+      <FolderShareModal v-if="shareFolder && authStore.canManageLibrary" :folder="shareFolder" :cinema="appStore.folderDisplayTheme === 'cinema'" @cancel="shareFolder = null" />
     </Teleport>
   </section>
 </template>

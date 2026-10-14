@@ -29,7 +29,7 @@ function render(overrides: Partial<FeedItem> = {}) {
 
 describe('CinemaPost', () => {
   beforeEach(() => { setActivePinia(createPinia()); mockRoute.name = 'folder'; });
-  it('uses the shared Info API and preview download even in an admin session', async () => {
+  it('uses the shared Info API and scoped original download even in an admin session', async () => {
     const normalFetch = vi.spyOn(galleryApi, 'fetchImage');
     const sharedFetch = vi.spyOn(galleryApi, 'fetchSharedPost').mockResolvedValue({
       ...item, mimeType: 'image/jpeg', fileSize: 1048576, displayTheme: 'cinema',
@@ -40,12 +40,14 @@ describe('CinemaPost', () => {
     expect(wrapper.find('button[aria-label="Edit caption"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-pressed]').exists()).toBe(true);
     expect(wrapper.find('button[aria-pressed]').attributes('aria-label')).toBe('Favorite post');
-    expect(wrapper.get('a[download]').attributes('href')).toBe('/preview.jpg');
+    expect(wrapper.get('a[download]').attributes('href')).toBe('/api/share/images/1/original');
+    expect(wrapper.findComponent({ name: 'MobileMediaShare' }).props('url')).toBe('/api/share/images/1/original');
     await wrapper.get('button[aria-controls]').trigger('click');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sharedFetch).toHaveBeenCalledWith(1);
     expect(normalFetch).not.toHaveBeenCalled();
     expect(wrapper.get('.cinema-post__info').text()).toContain('Apple iPhone');
+    expect(wrapper.find('.cinema-post__filename').exists()).toBe(false);
     const photo = wrapper.findAllComponents({ name: 'RouterLink' })[0];
     expect(photo.props('to')).toMatchObject({ name: 'shared-post', params: { slug: 'trip', id: '1' } });
     normalFetch.mockRestore();
@@ -104,6 +106,27 @@ describe('CinemaPost', () => {
     expect(player.props('muted')).toBe(true);
     expect(player.props('loop')).toBe(false);
   });
+  it('shows the filename in Info only to a library admin', async () => {
+    const fetch = vi.spyOn(galleryApi, 'fetchImage').mockResolvedValue({ ...item,
+      folderAvatarImageId: null, relativePath: 'Trip/PXL_20261001.jpg', mimeType: 'image/jpeg',
+      fileSize: 1048576, exif: null, originalUrl: '/original', nextImageId: null, previousImageId: null });
+    const auth = useAuthStore();
+    auth.capabilities.canManageLibrary = true;
+    const wrapper = render();
+    try {
+      expect(wrapper.find('.cinema-post__filename').exists()).toBe(false);
+      await wrapper.get('button[aria-controls]').trigger('click');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(wrapper.get('.cinema-post__filename').text()).toContain(item.filename);
+      expect(wrapper.find('.cinema-post__caption').exists()).toBe(false);
+      auth.capabilities.canManageLibrary = false;
+      await nextTick();
+      expect(wrapper.find('.cinema-post__filename').exists()).toBe(false);
+      auth.capabilities.canManageLibrary = true;
+      await wrapper.setProps({ sharedSlug: 'trip' });
+      expect(wrapper.find('.cinema-post__filename').exists()).toBe(false);
+    } finally { wrapper.unmount(); fetch.mockRestore(); }
+  });
   it('loads extra details only when Info is opened and provides an original download link', async () => {
     const fetch = vi.spyOn(galleryApi, 'fetchImage').mockResolvedValue({ ...item,
       folderAvatarImageId: null, relativePath: 'Trip/PXL_20261001.jpg', mimeType: 'image/jpeg',
@@ -119,7 +142,7 @@ describe('CinemaPost', () => {
     expect(wrapper.get('.cinema-post__info').text()).toContain('1 MB');
     expect(wrapper.get('.cinema-post__info').text()).toContain('Apple iPhone 16 Pro');
     expect(wrapper.get('.cinema-post__info').text()).toContain('800');
-    expect(wrapper.get('.cinema-post__info').text()).not.toContain(item.filename);
+    expect(wrapper.get('.cinema-post__filename').text()).toContain(item.filename);
     expect(wrapper.get('a[download]').attributes('href')).toContain('download');
     await info.trigger('click');
     expect(wrapper.find('.cinema-post__info').exists()).toBe(false);
@@ -131,6 +154,17 @@ describe('CinemaPost', () => {
       width: 1600, height: 900, durationMs: null, isAnimated: false, thumbnailUrl: '/thumb.jpg', previewUrl: '/preview.jpg' };
     const wrapper = render({ postType: 'carousel', mediaItems: [media, { ...media, imageId: 2, position: 2 }] });
     expect(wrapper.findComponent({ name: 'CarouselMediaStage' }).props('items')).toHaveLength(2);
+  });
+  it('shares the selected original carousel asset through its scoped route', async () => {
+    const media = { imageId: 180, position: 1, filename: item.filename, mediaType: 'video' as const,
+      width: 1600, height: 900, durationMs: 5000, isAnimated: false, thumbnailUrl: '/thumb.jpg', previewUrl: '/clip.mp4' };
+    const wrapper = render({ postType: 'carousel', mediaItems: [media, { ...media, imageId: 181, position: 2 }] });
+    await wrapper.setProps({ sharedSlug: 'trip' });
+    expect(wrapper.get('a[download]').attributes('href')).toBe('/api/share/images/180/original');
+    wrapper.findComponent({ name: 'CarouselMediaStage' }).vm.$emit('update:modelValue', 1);
+    await nextTick();
+    expect(wrapper.get('a[download]').attributes('href')).toBe('/api/share/images/181/original');
+    expect(wrapper.findComponent({ name: 'MobileMediaShare' }).props('url')).toBe('/api/share/images/181/original');
   });
   it('opens a blank caption editor for admins and hides editing for viewers', async () => {
     const wrapper = render();

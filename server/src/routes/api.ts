@@ -941,6 +941,24 @@ router.get('/share/images/:id/preview', async (request, response) => {
   await serveDerivativeForImage(response, image, 'preview', { noStore: true });
 });
 
+router.get('/share/images/:id/original', (request, response) => {
+  setShareResponseHeaders(response);
+  const params = imageIdSchema.parse(request.params);
+  const image = galleryService.getShareDerivativeImage(params.id);
+  if (!image) {
+    response.status(404).json({ message: 'Original media not found' });
+    return;
+  }
+  // Resolve carousel members through their owning album, just like previews.
+  if (!ensureShareFolderAccess(request, response, image.folder_id)) return;
+  const original = galleryService.getOriginalMediaFile(params.id);
+  if (!original) {
+    response.status(404).json({ message: 'Original media not found' });
+    return;
+  }
+  response.download(original.path, original.filename);
+});
+
 router.get('/places', (_request, response) => {
   response.json({
     items: galleryService.listPlaces()
