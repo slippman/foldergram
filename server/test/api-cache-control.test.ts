@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { requestTestApp } from './http-test-utils.js';
+
 type AppModule = typeof import('../src/app.js');
 type AuthServiceModule = typeof import('../src/services/auth-service.js');
 
@@ -50,4 +52,17 @@ describe.sequential('api cache control', () => {
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
     expect(response.setHeader).not.toHaveBeenCalledWith('Vary', 'Cookie');
   });
+  it('serves versioned branding publicly with immutable caching and no session cookie', async () => {
+    const { createApp } = await import('../src/app.js');
+    const app = createApp();
+    const response = await requestTestApp(app, 'GET', '/branding/ur-logo-4e4dc1180945.png');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('vary') ?? '').not.toContain('Cookie');
+    expect(response.headers.get('content-type')).toContain('image/png');
+    const missing = await requestTestApp(app, 'GET', '/branding/missing.png');
+    expect(missing.status).toBe(404);
+  });
+
 });

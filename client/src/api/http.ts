@@ -20,35 +20,50 @@ export async function requestJson<T>(input: RequestInfo | URL, init?: RequestIni
     headers.set('x-foldergram-intent', '1');
   }
 
-  const response = await fetch(input, {
-    ...init,
-    cache: init?.cache ?? (isSafeRead ? 'no-store' : undefined),
-    credentials: 'same-origin',
-    headers
-  });
+  const controller = isSafeRead ? new AbortController() : null;
+  let timedOut = false;
+  const abortFromCaller = () => controller?.abort(init?.signal?.reason);
+  if (init?.signal?.aborted) abortFromCaller();
+  else init?.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timeout = controller ? setTimeout(() => { timedOut = true; controller.abort(); }, 15000) : undefined;
+  try {
+    const response = await fetch(input, {
+      ...init,
+      cache: init?.cache ?? (isSafeRead ? 'no-store' : undefined),
+      credentials: 'same-origin',
+      signal: controller?.signal ?? init?.signal,
+      headers
+    });
 
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
+    if (!response.ok) {
+      let message = `Request failed with status ${response.status}`;
 
-    try {
-      const payload = (await response.json()) as { message?: string };
-      if (payload.message) {
-        message = payload.message;
+      try {
+        const payload = (await response.json()) as { message?: string };
+        if (payload.message) {
+          message = payload.message;
+        }
+      } catch {
+        const error = new RequestError(message, response.status);
+        if (response.status === 401 && response.headers.get(AUTH_REQUIRED_HEADER) === '1' && typeof window !== 'undefined') {
+          window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+        }
+        return Promise.reject(error);
       }
-    } catch {
+
       const error = new RequestError(message, response.status);
       if (response.status === 401 && response.headers.get(AUTH_REQUIRED_HEADER) === '1' && typeof window !== 'undefined') {
         window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
       }
-      return Promise.reject(error);
+      throw error;
     }
 
-    const error = new RequestError(message, response.status);
-    if (response.status === 401 && response.headers.get(AUTH_REQUIRED_HEADER) === '1' && typeof window !== 'undefined') {
-      window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
-    }
+    return (await response.json()) as T;
+  } catch (error) {
+    if (timedOut) throw new RequestError('Loading took too long. Please try again.', 408);
     throw error;
+  } finally {
+    clearTimeout(timeout);
+    init?.signal?.removeEventListener('abort', abortFromCaller);
   }
-
-  return (await response.json()) as T;
 }

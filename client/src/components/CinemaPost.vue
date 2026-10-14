@@ -1,5 +1,5 @@
 <template>
-  <article ref="postElement" class="cinema-post">
+  <article ref="postElement" class="cinema-post" :data-album-poster="item.mediaType === 'video' ? item.thumbnailUrl : undefined">
     <div class="cinema-post__media" :style="mediaStyle">
       <CarouselMediaStage v-if="isCarousel" :items="item.mediaItems!" v-model="carouselIndex" prefer-preview fit-container
         :retry-while="appStore.isScanning" :autoplay="isVisible" :muted="videoMuted"
@@ -53,13 +53,10 @@
             :aria-label="t('post.viewer.editCaption')" :title="t('post.viewer.editCaption')" @click="openCaptionEditor">
             <span class="i-fluent-edit-16-regular w-5 h-5" aria-hidden="true" />
           </button>
-          <MobileMediaShare v-if="(activeMedia?.mediaType ?? item.mediaType) === 'image'" :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
-          <a class="media-action" :class="{ 'photo-download-desktop': (activeMedia?.mediaType ?? item.mediaType) === 'image' }" :href="downloadUrl" download
+          <MobileMediaShare cinema :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
+          <a class="media-action photo-download-desktop" :href="downloadUrl" download
             :aria-label="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')" :title="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')">
-            <svg class="w-[1.45rem] h-[1.45rem]" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 4.75v9.5m0 0 3.5-3.5M12 14.25l-3.5-3.5M5.75 16.75v1.5A1.75 1.75 0 0 0 7.5 20h9a1.75 1.75 0 0 0 1.75-1.75v-1.5"
-                fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
-            </svg>
+            <span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" />
           </a>
         </div>
       </div>
@@ -149,7 +146,10 @@ async function toggleInfo() {
   finally { loadingInfo.value = false; }
 }
 const isInViewport = ref(false);
-const isVisible = computed(() => isInViewport.value && route.name !== 'image' && route.name !== 'shared-post');
+const albumReady = ref(!document.getElementById('fg-splash'));
+const markAlbumReady = () => { albumReady.value = true; };
+const markAlbumLoading = () => { albumReady.value = false; };
+const isVisible = computed(() => albumReady.value && isInViewport.value && route.name !== 'image' && route.name !== 'shared-post');
 const audiblePostId = useCinemaAudio();
 const videoMuted = computed(() => audiblePostId.value !== props.item.id);
 function releaseAudio() {
@@ -193,13 +193,20 @@ watch(isVisible, async (visible) => {
   if (!visible) releaseAudio();
   await nextTick();
   postElement.value?.querySelectorAll('media-player').forEach(element => {
-    const player = element as HTMLElement & { play?: () => Promise<void>; pause?: () => void };
-    if (visible) player.play?.()?.catch(() => {});
+    const player = element as HTMLElement & { muted: boolean; play?: () => Promise<void>; pause?: () => void };
+    if (visible) {
+      // Apply mute before explicitly starting playback after the loading screen.
+      // Vidstack may still have its default state when Vue's prop is unchanged.
+      player.muted = videoMuted.value;
+      player.play?.()?.catch(() => {});
+    }
     else player.pause?.();
   });
 });
 let observer: IntersectionObserver | null = null;
 onMounted(() => {
+  window.addEventListener('foldergram:album-ready', markAlbumReady);
+  window.addEventListener('foldergram:album-view-loading', markAlbumLoading);
   if (!postElement.value || typeof IntersectionObserver === 'undefined') return;
   observer = new IntersectionObserver(([entry]) => {
     isInViewport.value = entry.isIntersecting && entry.intersectionRatio >= 0.5;
@@ -209,6 +216,8 @@ onMounted(() => {
   if (mediaElement) observer.observe(mediaElement);
 });
 onBeforeUnmount(() => {
+  window.removeEventListener('foldergram:album-ready', markAlbumReady);
+  window.removeEventListener('foldergram:album-view-loading', markAlbumLoading);
   observer?.disconnect();
   releaseAudio();
 });

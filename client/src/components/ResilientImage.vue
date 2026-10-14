@@ -8,9 +8,11 @@
     :height="height"
     :loading="loading"
     :data-loaded="loaded ? 'true' : 'false'"
+    data-album-resilient
     @load="handleLoad"
     @error="handleError"
   />
+  <span hidden :data-album-image-state="!src || loaded ? 'ready' : hiddenUntilRetry && !retryWhile && attempt >= maxRetries ? 'error' : 'loading'" />
   <span v-if="showLoading && !loaded" class="image-loading" role="status">
     {{ t(hiddenUntilRetry && !retryWhile && attempt >= maxRetries ? 'common.imageLoadFailed' : 'common.loadingImage') }}
   </span>

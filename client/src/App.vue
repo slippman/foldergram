@@ -16,7 +16,7 @@
       <SharedPostView :slug="String(route.params.slug ?? '')" :id="String(route.params.id ?? '')" modal @close="closeImageModal" />
     </div>
   </template>
-  <AuthGate v-else-if="authStore.requiresLogin" />
+  <AuthGate v-else-if="authStore.requiresLogin" data-album-state="settled" data-album-theme="classic" />
   <AppShell v-else>
     <RouterView :route="displayRoute" />
     <div v-if="showImageModal" :class="['app__image-modal-layer', { 'app__image-modal-layer--cinema': isCinemaImageModal }]" @click.self="closeImageModal">

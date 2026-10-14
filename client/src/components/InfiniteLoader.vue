@@ -10,7 +10,7 @@
     </button>
     <span v-else-if="loading" class="text-muted">{{ t('common.loadingMore') }}</span>
     <span v-else-if="hasMore" class="sr-only">Loading continues automatically when you reach the end.</span>
-    <span v-else class="text-muted">{{ t('common.youAreCaughtUp') }}</span>
+    <span v-else-if="showComplete" class="text-muted">{{ t('common.youAreCaughtUp') }}</span>
   </div>
 </template>
 
@@ -22,8 +22,10 @@ const props = withDefaults(defineProps<{
   loading: boolean;
   hasMore: boolean;
   buttonFallback?: boolean;
+  showComplete?: boolean;
 }>(), {
-  buttonFallback: true
+  buttonFallback: true,
+  showComplete: true
 });
 
 const emit = defineEmits<{
@@ -38,7 +40,7 @@ let observer: IntersectionObserver | null = null;
 const showButton = computed(() => props.buttonFallback && !props.loading && props.hasMore);
 
 function maybeLoadMore() {
-  if (!isIntersecting.value || !props.hasMore || props.loading) {
+  if (document.getElementById('fg-splash') || !isIntersecting.value || !props.hasMore || props.loading) {
     return;
   }
 
@@ -46,6 +48,7 @@ function maybeLoadMore() {
 }
 
 onMounted(() => {
+  window.addEventListener('foldergram:album-ready', maybeLoadMore);
   observer = new IntersectionObserver((entries) => {
     isIntersecting.value = entries.some((entry) => entry.isIntersecting);
     maybeLoadMore();
@@ -66,6 +69,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  window.removeEventListener('foldergram:album-ready', maybeLoadMore);
   observer?.disconnect();
 });
 </script>

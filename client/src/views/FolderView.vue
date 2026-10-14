@@ -1,5 +1,5 @@
 <template>
-  <section class="w-full">
+  <section class="w-full" :data-album-theme="appStore.stats ? (isCinema ? 'cinema' : 'classic') : appStore.error ? 'classic' : 'unknown'" :data-album-state="foldersStore.currentFolder ? 'ready' : foldersStore.folderError || appStore.isLibraryUnavailable || hasLoadedOnce && !foldersStore.loadingFolder ? 'settled' : 'loading'">
     <EmptyState
       v-if="appStore.isLibraryUnavailable"
       class="mx-auto w-[min(100%,56rem)]"
@@ -23,25 +23,18 @@
     />
     <template v-else-if="foldersStore.currentFolder">
       <section v-if="isCinema" class="folder-cinema">
-        <CinemaHeader :title="foldersStore.currentFolder.name">
-          <template #leading>
-          <RouterLink :to="isCinemaScroll ? cinemaGridRoute : { name: 'library' }" class="folder-cinema__back" :aria-label="isCinemaScroll ? t('folder.cinema.backToGrid') : t('folder.cinema.back')">
-            <span class="i-fluent-arrow-left-20-regular" aria-hidden="true" />
-          </RouterLink>
-          </template>
-          <template v-if="isCinemaScroll && foldersStore.currentImages.length > 1" #trailing>
-            <span class="folder-cinema__scroll-hint">
-              {{ t('folder.cinema.scrollHint') }} <span aria-hidden="true">↑ ↓</span>
-            </span>
-          </template>
-        </CinemaHeader>
+        <AlbumHeader :title="foldersStore.currentFolder.name"
+          :show-hint="!isCinemaScroll && foldersStore.currentImages.length > 0"
+          :back-to="isCinemaScroll ? cinemaGridRoute : { name: 'library' }"
+          :back-label="isCinemaScroll ? t('share.albumOverview') : t('folder.cinema.back')"
+          back-class="folder-cinema__back" />
         <FolderGrid v-if="!isCinemaScroll" :items="foldersStore.currentImages" variant="cinema" />
         <div v-else>
           <CinemaPost v-for="item in foldersStore.currentImages" :id="`cinema-post-${item.id}`" :key="item.id" :item="item" />
         </div>
         <EmptyState v-if="!foldersStore.loadingFolder && !foldersStore.currentImages.length"
           :title="t('folder.cinema.empty')" :description="t('folder.cinema.emptyDescription')" />
-        <InfiniteLoader :loading="foldersStore.loadingFolder" :has-more="foldersStore.currentHasMore" @load-more="loadMore" />
+        <InfiniteLoader :loading="foldersStore.loadingFolder" :has-more="foldersStore.currentHasMore" :show-complete="false" @load-more="loadMore" />
       </section>
       <div v-else class="mx-auto grid w-full max-w-[69rem] gap-[0.15rem]">
         <div class="mx-auto w-[min(100%,54rem)]">
@@ -184,6 +177,8 @@
         </template>
       </div>
 
+      <AlbumAttribution v-if="isCinema" />
+
       <StoriesModal
         v-if="activeStoryViewerId && folderStoriesStore.items.length"
         :items="folderStoriesStore.items"
@@ -211,7 +206,8 @@
   import ErrorState from "../components/ErrorState.vue"
   import InfiniteLoader from "../components/InfiniteLoader.vue"
   import { provideCinemaAudio } from "../composables/useCinemaAudio"
-  import CinemaHeader from "../components/CinemaHeader.vue"
+  import AlbumAttribution from "../components/AlbumAttribution.vue"
+  import AlbumHeader from "../components/AlbumHeader.vue"
   import CinemaPost from "../components/CinemaPost.vue"
   import FolderGrid from "../components/FolderGrid.vue"
   import FolderHeader from "../components/FolderHeader.vue"
@@ -239,6 +235,7 @@
   )
   const { t } = useI18n()
   const isCinema = computed(() => appStore.folderDisplayTheme === 'cinema')
+  watch(isCinema, cinema => { if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading')) }, { flush: 'post' })
   const isCinemaScroll = computed(() => isCinema.value && albumRoute.value.query.view === 'scroll')
   const cinemaGridRoute = computed(() => ({
     name: 'folder', params: { slug: props.slug },
@@ -368,16 +365,5 @@
 </script>
 
 <style scoped>
-.folder-cinema { width: 100%; }
-.folder-cinema__scroll-hint {
-  margin-left: auto;
-  padding-right: 0.5rem;
-  flex-shrink: 0;
-  color: var(--muted);
-  font-size: 0.72rem;
-  white-space: nowrap;
-}
-.folder-cinema__back { display: inline-flex; padding: 0.6rem; color: inherit; border-radius: 50%; }
-.folder-cinema__back span { width: 1.1rem; height: 1.1rem; }
-.folder-cinema__back:hover { background: var(--surface-hover); }
+.folder-cinema { min-width: 0; display: grid; gap: 0.75rem; width: 100%; }
 </style>

@@ -220,4 +220,37 @@ describe('Cinema audio coordination', () => {
       vi.unstubAllGlobals();
     }
   });
+  it('starts visible video muted after the album becomes ready', async () => {
+    let visibility!: IntersectionObserverCallback;
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) { visibility = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    const splash = document.createElement('div');
+    splash.id = 'fg-splash';
+    document.body.append(splash);
+    const wrapper = render({ mediaType: 'video' });
+    try {
+      const media = document.createElement('media-player') as HTMLElement & { muted: boolean; play: ReturnType<typeof vi.fn> };
+      media.muted = false;
+      media.play = vi.fn().mockImplementation(() => {
+        expect(media.muted).toBe(true);
+        return Promise.resolve();
+      });
+      wrapper.element.append(media);
+      visibility([{ isIntersecting: true, intersectionRatio: 0.8 } as IntersectionObserverEntry], {} as IntersectionObserver);
+      await nextTick();
+      expect(media.play).not.toHaveBeenCalled();
+      splash.remove();
+      window.dispatchEvent(new Event('foldergram:album-ready'));
+      await nextTick();
+      await nextTick();
+      expect(media.play).toHaveBeenCalledOnce();
+    } finally {
+      wrapper.unmount();
+      splash.remove();
+      vi.unstubAllGlobals();
+    }
+  });
 });

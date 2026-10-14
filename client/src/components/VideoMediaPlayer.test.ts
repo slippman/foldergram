@@ -25,6 +25,7 @@ describe('VideoMediaPlayer', () => {
     expect(wrapper.find('media-player').exists()).toBe(true);
     expect(wrapper.find('media-provider').exists()).toBe(true);
     expect(wrapper.find('media-poster').exists()).toBe(true);
+    expect(wrapper.attributes('data-album-poster')).toBe('/test-poster.webp');
     expect(wrapper.find('.video-progress-footer').exists()).toBe(true);
     expect(wrapper.find('.video-progress-footer').attributes('data-swipe-ignore')).toBe('true');
   });

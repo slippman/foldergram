@@ -1,6 +1,7 @@
 <template>
   <div
     class="video-media-player relative h-full w-full overflow-hidden bg-black select-none"
+    :data-album-poster="poster || undefined"
     role="button"
     tabindex="0"
     @click="handleSurfaceClick"
