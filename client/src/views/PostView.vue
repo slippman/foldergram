@@ -1,5 +1,5 @@
 <template>
-  <div :class="modal ? 'image-view image-view--modal' : 'image-view image-view--page'" @click.stop>
+  <div :data-album-theme="cinema ? 'cinema' : 'classic'" :data-album-state="viewerStore.error ? 'settled' : activeImage && !viewerStore.loading ? 'ready' : 'loading'" :class="modal ? 'image-view image-view--modal' : 'image-view image-view--page'" @click.stop>
     <ErrorState v-if="viewerStore.error" title="Could not load post" :message="viewerStore.error" />
     <PostViewer
       v-else-if="activeImage"
@@ -119,6 +119,9 @@ async function loadImage() {
 }
 
 watch(() => [imageId.value, activeMediaType.value] as const, loadImage, { immediate: true });
+watch(() => [props.cinema, imageId.value] as const, ([cinema]) => {
+  if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading'));
+}, { immediate: true, flush: 'post' });
 
 function openDeleteDialog() {
   if (!activeImage.value) return;

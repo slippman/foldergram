@@ -58,6 +58,7 @@
 
     <!-- Next nav -->
     <RouterLink
+      class="viewer__next"
       v-if="nextNavigationImageId"
       :class="[
         'inline-flex items-center justify-center w-[2.2rem] h-[2.2rem] rounded-full text-[#111] bg-white/88 shadow-[0_8px_20px_rgba(0,0,0,0.18)]',
@@ -107,6 +108,10 @@
         aria-hidden="true"
       />
     </button>
+
+    <CinemaViewerActions v-if="cinema" :image="image" :shared-slug="sharedSlug" :download-url="downloadOriginalMediaUrl"
+      :setting-cover="settingCover" :is-current-cover="isCurrentCover" :deleting="deleting"
+      @edit="openCaptionEditor" @cover="handleSetCover" @delete="$emit('delete')" />
 
     <!-- Card -->
       <div
@@ -354,14 +359,14 @@
         </div>
 
         <!-- Description -->
-        <div v-if="!cinema || caption || !sharedSlug && authStore.canManageLibrary" class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
+        <div v-if="!cinema || caption" class="viewer__sidebar-summary grid gap-[0.3rem] px-5 pt-[1.1rem]">
           <div class="flex items-start gap-[0.35rem]">
             <p v-if="!cinema || caption" class="viewer__sidebar-caption m-0 text-text">
               <strong v-if="!cinema" class="mr-[0.35rem]">{{ displayFolderTitle }}</strong>
               {{ caption }}
             </p>
             <button
-              v-if="!sharedSlug && authStore.canManageLibrary"
+              v-if="!cinema && !sharedSlug && authStore.canManageLibrary"
               class="inline-flex items-center justify-center mt-[0.05rem] w-6 h-6 p-0 border-0 rounded-full bg-transparent text-muted cursor-pointer transition-colors hover:text-text"
               type="button"
               :aria-label="t('post.viewer.editCaption')"
@@ -451,6 +456,7 @@
 
         <!-- Actions -->
         <div
+          v-if="!cinema"
           class="viewer__sidebar-actions flex items-center justify-between gap-3 px-5 pt-[0.7rem] pb-5 mt-auto"
         >
           <div class="viewer__sidebar-actions-group flex items-center gap-[0.55rem]">
@@ -629,6 +635,7 @@
   import { getOriginalMediaDownloadUrl, getOriginalMediaUrl } from "../utils/original-media"
   import Avatar from "./Avatar.vue"
   import CarouselMediaStage from "./CarouselMediaStage.vue"
+  import CinemaViewerActions from "./CinemaViewerActions.vue"
   import CollectionBookmark from "./CollectionBookmark.vue"
   import PostCaptionModal from "./PostCaptionModal.vue"
   import ResilientImage from "./ResilientImage.vue"
@@ -1670,3 +1677,10 @@
     },
   )
 </script>
+
+<style scoped>
+@media (min-width: 769px) {
+  .viewer--cinema .viewer__sidebar--drawer { right: 4.5rem; }
+}
+.viewer--cinema.viewer--modal > .viewer__next { right: 4.1rem; }
+</style>

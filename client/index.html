@@ -133,7 +133,6 @@
             cancelled = true;
             clearTimeout(startupDeadline);
             observer.disconnect();
-            splash.remove();
           };
           function showRetry(message) {
             var text = splash.querySelector('.fg-splash__album p');
@@ -190,9 +189,12 @@
               check();
             });
           }
+          function getState() {
+            return app.querySelector('.app__image-modal-layer [data-album-state]') || app.querySelector('[data-album-state]');
+          }
           function finish() {
             if (cancelled || finishing) return;
-            var state = app.querySelector('[data-album-state]');
+            var state = getState();
             if (!app.childElementCount || (albumEntry && !state)) return;
             if (albumEntry) {
               var theme = state.dataset.albumTheme || 'cinema';
@@ -213,7 +215,7 @@
                 ? Array.from(state.querySelectorAll('[data-album-image-state]')) : [];
               Promise.all(images.concat(posters).map(waitForImage).concat(components.map(waitForComponent))).then(function () {
                 if (cancelled) return;
-                var current = app.querySelector('[data-album-state]');
+                var current = getState();
                 if (albumEntry && (!current || current.dataset.albumState === 'loading')) { finishing = false; finish(); return; }
                 // Pagination may have appended a batch while readiness was being checked.
                 if (albumEntry && current.dataset.albumState === 'ready' && (getImages(current).some(function (img) { return !img.complete || !img.naturalWidth; })
@@ -237,7 +239,7 @@
             });
           }
           function changed() {
-            var state = app.querySelector('[data-album-state]');
+            var state = getState();
             if (albumEntry && state && (!state.dataset.albumTheme || state.dataset.albumTheme === 'cinema')) app.querySelectorAll('img').forEach(function (img) { img.loading = 'eager'; });
             finish();
           }
@@ -260,9 +262,17 @@
           if (stopCurrentRun) stopCurrentRun();
           stopCurrentRun = null;
           var splash = document.getElementById('fg-splash');
-          if (splash) splash.remove();
-          document.documentElement.classList.add('album-entry');
-          document.body.appendChild(splashTemplate.cloneNode(true));
+          document.documentElement.classList.add('album-entry', 'shared-album-entry');
+          if (splash) {
+            splash.classList.remove('fg-splash--out');
+            var text = splash.querySelector('.fg-splash__album p');
+            var retry = splash.querySelector('.fg-splash__retry');
+            var indicator = splash.querySelector('.fg-splash__indicator');
+            if (text) text.textContent = splashTemplate.querySelector('.fg-splash__album p').textContent;
+            if (retry) retry.hidden = true;
+            if (indicator) indicator.hidden = false;
+          }
+          else document.body.appendChild(splashTemplate.cloneNode(true));
           requestAnimationFrame(function () { if (generation === nextGeneration) run(); });
         });
         run();

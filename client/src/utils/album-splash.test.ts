@@ -83,6 +83,38 @@ describe('album startup splash', () => {
     await flush();
     expect(document.querySelector('.fg-splash--out')).not.toBeNull();
   });
+  it('keeps one loader through modal fetch and image loading', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="ready">Loaded background album</main><div class="app__image-modal-layer"><section data-album-theme="cinema" data-album-state="loading"></section></div>';
+    start(); await flush();
+    const splash = document.querySelector('#fg-splash');
+    const indicator = document.querySelector('.fg-splash__indicator');
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    // Duplicate navigation/theme notifications must preserve the animation node.
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    await flush();
+    expect(document.querySelector('#fg-splash')).toBe(splash);
+    expect(document.querySelector('.fg-splash__indicator')).toBe(indicator);
+    const state = app.querySelector('.app__image-modal-layer section')!;
+    const wrapper = mount(ResilientImage, {
+      attachTo: state,
+      props: { src: '/large-photo.jpg', alt: '', loading: 'eager', maxRetries: 0 }
+    });
+    try {
+      state.setAttribute('data-album-state', 'ready');
+      await flush();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(document.querySelector('#fg-splash')).toBe(splash);
+      expect(document.querySelector('.fg-splash--out')).toBeNull();
+      await wrapper.get('img').trigger('load');
+      await vi.advanceTimersByTimeAsync(100);
+      await flush();
+      expect(document.querySelector('#fg-splash')).toBe(splash);
+      expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(340);
+      expect(document.querySelector('#fg-splash')).toBeNull();
+    } finally { wrapper.unmount(); }
+  });
   it('loads and waits for offscreen images as well as the opening row', async () => {
     document.getElementById('app')!.innerHTML = '<main data-album-state="ready"><img src="/first.png"><img src="/below-fold.png" loading="lazy"></main>';
     const images = [...document.querySelectorAll('img')];

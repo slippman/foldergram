@@ -958,6 +958,7 @@
         "focalLength": "焦距"
       },
       "videoType": "视频（{mimeType}）",
+      "shareLink": "分享链接",
       "setAsCover": "设为文件夹封面",
       "download": "下载文件",
       "openFile": "打开文件",

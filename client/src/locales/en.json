@@ -958,6 +958,7 @@
         "focalLength": "Focal length"
       },
       "videoType": "Video ({mimeType})",
+      "shareLink": "Share link",
       "setAsCover": "Set as folder cover",
       "download": "Download file",
       "openFile": "Open file",
