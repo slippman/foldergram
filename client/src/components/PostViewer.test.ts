@@ -232,6 +232,36 @@ describe('PostViewer', () => {
     expect(wrapper.find('.cinema-viewer-actions details').exists()).toBe(false);
   });
 
+  it.each(['modern', 'missing', 'rejected', 'failed'])('reports localized desktop sharing status with %s clipboard support', async (mode) => {
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const originalShare = Object.getOwnPropertyDescriptor(navigator, 'share');
+    const originalExec = Object.getOwnPropertyDescriptor(document, 'execCommand');
+    const writeText = mode === 'rejected' ? vi.fn().mockRejectedValue(new Error('Denied')) : vi.fn().mockResolvedValue(undefined);
+    const legacyCopy = vi.fn().mockReturnValue(mode !== 'failed');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: mode === 'modern' || mode === 'rejected' ? { writeText } : undefined });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: legacyCopy });
+    try {
+      const wrapper = mount(PostViewer, {
+        props: { image: createImageDetail(12, { previousImageId: null, nextImageId: null }), cinema: true, isModal: true },
+        global: { stubs: globalStubs }
+      });
+      await wrapper.get('.cinema-viewer-actions__desktop').trigger('click');
+      await flushPromises();
+      expect(wrapper.get('.cinema-viewer-actions__notice').text()).toBe(mode === 'failed' ? 'Unable to copy link' : 'Link copied');
+      if (mode === 'modern') expect(writeText).toHaveBeenCalledWith(window.location.href);
+      else expect(legacyCopy).toHaveBeenCalledWith('copy');
+      expect(document.querySelector('textarea')).toBeNull();
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+      if (originalShare) Object.defineProperty(navigator, 'share', originalShare);
+      else Reflect.deleteProperty(navigator, 'share');
+      if (originalExec) Object.defineProperty(document, 'execCommand', originalExec);
+      else Reflect.deleteProperty(document, 'execCommand');
+    }
+  });
+
   it('keeps shared viewer actions and keyboard navigation inside the album', async () => {
     const image = { ...createImageDetail(12, { previousImageId: 11, nextImageId: 13 }),
       previewUrl: '/api/share/images/12/preview', originalUrl: '' };

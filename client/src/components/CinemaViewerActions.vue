@@ -48,13 +48,33 @@ function closeMenu() { if (menu.value?.open) { menu.value.open = false; menu.val
 function handleEscape(event: KeyboardEvent) { if (menu.value?.open) { event.preventDefault(); event.stopPropagation(); closeMenu(); } }
 function act(action: 'edit' | 'cover' | 'delete') { closeMenu(); if (action === 'edit') emit('edit'); else if (action === 'cover') emit('cover'); else emit('delete'); }
 function outside(event: PointerEvent) { if (event.target instanceof Node && !menu.value?.contains(event.target) && menu.value) menu.value.open = false; }
+async function copyLink(url: string) {
+  try {
+    await navigator.clipboard.writeText(url);
+    return;
+  } catch {
+    const previousFocus = document.activeElement;
+    const textArea = document.createElement('textarea');
+    textArea.value = url;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.append(textArea);
+    textArea.select();
+    try {
+      if (!document.execCommand('copy')) throw new Error('Copy failed');
+    } finally {
+      textArea.remove();
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    }
+  }
+}
 async function shareLink() {
   notice.value = '';
   try {
     if (navigator.share) await navigator.share({ url: window.location.href });
-    else { await navigator.clipboard.writeText(window.location.href); notice.value = t('folder.share.notices.linkCopied'); }
+    else { await copyLink(window.location.href); notice.value = t('folder.shareModal.notices.linkCopied'); }
   } catch (error) {
-    if (!(error instanceof Error && error.name === 'AbortError')) notice.value = t('folder.share.copyLinkError');
+    if (!(error instanceof Error && error.name === 'AbortError')) notice.value = t('folder.shareModal.copyLinkError');
   }
 }
 watch(() => props.image.id, () => { if (menu.value) menu.value.open = false; notice.value = ''; });
