@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import MobileMediaShare from './MobileMediaShare.vue';
-const mountButton = () => mount(MobileMediaShare, { props: { url: '/api/originals/1?download=1' } });
+const mountButton = (cinema = false) => mount(MobileMediaShare, { props: { url: '/api/originals/1?download=1', cinema } });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('mobile photo sharing', () => {
   it.each(['fetch', 'share'])('exposes Download after a %s failure', async (failure) => {
@@ -52,13 +52,20 @@ describe('mobile photo sharing', () => {
   });
   it.each(['Android', 'iPhone'])('uses the standard Foldergram share icon on %s', userAgent => {
     vi.stubGlobal('navigator', { userAgent, share: vi.fn(), canShare: vi.fn().mockReturnValue(true) });
-    expect(mountButton().find('.i-fluent-share-20-regular').exists()).toBe(true);
+    expect(mountButton(true).find('.i-fluent-share-20-regular').exists()).toBe(true);
+  });
+  it.each(['Android', 'iPhone'])('preserves the Classic native share icon on %s', userAgent => {
+    vi.stubGlobal('navigator', { userAgent, share: vi.fn(), canShare: vi.fn().mockReturnValue(true) });
+    const wrapper = mountButton();
+    expect(wrapper.find('.i-fluent-share-20-regular').exists()).toBe(false);
+    expect(wrapper.find('svg').exists()).toBe(true);
+    expect(wrapper.findAll('circle')).toHaveLength(userAgent === 'Android' ? 3 : 0);
   });
   it('shares video files with the same action', async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { share, canShare: vi.fn().mockReturnValue(true), userActivation: { isActive: true } });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('video', { headers: { 'Content-Type': 'video/mp4' } })));
-    const wrapper = mountButton();
+    const wrapper = mountButton(true);
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => expect(share).toHaveBeenCalled());
     expect(share.mock.calls[0][0].files[0].type).toBe('video/mp4');

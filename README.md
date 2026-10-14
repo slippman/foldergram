@@ -55,8 +55,8 @@ follow the current Album theme, including Cinema's grid, scrolling hints, video
 controls, photo zoom, and camera Info. Shared-album favorites stay in the visitor's
 browser. Shared downloads and native sharing use scoped previews, without giving
 access to originals, other albums, or admin controls.
-On phones, photo and video controls offer native file sharing when supported,
-with the same Foldergram share icon. Browsers without file sharing offer Download
+On phones, Cinema photo and video controls offer native file sharing when supported,
+with the same Foldergram share icon. Classic keeps its existing photo-sharing controls. Browsers without file sharing offer Download
 instead; desktop controls retain Download. Sharing requires HTTPS, and large
 files may need a second tap after the file is prepared.
 Mobile Cinema uses a stable viewport height to avoid resizing media as browser

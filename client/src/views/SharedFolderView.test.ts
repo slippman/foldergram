@@ -21,6 +21,34 @@ describe('SharedFolderView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
   });
+  it('preserves the original Classic shared album layout', async () => {
+    const { useShareStore } = await import('../stores/share');
+    const store = useShareStore();
+    vi.spyOn(store, 'loadAccess').mockImplementation(async () => {
+      store.access = { exists: true, granted: true, hasPassword: false, publicAccess: false };
+      return store.access;
+    });
+    vi.spyOn(store, 'loadFolder').mockImplementation(async () => {
+      store.folder = { id: 1, slug: 'travel-2024', name: 'Travel', description: null,
+        imageCount: 1, postCount: 1, videoCount: 0, avatarThumbnailUrl: null,
+        sortTimestamp: 0, displayTheme: 'classic' };
+      store.images = [{ id: 1, folderId: 1, folderSlug: 'travel-2024', folderName: 'Travel',
+        filename: 'photo.jpg', caption: null, mediaType: 'image', width: 640, height: 480,
+        durationMs: null, thumbnailUrl: '/thumb.jpg', previewUrl: '/preview.jpg', sortTimestamp: 0 }];
+    });
+    const wrapper = mount(SharedFolderView, {
+      props: { slug: 'travel-2024' },
+      global: { stubs: { Avatar: true, FolderGrid: true, InfiniteLoader: true, RouterLink: { template: '<a><slot /></a>' } } }
+    });
+    await flushPromises();
+    expect(wrapper.find('.album-header').exists()).toBe(false);
+    expect(wrapper.find('.album-attribution').exists()).toBe(false);
+    expect(wrapper.get('header').text()).toBe('Foldergram');
+    expect(wrapper.get('main').classes()).toContain('px-5');
+    expect(wrapper.findComponent({ name: 'Avatar' }).exists()).toBe(true);
+    expect(wrapper.findComponent({ name: 'InfiniteLoader' }).props('showComplete')).toBe(true);
+    wrapper.unmount();
+  });
 
   it('uses the shared album theme without loading global settings', async () => {
     const { useShareStore } = await import('../stores/share');
@@ -63,11 +91,12 @@ describe('SharedFolderView', () => {
       props: { slug: 'travel-2024' },
       global: { stubs: { ErrorState: { template: '<div class="error-state" />' }, RouterLink: true } }
     });
-    const loading = wrapper.get('[role="status"]').element;
+    const loading = wrapper.get('main > section > section').element;
     await flushPromises();
     expect(access).toHaveBeenCalledTimes(1);
-    expect(wrapper.get('[role="status"]').element).toBe(loading);
-    expect(wrapper.text()).toContain('Loading album…');
+    expect(wrapper.get('main > section > section').element).toBe(loading);
+    expect(wrapper.find('.shared-album-loading__logo').exists()).toBe(false);
+    expect(wrapper.get('main').attributes('data-album-theme')).toBe('unknown');
     expect(wrapper.find('.error-state').exists()).toBe(false);
     store.error = 'Album unavailable';
     finish();

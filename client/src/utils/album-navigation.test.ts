@@ -3,6 +3,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { notifyAlbumLoading } from './album-navigation';
 
 describe('album navigation loading', () => {
+  it.each([false, null])('does not start Cinema loading for theme=%s', async (cinema) => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [
+      { path: '/', name: 'home', component: {} },
+      { path: '/f/:slug', name: 'folder', component: {} }
+    ] });
+    router.afterEach((to, from, failure) => notifyAlbumLoading(to, from, failure, null, cinema));
+    const loading = vi.fn();
+    window.addEventListener('foldergram:album-view-loading', loading);
+    try {
+      await router.push('/');
+      await router.push('/f/trip');
+      expect(loading).not.toHaveBeenCalled();
+    } finally { window.removeEventListener('foldergram:album-view-loading', loading); }
+  });
   it('signals entry, album changes and view changes, excluding duplicate and failed navigation', async () => {
     const router = createRouter({ history: createMemoryHistory(), routes: [
       { path: '/', name: 'home', component: {} },

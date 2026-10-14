@@ -1,5 +1,5 @@
 <template>
-  <section class="w-full" :data-album-state="foldersStore.currentFolder ? 'ready' : foldersStore.folderError || appStore.isLibraryUnavailable || hasLoadedOnce && !foldersStore.loadingFolder ? 'settled' : 'loading'">
+  <section class="w-full" :data-album-theme="appStore.stats ? (isCinema ? 'cinema' : 'classic') : appStore.error ? 'classic' : 'unknown'" :data-album-state="foldersStore.currentFolder ? 'ready' : foldersStore.folderError || appStore.isLibraryUnavailable || hasLoadedOnce && !foldersStore.loadingFolder ? 'settled' : 'loading'">
     <EmptyState
       v-if="appStore.isLibraryUnavailable"
       class="mx-auto w-[min(100%,56rem)]"
@@ -36,7 +36,7 @@
           :title="t('folder.cinema.empty')" :description="t('folder.cinema.emptyDescription')" />
         <InfiniteLoader :loading="foldersStore.loadingFolder" :has-more="foldersStore.currentHasMore" :show-complete="false" @load-more="loadMore" />
       </section>
-      <div v-else class="mx-auto grid min-w-0 w-full max-w-[69rem] gap-[0.15rem]">
+      <div v-else class="mx-auto grid w-full max-w-[69rem] gap-[0.15rem]">
         <div class="mx-auto w-[min(100%,54rem)]">
           <FolderHeader
             :folder="foldersStore.currentFolder"
@@ -170,7 +170,6 @@
               <InfiniteLoader
                 :loading="foldersStore.loadingFolder"
                 :has-more="foldersStore.currentHasMore"
-                :show-complete="false"
                 @load-more="loadMore"
               />
             </div>
@@ -178,7 +177,7 @@
         </template>
       </div>
 
-      <AlbumAttribution />
+      <AlbumAttribution v-if="isCinema" />
 
       <StoriesModal
         v-if="activeStoryViewerId && folderStoriesStore.items.length"
@@ -236,6 +235,7 @@
   )
   const { t } = useI18n()
   const isCinema = computed(() => appStore.folderDisplayTheme === 'cinema')
+  watch(isCinema, cinema => { if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading')) }, { flush: 'post' })
   const isCinemaScroll = computed(() => isCinema.value && albumRoute.value.query.view === 'scroll')
   const cinemaGridRoute = computed(() => ({
     name: 'folder', params: { slug: props.slug },

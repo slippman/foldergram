@@ -53,7 +53,7 @@
             :aria-label="t('post.viewer.editCaption')" :title="t('post.viewer.editCaption')" @click="openCaptionEditor">
             <span class="i-fluent-edit-16-regular w-5 h-5" aria-hidden="true" />
           </button>
-          <MobileMediaShare :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
+          <MobileMediaShare cinema :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
           <a class="media-action photo-download-desktop" :href="downloadUrl" download
             :aria-label="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')" :title="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')">
             <span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" />

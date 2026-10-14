@@ -23,23 +23,35 @@ beforeEach(() => {
   });
   vi.useFakeTimers();
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1; });
-  document.documentElement.classList.add('shared-album-entry');
+  document.documentElement.classList.add('album-entry', 'shared-album-entry');
   document.body.innerHTML = '<div id="fg-splash"><div class="fg-splash__album"><p>Loading album…</p><span class="fg-splash__indicator"></span><button class="fg-splash__retry" hidden>Retry</button></div></div><div id="app"></div>';
 });
 afterEach(() => {
   for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
-  document.documentElement.classList.remove('shared-album-entry');
+  document.documentElement.classList.remove('album-entry', 'shared-album-entry');
   document.body.innerHTML = '';
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 describe('album startup splash', () => {
-  it.each(['/f/trip', '/folders/trip', '/share/trip'])('recognizes direct album entry at %s', (pathname) => {
+  it('keeps the original generic splash for Classic and does not wait on its images', async () => {
     document.documentElement.classList.remove('shared-album-entry');
+    document.getElementById('app')!.innerHTML = '<main data-album-theme="classic" data-album-state="loading"><img src="/classic-pending.jpg" loading="lazy"></main>';
+    const img = visibleImage();
+    start(); await flush();
+    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(false);
+    expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+    expect(img.loading).not.toBe('eager');
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+  it.each(['/f/trip', '/folders/trip', '/share/trip'])('recognizes direct album entry at %s', (pathname) => {
+    document.documentElement.classList.remove('album-entry', 'shared-album-entry');
     const entryScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)][0][1];
     new Function('window', entryScript)({ location: { pathname } });
-    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(true);
+    expect(document.documentElement.classList.contains('album-entry')).toBe(true);
+    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(false);
   });
   it('stays through intermediate shells, album data loading, and visible thumbnail loading', async () => {
     start();

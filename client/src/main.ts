@@ -7,6 +7,7 @@ import { canAccessRoute, router } from './router';
 import { useAppStore } from './stores/app';
 import { useAuthStore } from './stores/auth';
 import { pinia } from './stores/pinia';
+import { useShareStore } from './stores/share';
 import { notifyAlbumLoading } from './utils/album-navigation';
 import './styles/base.css';
 import 'virtual:uno.css';
@@ -78,7 +79,17 @@ async function bootstrap() {
     await router.replace({ name: 'home' });
   }
 
-  router.afterEach((to, from, failure) => notifyAlbumLoading(to, from, failure, appStore.imageModalBackgroundPath));
+  router.afterEach((to, from, failure) => {
+    let cinema: boolean | null = true;
+    if (to.name === 'folder') cinema = appStore.stats ? appStore.folderDisplayTheme === 'cinema' : null;
+    else if (to.meta.publicShare) {
+      const shareStore = useShareStore(pinia);
+      const theme = shareStore.folder?.slug === to.params.slug ? shareStore.folder.displayTheme
+        : shareStore.image?.folderSlug === to.params.slug ? shareStore.image.displayTheme : undefined;
+      cinema = theme ? theme === 'cinema' : null;
+    }
+    notifyAlbumLoading(to, from, failure, appStore.imageModalBackgroundPath, cinema);
+  });
   router.afterEach((to) => {
     if (to.name === 'folder' && typeof to.params.slug === 'string') {
       appStore.recordOpenedFolder(to.params.slug);

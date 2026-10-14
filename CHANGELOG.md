@@ -1,17 +1,16 @@
 # Changelog
 
-## 1.2.2-slippman.1.3.0 — 2026-10-13
+## 1.2.2-slippman.1.3.0 — 2026-10-14
 
 ### New features
 
-- Shared and standard albums use the same compact header, with a persistent grid-browsing hint and UnReeled Photos branding. The footer links to UnReeled and this fork's source.
-- Album loading screens use a dark-mode-aware UR logo and wait for images in the loaded page before showing the grid or scrolling view. Slow or failed loading offers Retry.
-- Share videos through the same native mobile sharing action as photos, with matching sharing and download icons.
+- Cinema shared and standard albums use the same compact header, with a persistent grid-browsing hint and UnReeled Photos branding. The footer links to UnReeled and this fork's source.
+- Cinema album loading screens use a dark-mode-aware UR logo and wait for images in the loaded page before showing the grid or scrolling view. Slow or failed loading offers Retry.
+- In Cinema, share videos through the same native mobile sharing action as photos, with matching sharing and download icons.
 
 ### Bug fixes
 
-- Long album titles no longer push the site name off narrow mobile screens.
-- Copy and Revoke buttons now have matching layouts in the album share menu.
+- Long Cinema album titles no longer push the site name off narrow mobile screens.
 - Cinema no longer shows “You are caught up” at the end of an album or Home feed.
 - Stalled read requests now report a timeout instead of leaving album loading pending indefinitely.
 

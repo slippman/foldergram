@@ -496,16 +496,31 @@
             >
               <span :class="[isCurrentCover ? 'i-fluent-folder-add-20-filled text-accent' : 'i-fluent-folder-add-20-regular', 'w-[1.5rem] h-[1.5rem]']" aria-hidden="true" />
             </button>
-            <MobileMediaShare :url="downloadOriginalMediaUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
+            <MobileMediaShare v-if="cinema || (activeMediaItem?.mediaType ?? image?.mediaType) === 'image'" :cinema="cinema" :url="downloadOriginalMediaUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
             <!-- Download original -->
             <a
-              class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer text-text transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px photo-download-desktop"
+              class="viewer__sidebar-action inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer text-text transition-[opacity,transform] duration-180 hover:opacity-72 hover:-translate-y-px"
+              :class="{ 'photo-download-desktop': cinema || (activeMediaItem?.mediaType ?? image?.mediaType) === 'image' }"
               :href="downloadOriginalMediaUrl"
               download
               :aria-label="t(sharedSlug ? 'post.viewer.download' : 'post.viewer.downloadOriginalFile')"
               :title="t(sharedSlug ? 'post.viewer.download' : 'post.viewer.downloadOriginalFile')"
             >
-              <span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" />
+              <span v-if="cinema" class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" />
+              <svg v-else
+                class="w-[1.55rem] h-[1.55rem]"
+                viewBox="0 0 24 24"
+                role="presentation"
+              >
+                <path
+                  d="M12 4.75v9.5m0 0 3.5-3.5M12 14.25l-3.5-3.5M5.75 16.75v1.5A1.75 1.75 0 0 0 7.5 20h9a1.75 1.75 0 0 0 1.75-1.75v-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.4"
+                />
+              </svg>
             </a>
             <!-- Open original -->
             <a

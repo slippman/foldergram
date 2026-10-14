@@ -21,7 +21,7 @@
     />
     <title>Foldergram</title>
     <script>
-      if (/^\/(share|f|folders)\//.test(window.location.pathname)) document.documentElement.classList.add('shared-album-entry');
+      if (/^\/(share|f|folders)\//.test(window.location.pathname)) document.documentElement.classList.add('album-entry');
     </script>
     <style>
       :root { --ur-logo-filter: none; --ur-logo-blend: multiply; }
@@ -126,7 +126,7 @@
           var splash = document.getElementById('fg-splash');
           var app = document.getElementById('app');
           if (!splash || !app) return;
-          var albumEntry = document.documentElement.classList.contains('shared-album-entry');
+          var albumEntry = document.documentElement.classList.contains('album-entry');
           var finishing = false;
           var cancelled = false;
           stopCurrentRun = function () {
@@ -193,7 +193,14 @@
           function finish() {
             if (cancelled || finishing) return;
             var state = app.querySelector('[data-album-state]');
-            if (!app.childElementCount || (albumEntry && (!state || state.dataset.albumState === 'loading'))) return;
+            if (!app.childElementCount || (albumEntry && !state)) return;
+            if (albumEntry) {
+              var theme = state.dataset.albumTheme || 'cinema';
+              if (theme === 'unknown' && state.dataset.albumState !== 'settled') return;
+              albumEntry = theme === 'cinema';
+              document.documentElement.classList.toggle('shared-album-entry', albumEntry);
+            }
+            if (albumEntry && state.dataset.albumState === 'loading') return;
             finishing = true;
             requestAnimationFrame(function () {
               var images = albumEntry && state.dataset.albumState === 'ready'
@@ -230,11 +237,12 @@
             });
           }
           function changed() {
-            if (albumEntry) app.querySelectorAll('img').forEach(function (img) { img.loading = 'eager'; });
+            var state = app.querySelector('[data-album-state]');
+            if (albumEntry && state && (!state.dataset.albumTheme || state.dataset.albumTheme === 'cinema')) app.querySelectorAll('img').forEach(function (img) { img.loading = 'eager'; });
             finish();
           }
           var observer = new MutationObserver(changed);
-          observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-album-state'] });
+          observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-album-state', 'data-album-theme'] });
           changed();
         }
         window.addEventListener('foldergram:album-view-cancel', function () {
@@ -244,6 +252,7 @@
           stopCurrentRun = null;
           if (splash) splash.remove();
           document.documentElement.classList.remove('shared-album-entry');
+          document.documentElement.classList.remove('album-entry');
           if (splash) window.dispatchEvent(new Event('foldergram:album-ready'));
         });
         window.addEventListener('foldergram:album-view-loading', function () {
@@ -252,7 +261,7 @@
           stopCurrentRun = null;
           var splash = document.getElementById('fg-splash');
           if (splash) splash.remove();
-          document.documentElement.classList.add('shared-album-entry');
+          document.documentElement.classList.add('album-entry');
           document.body.appendChild(splashTemplate.cloneNode(true));
           requestAnimationFrame(function () { if (generation === nextGeneration) run(); });
         });

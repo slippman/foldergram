@@ -1,12 +1,44 @@
 <template>
-  <section class="grid gap-3 pb-3">
-    <AlbumHeader :title="displayFolderTitle" :show-hint="folder.imageCount > 0 || folder.videoCount > 0">
-      <template #actions>
-        <button v-if="!shared && hasAvatarStory" type="button" class="media-action" :aria-label="t('folder.header.openStories')" @click="emit('openAvatarStory')">
-          <span class="i-fluent-play-circle-24-regular h-5 w-5" aria-hidden="true" />
-        </button>
+  <section class="grid grid-cols-[10.75rem_minmax(0,1fr)] items-start gap-x-[2.65rem] pt-[0.6rem] pb-[2.4rem] max-md:grid-cols-[9rem_minmax(0,1fr)] max-md:gap-x-[2rem] max-sm:grid-cols-1 max-sm:gap-y-[1.35rem] max-sm:pb-[1.85rem] max-sm:text-center">
+    <div class="grid place-items-center">
+      <button
+        v-if="hasAvatarStory"
+        type="button"
+        class="block border-0 bg-transparent p-0 rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text/55 focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
+        :aria-label="t('folder.header.openStories')"
+        @click="emit('openAvatarStory')"
+      >
+        <div class="rounded-full p-[0.22rem] shadow-[0_16px_34px_rgba(246,106,61,0.12)] transition-transform duration-[180ms] hover:scale-[1.02]" style="background: var(--story-ring);">
+          <div class="rounded-full bg-bg p-[0.22rem]">
+            <Avatar class="w-[9.35rem] h-[9.35rem] max-md:w-[7.75rem] max-md:h-[7.75rem]" :name="displayFolderTitle" :src="folder.avatarUrl" />
+          </div>
+        </div>
+      </button>
+      <RouterLink v-else-if="folder.avatarImageId" custom :to="buildAvatarRoute(folder.avatarImageId)" v-slot="{ href, navigate }">
+        <a
+          :href="href"
+          class="block rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text/55 focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
+          :aria-label="t('folder.header.openAvatar')"
+          @click="handleAvatarNavigation($event, navigate)"
+        >
+          <div class="rounded-full p-[0.22rem] shadow-[0_12px_24px_rgba(99,115,129,0.12)] transition-transform duration-[180ms] hover:scale-[1.02]" style="background: rgba(43, 48, 54, 0.8);">
+            <div class="rounded-full bg-bg p-[0.22rem]">
+              <Avatar class="w-[9.35rem] h-[9.35rem] max-md:w-[7.75rem] max-md:h-[7.75rem]" :name="displayFolderTitle" :src="folder.avatarUrl" />
+            </div>
+          </div>
+        </a>
+      </RouterLink>
+      <div v-else class="rounded-full p-[0.22rem] shadow-[0_12px_24px_rgba(99,115,129,0.12)]" style="background: rgba(43, 48, 54, 0.8);">
+        <div class="rounded-full bg-bg p-[0.22rem]">
+          <Avatar class="w-[9.35rem] h-[9.35rem] max-md:w-[7.75rem] max-md:h-[7.75rem]" :name="displayFolderTitle" :src="folder.avatarUrl" />
+        </div>
+      </div>
+    </div>
+    <div class="grid gap-[1rem] pt-[0.35rem]">
+      <div class="flex items-center gap-[0.75rem] flex-wrap max-sm:justify-center">
+        <h1 class="m-0 text-[clamp(1.6rem,2.4vw,2rem)] font-medium leading-none tracking-[-0.04em]">{{ displayFolderTitle }}</h1>
         <button
-          v-if="!shared && authStore.canManageLibrary"
+          v-if="authStore.canManageLibrary"
           type="button"
           class="inline-flex items-center justify-center px-4 pt-2 pb-1.5 text-[0.75rem] font-semibold leading-none rounded-lg bg-surface-hover text-text hover:bg-border transition-colors border border-border cursor-pointer"
           @click="openProfileEditor"
@@ -14,7 +46,7 @@
           {{ t('folder.header.editButton') }}
         </button>
         <button
-          v-if="!shared && authStore.canManageLibrary"
+          v-if="authStore.canManageLibrary"
           type="button"
           class="inline-flex h-[2.1rem] w-[2.1rem] items-center justify-center rounded-lg border border-border bg-surface-hover text-text transition-colors hover:bg-border"
           :aria-label="t('folder.header.shareButton')"
@@ -23,15 +55,14 @@
         >
           <span class="i-fluent-share-20-regular h-5 w-5" aria-hidden="true" />
         </button>
-      </template>
-    </AlbumHeader>
-    <div class="grid gap-3">
+      </div>
+      <p v-if="folder.breadcrumb" class="m-0 text-[0.84rem] font-medium tracking-[0.02em] text-muted">{{ folder.breadcrumb }}</p>
       <div class="flex items-center gap-[1.6rem] flex-wrap text-[0.95rem] leading-none max-sm:justify-center">
         <span>{{ t('folder.header.posts', { count: folder.imageCount }) }}</span>
         <span>{{ t('folder.header.reels', { count: folder.videoCount }) }}</span>
-        <span v-if="!shared && folder.latestImageMtimeMs">{{ t('folder.header.updated', { date: formattedUpdatedDate }) }}</span>
+        <span v-if="folder.latestImageMtimeMs">{{ t('folder.header.updated', { date: formattedUpdatedDate }) }}</span>
       </div>
-      <div v-if="!shared" class="grid max-w-[29rem] gap-[0.28rem] max-sm:max-w-none">
+      <div class="grid max-w-[29rem] gap-[0.28rem] max-sm:max-w-none">
         <span class="text-[0.74rem] font-bold tracking-[0.1em] text-muted uppercase">{{ t('folder.header.libraryPath') }}</span>
         <p class="m-0 font-mono text-[0.8rem] leading-[1.5] text-muted break-all">{{ folder.folderPath }}</p>
       </div>
@@ -66,7 +97,7 @@
       </div>
     </div>
 
-    <Teleport v-if="!shared" to="body">
+    <Teleport to="body">
       <FolderProfileModal
         v-if="isEditingProfile"
         :initial-name="folder.name"
@@ -88,9 +119,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { RouterLink, useRoute } from 'vue-router';
 import type { FolderSummary } from '../types/api';
 import { formatFolderTitle } from '../utils/folder-titles';
-import AlbumHeader from './AlbumHeader.vue';
+import Avatar from './Avatar.vue';
 import FolderProfileModal from './FolderProfileModal.vue';
 import FolderShareModal from './FolderShareModal.vue';
 import { useAppStore } from '../stores/app';
@@ -100,7 +132,6 @@ import { useFoldersStore } from '../stores/folders';
 const props = defineProps<{
   folder: FolderSummary;
   hasAvatarStory?: boolean;
-  shared?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -110,6 +141,7 @@ const emit = defineEmits<{
 const appStore = useAppStore();
 const authStore = useAuthStore();
 const foldersStore = useFoldersStore();
+const route = useRoute();
 const { locale, t } = useI18n();
 
 const isEditingProfile = ref(false);
@@ -124,7 +156,7 @@ const descriptionId = `folder-description-${Math.random().toString(36).slice(2, 
 let descriptionResizeObserver: ResizeObserver | null = null;
 let syncingDescriptionOverflow = false;
 
-const displayFolderTitle = computed(() => props.shared ? props.folder.name : formatFolderTitle(props.folder, appStore.nestedFolderTitleFormat));
+const displayFolderTitle = computed(() => formatFolderTitle(props.folder, appStore.nestedFolderTitleFormat));
 const formattedUpdatedDate = computed(() =>
   props.folder.latestImageMtimeMs
     ? new Date(props.folder.latestImageMtimeMs).toLocaleDateString(locale.value, {
@@ -213,6 +245,24 @@ async function syncDescriptionOverflow() {
   }
 
   syncingDescriptionOverflow = false;
+}
+
+function buildAvatarRoute(id: number) {
+  return {
+    name: 'image',
+    params: { id: String(id) },
+    query: route.query
+  };
+}
+
+function handleAvatarNavigation(event: MouseEvent, navigate: () => void) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  event.preventDefault();
+  appStore.setImageModalBackground(route.fullPath);
+  navigate();
 }
 
 watch(
