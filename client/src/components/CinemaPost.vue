@@ -43,7 +43,7 @@
             :aria-label="t('post.viewer.editCaption')" :title="t('post.viewer.editCaption')" @click="openCaptionEditor">
             <span class="i-fluent-edit-16-regular w-5 h-5" aria-hidden="true" />
           </button>
-          <MobileMediaShare cinema :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
+          <MobileMediaShare cinema :media-type="activeMedia?.mediaType ?? item.mediaType" :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
           <a class="media-action photo-download-desktop" :href="downloadUrl" download
             :aria-label="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')" :title="sharedSlug ? t('post.viewer.download') : t('post.viewer.downloadOriginalFile')">
             <span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" />
@@ -64,6 +64,7 @@
         <p v-if="loadingInfo">{{ t('common.loading') }}</p>
         <p v-else-if="infoError" role="alert">{{ infoError }}</p>
         <dl v-else>
+          <div v-if="!sharedSlug && authStore.canManageLibrary" class="cinema-post__filename"><dt>{{ t('folder.cinema.filename') }}</dt><dd>{{ activeMedia?.filename ?? detail?.filename ?? item.filename }}</dd></div>
           <div><dt>{{ t('post.viewer.stats.dimensions') }}</dt><dd>{{ activeMedia?.width ?? item.width }} × {{ activeMedia?.height ?? item.height }}</dd></div>
           <div v-if="detail"><dt>{{ t('post.viewer.stats.type') }}</dt><dd>{{ activeMedia?.mimeType ?? detail.mimeType }}</dd></div>
           <div v-if="detail"><dt>{{ t('post.viewer.stats.size') }}</dt><dd>{{ formattedFileSize }}</dd></div>
@@ -94,7 +95,7 @@ import { useLikesStore } from '../stores/likes';
 import { fetchImage, fetchSharedPost } from '../api/gallery';
 import SharedFavoriteButton from './SharedFavoriteButton.vue';
 import MobileMediaShare from './MobileMediaShare.vue';
-import { getOriginalMediaDownloadUrl } from '../utils/original-media';
+import { getOriginalMediaDownloadUrl, getSharedOriginalMediaDownloadUrl } from '../utils/original-media';
 import { sharedImageDetail } from '../utils/shared-media';
 import type { FeedItem, ImageDetail } from '../types/api';
 
@@ -129,7 +130,10 @@ const detail = ref<ImageDetail | null>(null);
 const infoId = computed(() => `cinema-info-${props.item.id}`);
 const activeMedia = computed(() => detail.value?.mediaItems?.[carouselIndex.value] ?? props.item.mediaItems?.[carouselIndex.value]);
 const exifDetails = computed(() => formatExifDetails(activeMedia.value?.exif ?? detail.value?.exif, t));
-const downloadUrl = computed(() => props.sharedSlug ? activeMedia.value?.previewUrl ?? props.item.previewUrl : getOriginalMediaDownloadUrl(activeMedia.value?.imageId ?? props.item.id));
+const downloadUrl = computed(() => {
+  const id = activeMedia.value?.imageId ?? props.item.id;
+  return props.sharedSlug ? getSharedOriginalMediaDownloadUrl(id) : getOriginalMediaDownloadUrl(id);
+});
 const likeLabel = computed(() => likesStore.toggleAriaLabel(likesStore.isLiked(props.item.id)));
 const infoLabel = computed(() => t(showInfo.value ? 'post.viewer.hideDetails' : 'post.viewer.showDetails'));
 const formattedFileSize = computed(() => {

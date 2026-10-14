@@ -7,7 +7,7 @@
       <span aria-hidden="true" :class="likes.isLiked(image.id) ? 'i-fluent-heart-20-filled' : 'i-fluent-heart-20-regular'" />
     </button>
     <CollectionBookmark v-if="!sharedSlug" :item="image" placement="viewer" />
-    <MobileMediaShare cinema :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
+    <MobileMediaShare cinema :media-type="mediaType ?? image.mediaType" :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
     <button class="media-action cinema-viewer-actions__desktop" :aria-label="t('post.viewer.shareLink')" :title="t('post.viewer.shareLink')" @click="shareLink">
       <span aria-hidden="true" class="i-fluent-share-20-regular" />
     </button>
@@ -37,7 +37,7 @@ import { useLikesStore } from '../stores/likes';
 import SharedFavoriteButton from './SharedFavoriteButton.vue';
 import CollectionBookmark from './CollectionBookmark.vue';
 import MobileMediaShare from './MobileMediaShare.vue';
-const props = defineProps<{ image: ImageDetail; sharedSlug?: string; downloadUrl: string; settingCover: boolean; isCurrentCover: boolean; deleting?: boolean }>();
+const props = defineProps<{ image: ImageDetail; sharedSlug?: string; downloadUrl: string; settingCover: boolean; isCurrentCover: boolean; deleting?: boolean; mediaType?: 'image' | 'video' }>();
 const emit = defineEmits<{ edit: []; cover: []; delete: [] }>();
 const { t } = useI18n();
 const auth = useAuthStore();

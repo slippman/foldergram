@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.2-slippman.1.5.0 — 2026-10-14
+
+### New features
+
+- Cinema shares and downloads full-resolution originals from both regular albums and shared links. Video sharing accepts files up to 250 MB; larger files offer Download or Cancel. Shared originals require active access to that album.
+- Cinema video sharing shows preparation progress, then a ready-to-share button in the same popup. Only one video can prepare or share at a time; another attempt offers a button to return to the active share.
+- Admins can see the original filename in Cinema photo and video details.
+
+### Bug fixes
+
+- Shared movies keep their original filenames and recognizable video extensions, including .mov, instead of being sent as files such as media.quicktime.
+- Cinema video preparation can be canceled and stops when stalled or when leaving the view. Unsupported sharing offers an explicit download instead of automatically navigating away from the album.
+- The Cinema album share dialog uses a rectangular Copy button that matches the Revoke control.
+
 ## 1.2.2-slippman.1.4.0 — 2026-10-14
 
 ### New features

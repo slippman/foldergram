@@ -128,7 +128,7 @@
                 <p v-if="link.status === 'active' && !link.canCopy" class="m-0 text-[0.78rem] text-muted">{{ t('folder.shareModal.legacyLinkHint') }}</p>
               </div>
               <div class="flex gap-2">
-                <button v-if="link.canCopy" class="share-icon-button cursor-pointer" type="button" :title="t('common.copy')" :aria-label="t('common.copy')" @click="copyExistingLink(link.id)">
+                <button v-if="link.canCopy" class="cursor-pointer" :class="cinema ? 'share-link-copy' : 'share-icon-button'" type="button" :title="t('common.copy')" :aria-label="t('common.copy')" @click="copyExistingLink(link.id)">
                   <span class="i-fluent-copy-20-regular h-4.5 w-4.5" aria-hidden="true" />
                   {{ t('common.copy') }}
                 </button>
@@ -226,6 +226,7 @@ import type { FolderShareExpirationPreset, FolderShareLinkStatus, FolderSummary 
 
 const props = defineProps<{
   folder: FolderSummary;
+  cinema?: boolean;
 }>();
 
 defineEmits<{
@@ -432,6 +433,25 @@ watch(
 </script>
 
 <style scoped>
+.share-link-copy {
+  display: inline-flex;
+  flex-shrink: 0;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.share-link-copy:hover { background: var(--surface-hover); }
+.share-link-copy:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.share-link-copy > span { flex-shrink: 0; }
+
 .share-url-input {
   width: 100%;
   min-height: 2.5rem;

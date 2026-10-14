@@ -53,8 +53,10 @@ URLs use a trusted host. Existing links keep working; create a new link to inclu
 the message preview. Shared links
 follow the current Album theme, including Cinema's grid, scrolling hints, video
 controls, photo zoom, and camera Info. Shared-album favorites stay in the visitor's
-browser. Shared downloads and native sharing use scoped previews, without giving
-access to originals, other albums, or admin controls.
+browser. In Cinema, shared downloads and native file sharing use the original
+file at full resolution, with video sharing limited to 250 MB. Classic retains
+preview downloads. Original access requires a valid grant for that album;
+shared links do not grant access to other albums or admin controls.
 On phones, Cinema photo and video controls offer native file sharing when supported,
 with the same Foldergram share icon. Classic keeps its existing photo-sharing controls. Browsers without file sharing offer Download
 instead; desktop controls retain Download. Sharing requires HTTPS, and large

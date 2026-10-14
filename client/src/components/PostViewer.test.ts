@@ -262,6 +262,24 @@ describe('PostViewer', () => {
     }
   });
 
+  it('shows fullscreen filenames only for Cinema library admins', async () => {
+    const auth = useAuthStore();
+    auth.capabilities.canManageLibrary = true;
+    const wrapper = mount(PostViewer, {
+      props: { image: createImageDetail(12, { previousImageId: null, nextImageId: null }), cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    expect(wrapper.get('.cinema-admin-filename').text()).toContain('post-12.jpg');
+    await wrapper.setProps({ cinema: false });
+    expect(wrapper.find('.cinema-admin-filename').exists()).toBe(false);
+    await wrapper.setProps({ cinema: true, sharedSlug: 'trip' });
+    expect(wrapper.find('.cinema-admin-filename').exists()).toBe(false);
+    await wrapper.setProps({ sharedSlug: undefined });
+    auth.capabilities.canManageLibrary = false;
+    await flushPromises();
+    expect(wrapper.find('.cinema-admin-filename').exists()).toBe(false);
+  });
   it('keeps shared viewer actions and keyboard navigation inside the album', async () => {
     const image = { ...createImageDetail(12, { previousImageId: 11, nextImageId: 13 }),
       previewUrl: '/api/share/images/12/preview', originalUrl: '' };
@@ -273,7 +291,10 @@ describe('PostViewer', () => {
     expect(wrapper.find('button[aria-label="Edit caption"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Delete post"]').exists()).toBe(false);
     expect(wrapper.findComponent({ name: 'CollectionBookmark' }).exists()).toBe(false);
+    expect(wrapper.get('a[download]').attributes('href')).toBe('/api/share/images/12/original');
+    await wrapper.setProps({ cinema: false });
     expect(wrapper.get('a[download]').attributes('href')).toBe(image.previewUrl);
+    await wrapper.setProps({ cinema: true });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     await flushPromises();
     expect(mockRouterPush).toHaveBeenCalledWith({ name: 'shared-post', params: { slug: 'animal-planet', id: '13' }, query: mockRouteQuery });
@@ -383,6 +404,9 @@ describe('PostViewer', () => {
     mockRouteQuery.media = '181';
     const wrapper = mount(PostViewer, { props: { image, isModal: true }, global: { stubs: globalStubs } });
     expect(wrapper.get('a.photo-download-desktop').attributes('href')).toBe('/api/originals/181?download=1');
+    await wrapper.setProps({ cinema: true, sharedSlug: 'animal-planet' });
+    expect(wrapper.get('a.photo-download-desktop').attributes('href')).toBe('/api/share/images/181/original');
+    await wrapper.setProps({ cinema: false, sharedSlug: undefined });
     await wrapper.setProps({ image: createImageDetail(19, { previousImageId: null, nextImageId: null }) });
     expect(wrapper.get('a.photo-download-desktop').attributes('href')).toBe('/api/originals/19?download=1');
     delete mockRouteQuery.media;

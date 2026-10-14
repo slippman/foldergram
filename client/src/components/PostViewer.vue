@@ -110,7 +110,7 @@
     </button>
 
     <CinemaViewerActions v-if="cinema" :image="image" :shared-slug="sharedSlug" :download-url="downloadOriginalMediaUrl"
-      :setting-cover="settingCover" :is-current-cover="isCurrentCover" :deleting="deleting"
+      :media-type="activeMediaItem?.mediaType ?? image.mediaType" :setting-cover="settingCover" :is-current-cover="isCurrentCover" :deleting="deleting"
       @edit="openCaptionEditor" @cover="handleSetCover" @delete="$emit('delete')" />
 
     <!-- Card -->
@@ -384,6 +384,10 @@
 
         <!-- Quick stats -->
         <dl class="viewer__sidebar-stats m-0 px-5 pt-[0.9rem]">
+          <div v-if="cinema && !sharedSlug && authStore.canManageLibrary" class="viewer__sidebar-stat cinema-admin-filename">
+            <dt class="viewer__sidebar-stat-label">{{ t('folder.cinema.filename') }}</dt>
+            <dd class="viewer__sidebar-stat-value m-0 text-[0.96rem] font-semibold break-words">{{ activeMediaItem?.filename ?? image.filename }}</dd>
+          </div>
           <div class="viewer__sidebar-stat">
             <dt class="viewer__sidebar-stat-label">
               {{ t('post.viewer.stats.dimensions') }}
@@ -632,7 +636,7 @@
   import { formatFolderTitle } from "../utils/folder-titles"
   import SharedFavoriteButton from './SharedFavoriteButton.vue';
   import MobileMediaShare from './MobileMediaShare.vue';
-  import { getOriginalMediaDownloadUrl, getOriginalMediaUrl } from "../utils/original-media"
+  import { getOriginalMediaDownloadUrl, getOriginalMediaUrl, getSharedOriginalMediaDownloadUrl } from "../utils/original-media"
   import Avatar from "./Avatar.vue"
   import CarouselMediaStage from "./CarouselMediaStage.vue"
   import CinemaViewerActions from "./CinemaViewerActions.vue"
@@ -705,7 +709,11 @@
     return props.image?.filename ?? ''
   })
   const originalMediaUrl = computed(() => props.sharedSlug ? activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "" : activeMediaItem.value?.originalUrl ?? (activeMediaImageId.value ? getOriginalMediaUrl(activeMediaImageId.value) : ""))
-  const downloadOriginalMediaUrl = computed(() => props.sharedSlug ? activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "" : activeMediaImageId.value ? getOriginalMediaDownloadUrl(activeMediaImageId.value) : "")
+  const downloadOriginalMediaUrl = computed(() => {
+    const id = activeMediaImageId.value;
+    if (props.sharedSlug) return props.cinema && id ? getSharedOriginalMediaDownloadUrl(id) : activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "";
+    return id ? getOriginalMediaDownloadUrl(id) : "";
+  })
   const MODAL_SIDEBAR_COLLAPSE_BREAKPOINT = 960
   const SHEET_SWIPE_MIN_DISTANCE = 56
   const SHEET_SWIPE_MAX_HORIZONTAL_DISTANCE = 96
@@ -1679,6 +1687,7 @@
 </script>
 
 <style scoped>
+.viewer--cinema .cinema-admin-filename { grid-column: 1 / -1; }
 @media (min-width: 769px) {
   .viewer--cinema .viewer__sidebar--drawer { right: 4.5rem; }
 }
