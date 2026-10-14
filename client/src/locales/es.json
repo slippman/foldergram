@@ -958,6 +958,7 @@
         "focalLength": "Distancia focal"
       },
       "videoType": "Video ({mimeType})",
+      "shareLink": "Compartir enlace",
       "setAsCover": "Establecer como portada de la carpeta",
       "download": "Descargar archivo",
       "openFile": "Abrir archivo",

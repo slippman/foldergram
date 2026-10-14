@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FeedItem, ImageDetail } from '../types/api';
+import { useAuthStore } from '../stores/auth';
 import { useAppStore } from '../stores/app';
 import { useFoldersStore } from '../stores/folders';
 import { useLikesStore } from '../stores/likes';
@@ -198,6 +199,67 @@ describe('PostViewer', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
+  });
+
+  it('puts Cinema actions outside details and admin tools in a dismissible menu', async () => {
+    const auth = useAuthStore();
+    auth.capabilities.canManageLibrary = true;
+    auth.capabilities.canDeleteMedia = true;
+    const wrapper = mount(PostViewer, {
+      props: { image: createImageDetail(12, { previousImageId: null, nextImageId: null }), cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    expect(wrapper.find('.viewer__sidebar .viewer__sidebar-actions').exists()).toBe(false);
+    expect(wrapper.find('.viewer__sidebar button[aria-label="Edit caption"]').exists()).toBe(false);
+    const rail = wrapper.get('.cinema-viewer-actions');
+    expect(rail.get('a[download]').attributes('href')).toBe('/api/originals/12?download=1');
+    const menu = rail.get('details');
+    expect(menu.text()).toContain('Edit caption');
+    expect(menu.text()).toContain('Set as folder cover');
+    expect(menu.text()).toContain('Delete post');
+    (menu.element as HTMLDetailsElement).open = true;
+    await rail.trigger('keydown', { key: 'Escape' });
+    expect((menu.element as HTMLDetailsElement).open).toBe(false);
+    (menu.element as HTMLDetailsElement).open = true;
+    const deleteButton = menu.findAll('button').find(button => button.text() === 'Delete post')!;
+    await deleteButton.trigger('click');
+    expect(wrapper.emitted('delete')).toHaveLength(1);
+    expect((menu.element as HTMLDetailsElement).open).toBe(false);
+    auth.capabilities.canManageLibrary = false;
+    auth.capabilities.canDeleteMedia = false;
+    await flushPromises();
+    expect(wrapper.find('.cinema-viewer-actions details').exists()).toBe(false);
+  });
+
+  it.each(['modern', 'missing', 'rejected', 'failed'])('reports localized desktop sharing status with %s clipboard support', async (mode) => {
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const originalShare = Object.getOwnPropertyDescriptor(navigator, 'share');
+    const originalExec = Object.getOwnPropertyDescriptor(document, 'execCommand');
+    const writeText = mode === 'rejected' ? vi.fn().mockRejectedValue(new Error('Denied')) : vi.fn().mockResolvedValue(undefined);
+    const legacyCopy = vi.fn().mockReturnValue(mode !== 'failed');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: mode === 'modern' || mode === 'rejected' ? { writeText } : undefined });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: legacyCopy });
+    try {
+      const wrapper = mount(PostViewer, {
+        props: { image: createImageDetail(12, { previousImageId: null, nextImageId: null }), cinema: true, isModal: true },
+        global: { stubs: globalStubs }
+      });
+      await wrapper.get('.cinema-viewer-actions__desktop').trigger('click');
+      await flushPromises();
+      expect(wrapper.get('.cinema-viewer-actions__notice').text()).toBe(mode === 'failed' ? 'Unable to copy link' : 'Link copied');
+      if (mode === 'modern') expect(writeText).toHaveBeenCalledWith(window.location.href);
+      else expect(legacyCopy).toHaveBeenCalledWith('copy');
+      expect(document.querySelector('textarea')).toBeNull();
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+      if (originalShare) Object.defineProperty(navigator, 'share', originalShare);
+      else Reflect.deleteProperty(navigator, 'share');
+      if (originalExec) Object.defineProperty(document, 'execCommand', originalExec);
+      else Reflect.deleteProperty(document, 'execCommand');
+    }
   });
 
   it('keeps shared viewer actions and keyboard navigation inside the album', async () => {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.2-slippman.1.4.0 — 2026-10-14
+
+### New features
+
+- Cinema fullscreen viewers keep photo actions in a right-side rail. Admin tools for editing captions, setting album covers, and deleting posts are grouped under More. Desktop sharing sends or copies the current photo link.
+
+### Bug fixes
+
+- Cinema uses one continuous UR loading screen while fetching a post and loading its photo, including shared albums. Opening a photo waits for that viewer instead of relying on the album behind it.
+- Cinema scroll views keep icons, captions, and capture dates on separate rows. Left-aligned details and a close divider make it clearer which photo they belong to, with space before the next post.
+
 ## 1.2.2-slippman.1.3.0 — 2026-10-14
 
 ### New features

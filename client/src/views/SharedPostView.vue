@@ -116,7 +116,9 @@ const router = useRouter();
 const route = useRoute();
 const shareStore = useShareStore();
 const isCinema = computed(() => (shareStore.image?.folderSlug === props.slug ? shareStore.image.displayTheme : shareStore.folder?.slug === props.slug ? shareStore.folder.displayTheme : 'classic') === 'cinema');
-watch(isCinema, cinema => { if (cinema && !props.modal) window.dispatchEvent(new Event('foldergram:album-view-loading')); }, { flush: 'post' });
+watch(() => [isCinema.value, props.slug, props.id] as const, ([cinema]) => {
+  if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading'));
+}, { immediate: true, flush: 'post' });
 const viewerImage = computed(() => !shareStore.loadingImage && shareStore.image?.folderSlug === props.slug ? sharedImageDetail(shareStore.image) : null);
 const viewerFolder = computed(() => shareStore.folder?.slug === props.slug && shareStore.folder ? { ...shareStore.folder, folderPath: '', breadcrumb: null, latestImageMtimeMs: null, avatarImageId: null, avatarUrl: shareStore.folder.avatarThumbnailUrl } : null);
 function handleEscape(event: KeyboardEvent) {

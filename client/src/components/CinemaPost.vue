@@ -18,7 +18,6 @@
       </RouterLink>
     </div>
     <footer class="cinema-post__details" :style="{ width: mediaStyle.width }">
-      <p v-if="item.caption?.trim()" class="cinema-post__caption">{{ item.caption }}</p>
       <div class="cinema-post__toolbar">
         <div class="cinema-post__actions">
           <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="item.id" />
@@ -39,15 +38,6 @@
             </a>
           </RouterLink>
         </div>
-        <div class="cinema-post__metadata">
-          <RouterLink v-if="showAlbumName" class="cinema-post__album" :to="{ name: sharedSlug ? 'shared-folder' : 'folder', params: { slug: sharedSlug || item.folderSlug } }">
-            {{ item.folderName }}
-            <span class="i-fluent-chevron-right-16-regular cinema-post__album-chevron" aria-hidden="true" />
-          </RouterLink>
-
-          <time v-if="captureDate" :datetime="captureDate.toISOString()">{{ formattedDate }}</time>
-          <RouterLink v-if="!sharedSlug && item.place" :to="{ name: 'place', params: { slug: item.place.slug } }">{{ item.place.name }}</RouterLink>
-        </div>
         <div class="cinema-post__actions">
           <button v-if="!sharedSlug && authStore.canManageLibrary" type="button" class="media-action"
             :aria-label="t('post.viewer.editCaption')" :title="t('post.viewer.editCaption')" @click="openCaptionEditor">
@@ -59,6 +49,16 @@
             <span class="i-fluent-arrow-download-20-regular w-6 h-6" aria-hidden="true" />
           </a>
         </div>
+      </div>
+      <p v-if="item.caption?.trim()" class="cinema-post__caption">{{ item.caption }}</p>
+      <div v-if="showAlbumName || captureDate || (!sharedSlug && item.place)" class="cinema-post__metadata">
+        <RouterLink v-if="showAlbumName" class="cinema-post__album" :to="{ name: sharedSlug ? 'shared-folder' : 'folder', params: { slug: sharedSlug || item.folderSlug } }">
+          {{ item.folderName }}
+          <span class="i-fluent-chevron-right-16-regular cinema-post__album-chevron" aria-hidden="true" />
+        </RouterLink>
+
+        <time v-if="captureDate" :datetime="captureDate.toISOString()">{{ formattedDate }}</time>
+        <RouterLink v-if="!sharedSlug && item.place" :to="{ name: 'place', params: { slug: item.place.slug } }">{{ item.place.name }}</RouterLink>
       </div>
       <section v-if="showInfo" :id="infoId" class="cinema-post__info">
         <p v-if="loadingInfo">{{ t('common.loading') }}</p>
@@ -227,9 +227,8 @@ onBeforeUnmount(() => {
 .cinema-post__metadata .cinema-post__album {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.25rem;
-  flex-basis: 100%;
   max-width: 100%;
   color: var(--text);
   font-size: 0.8rem;
@@ -242,18 +241,18 @@ onBeforeUnmount(() => {
 .cinema-post__album-chevron { flex-shrink: 0; width: 0.85rem; height: 0.85rem; }
 .cinema-post__metadata .cinema-post__album:hover { color: var(--text); text-decoration-color: currentColor; }
 .cinema-post__album:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
-.cinema-post__metadata:has(.cinema-post__album) { row-gap: 0.25rem; }
-.cinema-post { --cinema-viewport-height: 100dvh; --cinema-viewport-reserve: 17rem; scroll-margin-top: 3.75rem; margin: 0 0 1.25rem; color: var(--text); }
+.cinema-post { --cinema-viewport-height: 100dvh; --cinema-viewport-reserve: 17rem; scroll-margin-top: 3.75rem; margin: 0 0 2.25rem; color: var(--text); }
 .cinema-post__media { margin: 0 auto; max-height: calc(var(--cinema-viewport-height) - var(--cinema-viewport-reserve)); background: var(--surface-alt); }
 .cinema-post__media :deep(img), .cinema-post__media :deep(video) { width: 100%; height: 100%; object-fit: contain; }
 .cinema-post__photo { position: relative; display: block; width: 100%; height: 100%; cursor: zoom-in; }
 .cinema-post__photo:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
-.cinema-post__details { margin: 0 auto; text-align: center; padding: 0.6rem 0 0; }
-.cinema-post__caption { margin: 0 0 0.35rem; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.cinema-post__metadata { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.85rem; color: var(--muted); font-size: 0.75rem; }
+.cinema-post__details { margin: 0 auto; text-align: left; padding: 0.25rem 0 0.25rem; border-bottom: 1px solid var(--border); }
+.cinema-post__caption { margin: 0 0 0.2rem; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cinema-post__metadata { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; color: var(--muted); font-size: 0.75rem; }
+.cinema-post__metadata time { white-space: nowrap; }
 .cinema-post__metadata a { color: inherit; text-decoration: none; }
 .cinema-post__metadata a:hover { color: var(--text); }
-.cinema-post__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.65rem; }
+.cinema-post__toolbar { margin-bottom: 0.2rem; display: flex; align-items: center; justify-content: space-between; gap: 0.65rem; }
 .cinema-post__actions { display: flex; align-items: center; gap: 0.65rem; }
 .cinema-post__info { margin: 0.5rem auto 0; padding: 0.75rem; max-width: 36rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.75rem; text-align: left; }
 .cinema-post__info dl { margin: 0; display: grid; gap: 0.35rem; }
@@ -265,7 +264,7 @@ onBeforeUnmount(() => {
 @media (max-width: 767px) {
   .cinema-post__zoom { display: inline-flex; }
   /* Keep Safari toolbar changes from resizing the scrollable album. */
-  .cinema-post { --cinema-viewport-height: 100svh; --cinema-viewport-reserve: 20rem; margin-bottom: 1rem; }
-  .cinema-post__metadata { gap: 0.4rem; font-size: 0.7rem; }
+  .cinema-post { --cinema-viewport-height: 100svh; --cinema-viewport-reserve: 20rem; }
+  .cinema-post__metadata { font-size: 0.7rem; }
 }
 </style>
