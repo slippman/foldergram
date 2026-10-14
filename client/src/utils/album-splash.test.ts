@@ -6,6 +6,7 @@ import ResilientImage from '../components/ResilientImage.vue';
 const html = readFileSync('index.html', 'utf8');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].find(match => match[1].includes('attributeFilter'))![1];
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+const windowListeners: Array<[string, EventListenerOrEventListenerObject]> = [];
 function start() { new Function(script)(); }
 function visibleImage() {
   const img = document.querySelector('img')!;
@@ -15,12 +16,18 @@ function visibleImage() {
   return img;
 }
 beforeEach(() => {
+  const addListener = window.addEventListener.bind(window);
+  vi.spyOn(window, 'addEventListener').mockImplementation((type, listener, options) => {
+    windowListeners.push([type, listener]);
+    addListener(type, listener, options);
+  });
   vi.useFakeTimers();
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1; });
   document.documentElement.classList.add('shared-album-entry');
   document.body.innerHTML = '<div id="fg-splash"><div class="fg-splash__album"><p>Loading album…</p><span class="fg-splash__indicator"></span><button class="fg-splash__retry" hidden>Retry</button></div></div><div id="app"></div>';
 });
 afterEach(() => {
+  for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
   document.documentElement.classList.remove('shared-album-entry');
   document.body.innerHTML = '';
   vi.useRealTimers();
@@ -81,6 +88,45 @@ describe('album startup splash', () => {
     images[1].dispatchEvent(new Event('load'));
     await flush();
     expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+  });
+  it('restarts a fading splash and prevents the old timer from revealing the next album', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="settled">First album</main>';
+    start(); await flush();
+    expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+    app.innerHTML = '<main data-album-state="ready"><img src="/next-album.jpg"></main>';
+    const img = visibleImage();
+    const ready = vi.fn();
+    window.addEventListener('foldergram:album-ready', ready);
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(document.querySelectorAll('#fg-splash')).toHaveLength(1);
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    expect(ready).not.toHaveBeenCalled();
+    Object.defineProperty(img, 'complete', { value: true });
+    img.dispatchEvent(new Event('load'));
+    await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+    expect(ready).toHaveBeenCalledOnce();
+  });
+  it.each([true, false])('ignores obsolete queued loading frames with cancellation=%s', async (cancel) => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; });
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="loading"></main>';
+    start();
+    const ready = vi.fn();
+    window.addEventListener('foldergram:album-ready', ready);
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    app.innerHTML = '<main data-album-state="settled"></main>';
+    if (cancel) window.dispatchEvent(new Event('foldergram:album-view-cancel'));
+    while (frames.length) frames.shift()!(0);
+    await flush();
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+    expect(ready).toHaveBeenCalledOnce();
   });
   it('cancels pending image loading when navigation leaves the album', async () => {
     const app = document.getElementById('app')!;
@@ -152,6 +198,32 @@ describe('album startup splash', () => {
     poster.dispatchEvent(new Event('load'));
     await flush();
     expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+  });
+  it('replaces obsolete poster waits when switching albums or shared posts mid-load', async () => {
+    const posters: HTMLImageElement[] = [];
+    vi.stubGlobal('Image', function () {
+      const img = document.createElement('img');
+      Object.defineProperty(img, 'complete', { value: false, configurable: true });
+      Object.defineProperty(img, 'naturalWidth', { value: 640 });
+      posters.push(img);
+      return img;
+    });
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="ready"><video data-album-poster="/old.jpg"></video></main>';
+    start(); await flush();
+    app.innerHTML = '<main data-album-state="ready"><video data-album-poster="/new.jpg"></video></main>';
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    await flush();
+    posters[0].dispatchEvent(new Event('error'));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    expect((document.querySelector('.fg-splash__retry') as HTMLButtonElement).hidden).toBe(true);
+    expect(posters[1].getAttribute('src')).toBe('/new.jpg');
+    Object.defineProperty(posters[1], 'complete', { value: true });
+    posters[1].dispatchEvent(new Event('load'));
+    await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
   });
   it('does not block on a pending decode promise after a cached image has loaded', async () => {
     document.getElementById('app')!.innerHTML = '<main data-album-state="ready"><img src="/cached.png"></main>';

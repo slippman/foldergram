@@ -52,6 +52,7 @@ describe('album navigation loading', () => {
       expect(loading).not.toHaveBeenCalled();
       background = null;
       await router.push('/modal/1');
+      loading.mockClear();
       await router.push('/f/trip?view=scroll');
       expect(loading).toHaveBeenCalledOnce();
     } finally { window.removeEventListener('foldergram:album-view-loading', loading); }
@@ -69,5 +70,30 @@ describe('album navigation loading', () => {
       await router.push('/');
       expect(cancelled).toHaveBeenCalledOnce();
     } finally { window.removeEventListener('foldergram:album-view-cancel', cancelled); }
+  });
+  it('restarts direct shared viewers on post changes while preserving modal opens', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [
+      { path: '/share/:slug', name: 'shared-folder', component: {} },
+      { path: '/share/:slug/posts/:id', name: 'shared-post', component: {} },
+      { path: '/share/:slug/images/:id', name: 'shared-image', component: {} }
+    ] });
+    let background: string | null = null;
+    router.afterEach((to, from, failure) => notifyAlbumLoading(to, from, failure, background));
+    const loading = vi.fn();
+    window.addEventListener('foldergram:album-view-loading', loading);
+    try {
+      for (const path of ['/share/trip/posts/1', '/share/trip/posts/2', '/share/trip/images/3']) {
+        loading.mockClear();
+        await router.push(path);
+        expect(loading).toHaveBeenCalledOnce();
+      }
+      await router.push('/share/trip');
+      background = router.currentRoute.value.fullPath;
+      loading.mockClear();
+      await router.push('/share/trip/posts/1');
+      await router.push('/share/trip/posts/2');
+      await router.push(background);
+      expect(loading).not.toHaveBeenCalled();
+    } finally { window.removeEventListener('foldergram:album-view-loading', loading); }
   });
 });

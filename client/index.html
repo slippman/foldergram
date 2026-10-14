@@ -120,6 +120,8 @@
         var initialSplash = document.getElementById('fg-splash');
         if (!initialSplash) return;
         var splashTemplate = initialSplash.cloneNode(true);
+        var stopCurrentRun = null;
+        var generation = 0;
         function run() {
           var splash = document.getElementById('fg-splash');
           var app = document.getElementById('app');
@@ -127,15 +129,12 @@
           var albumEntry = document.documentElement.classList.contains('shared-album-entry');
           var finishing = false;
           var cancelled = false;
-          function cancel() {
+          stopCurrentRun = function () {
             cancelled = true;
             clearTimeout(startupDeadline);
             observer.disconnect();
-            window.removeEventListener('foldergram:album-view-cancel', cancel);
             splash.remove();
-            document.documentElement.classList.remove('shared-album-entry');
-            window.dispatchEvent(new Event('foldergram:album-ready'));
-          }
+          };
           function showRetry(message) {
             var text = splash.querySelector('.fg-splash__album p');
             var retry = splash.querySelector('.fg-splash__retry');
@@ -219,7 +218,7 @@
                 splash.classList.add('fg-splash--out');
                 setTimeout(function () {
                   if (cancelled) return;
-                  window.removeEventListener('foldergram:album-view-cancel', cancel);
+                  stopCurrentRun = null;
                   splash.remove();
                   window.dispatchEvent(new Event('foldergram:album-ready'));
                 }, 340);
@@ -235,15 +234,27 @@
             finish();
           }
           var observer = new MutationObserver(changed);
-          window.addEventListener('foldergram:album-view-cancel', cancel);
           observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-album-state'] });
           changed();
         }
+        window.addEventListener('foldergram:album-view-cancel', function () {
+          generation++;
+          var splash = document.getElementById('fg-splash');
+          if (stopCurrentRun) stopCurrentRun();
+          stopCurrentRun = null;
+          if (splash) splash.remove();
+          document.documentElement.classList.remove('shared-album-entry');
+          if (splash) window.dispatchEvent(new Event('foldergram:album-ready'));
+        });
         window.addEventListener('foldergram:album-view-loading', function () {
-          if (document.getElementById('fg-splash')) return;
+          var nextGeneration = ++generation;
+          if (stopCurrentRun) stopCurrentRun();
+          stopCurrentRun = null;
+          var splash = document.getElementById('fg-splash');
+          if (splash) splash.remove();
           document.documentElement.classList.add('shared-album-entry');
           document.body.appendChild(splashTemplate.cloneNode(true));
-          requestAnimationFrame(run);
+          requestAnimationFrame(function () { if (generation === nextGeneration) run(); });
         });
         run();
       })();
