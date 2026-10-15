@@ -200,6 +200,7 @@
         <div class="w-full max-w-[29.375rem] mx-auto">
           <InfiniteLoader :loading="feedStore.loading" :has-more="feedStore.hasMore" :show-complete="!isCinema" @load-more="feedStore.loadMore" />
         </div>
+        <AlbumAttribution v-if="isCinema && feedStore.initialized && !feedStore.loading && !feedStore.hasMore" />
       </template>
 
       <StoriesModal
@@ -291,6 +292,7 @@ import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import CinemaHeader from '../components/CinemaHeader.vue';
 import CinemaPost from '../components/CinemaPost.vue';
+import AlbumAttribution from '../components/AlbumAttribution.vue';
 import { provideCinemaAudio } from '../composables/useCinemaAudio';
 import { useFeedStore } from '../stores/feed';
 import { useFolderStoriesStore } from '../stores/folder-stories';

@@ -26,6 +26,7 @@ describe.sequential('folder share API routes', () => {
     vi.stubEnv('DB_DIR', path.join(tempRoot, 'db'));
     vi.stubEnv('THUMBNAILS_DIR', path.join(tempRoot, 'thumbnails'));
     vi.stubEnv('PREVIEWS_DIR', path.join(tempRoot, 'previews'));
+    vi.stubEnv('MEDIA_CACHE_ENABLED', 'true');
   });
 
   beforeEach(async () => {
@@ -59,7 +60,7 @@ describe.sequential('folder share API routes', () => {
     imageRepository.upsert({
       folderId: folderA.id,
       filename: 'image-a.jpg',
-      extension: 'jpg',
+      extension: '.jpg',
       relativePath: 'folder-a/image-a.jpg',
       absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'image-a.jpg'),
       fileSize: 1024,
@@ -82,7 +83,7 @@ describe.sequential('folder share API routes', () => {
     imageRepository.upsert({
       folderId: folderB.id,
       filename: 'image-b.jpg',
-      extension: 'jpg',
+      extension: '.jpg',
       relativePath: 'folder-b/image-b.jpg',
       absolutePath: path.join(tempRoot, 'gallery', 'folder-b', 'image-b.jpg'),
       fileSize: 2048,
@@ -113,7 +114,7 @@ describe.sequential('folder share API routes', () => {
       imageRepository.upsert({
         folderId: carouselSource.id,
         filename: '01-image.jpg',
-        extension: 'jpg',
+        extension: '.jpg',
         relativePath: 'folder-a/carousels/trip/01-image.jpg',
         absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'carousels', 'trip', '01-image.jpg'),
         fileSize: 3001,
@@ -135,7 +136,7 @@ describe.sequential('folder share API routes', () => {
       imageRepository.upsert({
         folderId: carouselSource.id,
         filename: '02-animated.gif',
-        extension: 'gif',
+        extension: '.gif',
         relativePath: 'folder-a/carousels/trip/02-animated.gif',
         absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'carousels', 'trip', '02-animated.gif'),
         fileSize: 3002,
@@ -158,7 +159,7 @@ describe.sequential('folder share API routes', () => {
       imageRepository.upsert({
         folderId: carouselSource.id,
         filename: '03-video.mp4',
-        extension: 'mp4',
+        extension: '.mp4',
         relativePath: 'folder-a/carousels/trip/03-video.mp4',
         absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'carousels', 'trip', '03-video.mp4'),
         fileSize: 3003,
@@ -439,6 +440,162 @@ describe.sequential('folder share API routes', () => {
         expect(denied.headers.get('Cache-Control')).toBe('private, no-store');
       }
     } finally { clock.mockRestore(); }
+  });
+
+  it('caches asset-specific shared media for 24 hours while keeping metadata and old routes private', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const { galleryService } = await import('../src/services/gallery-service.js');
+    const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
+    const grant = folderShareService.verifyLinkToken('folder-a', link.rawToken)!;
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    folderShareService.setShareSession(mockRes as any, { secure: false, get: () => undefined } as any, grant);
+    const headers = { Cookie: `foldergram_share_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    const detail = await requestApp(app, 'GET', '/api/share/images/1', headers);
+    expect(detail.headers.get('Cache-Control')).toBe('private, no-store');
+    const preview = detail.body.previewUrl as string;
+    const thumbnail = detail.body.thumbnailUrl as string;
+    expect(preview).toMatch(/^\/api\/share\/media\/[^/]+\/preview\.webp$/);
+    const folder = await requestApp(app, 'GET', '/api/share/folders/folder-a', headers);
+    expect(folder.body.avatarThumbnailUrl).toMatch(/^\/api\/share\/media\/[^/]+\/thumbnail\.webp$/);
+    expect((await requestApp(app, 'GET', '/api/share/images/1', headers)).body.previewUrl).toBe(preview);
+    const cached = await requestApp(app, 'GET', thumbnail);
+    expect(cached.status).toBe(200);
+    expect(cached.body).toBe('dummy-thumb-a');
+    expect(cached.headers.get('Cache-Control')).toBe('public, max-age=86400, s-maxage=86400');
+    expect(cached.headers.get('Vary') ?? '').not.toContain('Cookie');
+    expect(cached.headers.get('Set-Cookie')).toBeNull();
+    const original = preview.replace(/\/preview\.[a-z0-9]+$/, '/original');
+    const head = await requestApp(app, 'HEAD', original);
+    expect(head.status).toBe(200);
+    expect(head.headers.get('Cache-Control')).toBe('public, max-age=86400, s-maxage=86400');
+    expect(Number(head.headers.get('Content-Length'))).toBeGreaterThan(0);
+    expect((await requestApp(app, 'GET', original)).bytes).toEqual(await fs.readFile(path.join(tempRoot, 'gallery/folder-a/image-a.jpg')));
+    expect((await requestApp(app, 'GET', '/api/share/images/1/original')).status).toBe(401);
+    const tampered = preview.replace('/media/', '/media/x');
+    expect((await requestApp(app, 'GET', tampered)).status).toBe(404);
+    const image = galleryService.getShareDerivativeImage(1)!;
+    const changed = vi.spyOn(galleryService, 'getShareDerivativeImage').mockReturnValue({ ...image, mtime_ms: image.mtime_ms + 1 });
+    try { expect((await requestApp(app, 'GET', preview)).status).toBe(404); }
+    finally { changed.mockRestore(); }
+    folderShareService.revokeLink('folder-a', link.link.id);
+    const revoked = await requestApp(app, 'GET', preview);
+    expect(revoked.status).toBe(404);
+    expect(revoked.headers.get('Cache-Control')).toBe('private, no-store');
+  });
+
+  it('uses the same cache policy for regular albums, original downloads and shared media', async () => {
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockRes as any, { secure: false, get: () => undefined } as any, 'viewer');
+    const headers = { Cookie: `foldergram_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    expect((await requestApp(app, 'GET', '/api/images/1')).status).toBe(401);
+    const detail = await requestApp(app, 'GET', '/api/images/1', headers);
+    expect(detail.status).toBe(200);
+    expect(detail.headers.get('Cache-Control')).toContain('no-store');
+    expect(detail.body.thumbnailUrl).toMatch(/^\/api\/share\/media\//);
+    expect(detail.body.previewUrl).toMatch(/\/preview\.webp$/);
+    expect(detail.body.originalUrl).toMatch(/\/source\.jpg$/);
+    const expected = await fs.readFile(path.join(tempRoot, 'gallery', 'folder-a', 'image-a.jpg'));
+    const source = await requestApp(app, 'GET', detail.body.originalUrl);
+    expect(source.bytes).toEqual(expected);
+    expect(source.headers.get('Cache-Control')).toBe('public, max-age=86400, s-maxage=86400');
+    expect(source.headers.get('Content-Disposition')).toBeNull();
+    const range = await requestApp(app, 'GET', detail.body.originalUrl, { Range: 'bytes=0-9' });
+    expect(range.status).toBe(206);
+    expect(range.bytes).toEqual(expected.subarray(0, 10));
+    const redirect = await requestApp(app, 'GET', '/api/originals/1?download=1', headers);
+    expect(redirect.status).toBe(307);
+    expect(redirect.headers.get('Cache-Control')).toContain('no-store');
+    const download = await requestApp(app, 'GET', redirect.headers.get('Location')!);
+    expect(download.bytes).toEqual(expected);
+    expect(download.headers.get('Content-Disposition')).toContain('image-a.jpg');
+    expect(download.headers.get('Cache-Control')).toBe(source.headers.get('Cache-Control'));
+    expect((await requestApp(app, 'GET', '/api/originals/1?download=1')).status).toBe(401);
+  });
+
+  it('applies configured TTLs and restores protected URLs when caching is disabled', async () => {
+    const { appConfig } = await import('../src/config/env.js');
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockRes as any, { secure: false, get: () => undefined } as any, 'admin');
+    const headers = { Cookie: `foldergram_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    const originalTtl = appConfig.mediaCacheTtlSeconds;
+    try {
+      appConfig.mediaCacheTtlSeconds = 3600;
+      const detail = await requestApp(app, 'GET', '/api/images/1', headers);
+      const cached = await requestApp(app, 'GET', detail.body.thumbnailUrl);
+      expect(cached.headers.get('Cache-Control')).toBe('public, max-age=3600, s-maxage=3600');
+      appConfig.mediaCacheEnabled = false;
+      expect((await requestApp(app, 'GET', '/api/images/1', headers)).body.thumbnailUrl).toMatch(/^\/thumbnails\//);
+      expect((await requestApp(app, 'GET', '/api/share/images/1', headers)).body.previewUrl).toMatch(/^\/api\/share\/images\/1\/preview/);
+      expect((await requestApp(app, 'GET', detail.body.thumbnailUrl)).status).toBe(404);
+      const original = await requestApp(app, 'GET', '/api/originals/1', headers);
+      expect(original.status).toBe(200);
+      expect(original.headers.get('Cache-Control')).toContain('no-store');
+    } finally {
+      appConfig.mediaCacheTtlSeconds = originalTtl;
+      appConfig.mediaCacheEnabled = true;
+    }
+  });
+
+  it('serves cached animated previews and video originals with scanner-style dotted extensions', async () => {
+    const { postRepository } = await import('../src/db/repositories.js');
+    const post = postRepository.findBySourcePath('folder-a/carousels/trip')!;
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockRes as any, { secure: false, get: () => undefined } as any, 'viewer');
+    const headers = { Cookie: `foldergram_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    await fs.mkdir(path.join(tempRoot, 'previews/folder-a/carousels/trip'), { recursive: true });
+    await fs.writeFile(path.join(tempRoot, 'previews/folder-a/carousels/trip/02-animated.gif'), 'animated-preview');
+    await fs.mkdir(path.join(tempRoot, 'gallery/folder-a/carousels/trip'), { recursive: true });
+    await fs.writeFile(path.join(tempRoot, 'gallery/folder-a/carousels/trip/03-video.mp4'), 'video-original');
+    for (const route of [`/api/posts/${post.id}`, `/api/share/posts/${post.id}`]) {
+      const detail = await requestApp(app, 'GET', route, headers);
+      const animated = detail.body.mediaItems.find((item: any) => item.mediaType === 'image' && item.isAnimated);
+      expect(animated.previewUrl).toMatch(/\/preview\.gif$/);
+      const preview = await requestApp(app, 'GET', animated.previewUrl);
+      expect(preview.status).toBe(200);
+      expect(preview.body).toBe('animated-preview');
+      const video = detail.body.mediaItems.find((item: any) => item.mediaType === 'video');
+      const url = video.originalUrl ?? video.previewUrl.replace(/\/preview\.mp4$/, '/original.mp4');
+      expect(url).toMatch(/\/(source|original)\.mp4$/);
+      const original = await requestApp(app, 'GET', url);
+      expect(original.status).toBe(200);
+      expect(original.body).toBe('video-original');
+    }
+  });
+
+  it('reuses image, folder, scan and signing context across media variants in one response', async () => {
+    const { imageRepository, folderRepository, scanRunRepository } = await import('../src/db/repositories.js');
+    const { cacheLibraryMediaUrls } = await import('../src/services/shared-media-cache.js');
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const template = imageRepository.getById(1)!;
+    const images = Array.from({ length: 60 }, (_, index) => ({ ...template, id: index + 100,
+      thumbnail_path: `performance/${index}.webp`, preview_path: `performance/${index}.webp` }));
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockRes as any, { secure: false, get: () => undefined } as any, 'viewer');
+    const request = { get: (name: string) => name.toLowerCase() === 'cookie' ? `foldergram_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` : undefined } as any;
+    const spies = [vi.spyOn(imageRepository, 'getById'), vi.spyOn(imageRepository, 'getByThumbnailPath').mockImplementation(path => images.find(image => image.thumbnail_path === path)),
+      vi.spyOn(imageRepository, 'getByPreviewPath'), vi.spyOn(folderRepository, 'getById'), vi.spyOn(scanRunRepository, 'latestCompleted'),
+      vi.spyOn(folderShareService, 'createMediaTokenFactory')];
+    try {
+      const result = cacheLibraryMediaUrls(request, images.map(image => ({
+        thumbnailUrl: `/thumbnails/${image.thumbnail_path}`, previewUrl: `/previews/${image.preview_path}`, originalUrl: `/api/originals/${image.id}`
+      })));
+      expect(result[0].originalUrl).toMatch(/\/source\.jpg$/);
+      expect(result.every(image => image.previewUrl.includes('/api/share/media/'))).toBe(true);
+      expect(spies.map(spy => spy.mock.calls.length)).toEqual([0, 60, 0, 1, 1, 1]);
+    } finally { spies.forEach(spy => spy.mockRestore()); }
+  });
+
+  it('boots direct Cinema album HTML with UnReeled branding and preserves Classic', async () => {
+    const { appSettingsRepository } = await import('../src/db/repositories.js');
+    const { FOLDER_DISPLAY_THEME_SETTING_KEY } = await import('../src/constants/app-setting-keys.js');
+    appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'cinema');
+    const cinema = await requestApp(app, 'GET', '/f/folder-a?view=scroll&photo=1');
+    expect(cinema.status).toBe(200);
+    expect(cinema.body).toContain('<html class="shared-album-entry"');
+    expect(cinema.headers.get('Cache-Control')).toBe('no-store');
+    appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'classic');
+    const classic = await requestApp(app, 'GET', '/f/folder-a');
+    expect(classic.body).toContain('<html lang="en">');
   });
 
   it('immediately revokes active share sessions when link is revoked', async () => {

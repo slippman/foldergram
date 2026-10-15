@@ -24,6 +24,7 @@
       @auto-play-fail="handleAutoplayFail"
     >
       <media-provider />
+      <CinemaVideoStatus v-if="cinema" :player="playerElement" :source="activeVideoUrl" :poster="poster" :autoplay="autoplay" />
       <media-poster
         v-if="poster"
         class="video-media-player__poster"
@@ -128,6 +129,7 @@ import type { MediaFullscreenChangeEvent, MediaLoadingStrategy, PlayerSrc } from
 
 import { videoPreviewWouldDownscale } from '../utils/media';
 import VideoProgressFooter from './VideoProgressFooter.vue';
+import CinemaVideoStatus from './CinemaVideoStatus.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -148,6 +150,7 @@ const props = withDefaults(
     variant?: 'feed' | 'viewer';
     showControls?: boolean;
     timeLabel?: string;
+    cinema?: boolean;
   }>(),
   {
     originalUrl: '',
@@ -393,6 +396,7 @@ watch(basePreviewUrl, () => {
   isHd.value = false;
   pendingRestoreState = null;
 });
+
 
 watch(playerElement, () => {
   if (removeEventListeners) removeEventListeners();

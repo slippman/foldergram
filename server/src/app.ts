@@ -13,6 +13,7 @@ import { sharePreviewRouter } from './routes/share-preview.js';
 import { authService } from './services/auth-service.js';
 import { lazyThumbnailsRouter, lazyPreviewsRouter } from './routes/lazy-derivatives.js';
 import { createProtectedStaticOptions } from './utils/media-response.js';
+import { cacheLibraryMediaUrls } from './services/shared-media-cache.js';
 
 export function applyApiNoStoreHeaders(response: Pick<express.Response, 'setHeader'>) {
   authService.setNoStoreHeaders(response as express.Response);
@@ -47,7 +48,15 @@ export function createApp() {
     applyApiNoStoreHeaders(response);
     next();
   });
-  app.use('/api', blockPublicDemoMutations, requireTrustedMutationRequest, requireApiAuthentication, apiRouter);
+  app.use('/api', blockPublicDemoMutations, requireTrustedMutationRequest, requireApiAuthentication);
+  app.use('/api', (request, response, next) => {
+    if (appConfig.mediaCacheEnabled && request.method === 'GET' && !/^\/(share|auth|admin)(\/|$)/.test(request.path)) {
+      const json = response.json.bind(response);
+      response.json = (body) => json(response.statusCode < 400 ? cacheLibraryMediaUrls(request, body) : body);
+    }
+    next();
+  });
+  app.use('/api', apiRouter);
 
   if (appConfig.nodeEnv === 'production') {
     const clientDist = path.join(repositoryRoot, 'client', 'dist');

@@ -1316,7 +1316,31 @@ function listFallbackAvatarStoryItems(
   };
 }
 
+function createShareDerivativeResolver() {
+  const available = storageService.getState().libraryAvailable;
+  const images = new Map<number, ImageRecord | null>();
+  const folders = new Map<number, FolderRecord | undefined>();
+  return (id: number, knownImage?: ImageRecord): ImageRecord | null => {
+    if (!available) return null;
+    if (images.has(id)) return images.get(id)!;
+    const image = knownImage?.id === id ? knownImage : imageRepository.getById(id);
+    let scoped: ImageRecord | null = null;
+    if (image && !image.is_deleted && !image.is_trashed) {
+      if (!folders.has(image.folder_id)) folders.set(image.folder_id, folderRepository.getById(image.folder_id));
+      const folder = folders.get(image.folder_id);
+      if (folder?.role === 'normal') scoped = image;
+      else if (folder?.role === 'carousel_source' && folder.carousel_owner_folder_id) {
+        scoped = { ...image, folder_id: folder.carousel_owner_folder_id };
+      }
+    }
+    images.set(id, scoped);
+    return scoped;
+  };
+}
+
 export const galleryService = {
+  createShareDerivativeResolver,
+  getAlbumDisplayTheme: getFolderDisplayTheme,
   getFeed(page: number, limit: number, mode: FeedMode = 'random', randomSeed?: number) {
     if (!storageService.getState().libraryAvailable) {
       return {
@@ -1794,25 +1818,7 @@ export const galleryService = {
   },
 
   getShareDerivativeImage(id: number): ImageRecord | null {
-    if (!storageService.getState().libraryAvailable) {
-      return null;
-    }
-
-    const image = imageRepository.getById(id);
-    if (!image || image.is_deleted || image.is_trashed) {
-      return null;
-    }
-
-    const folder = folderRepository.getById(image.folder_id);
-    if (!folder) {
-      return null;
-    }
-
-    if (folder.role === 'normal') return image;
-    if (folder.role === 'carousel_source' && folder.carousel_owner_folder_id) {
-      return { ...image, folder_id: folder.carousel_owner_folder_id };
-    }
-    return null;
+    return createShareDerivativeResolver()(id);
   },
 
   getPlacesStatus() {

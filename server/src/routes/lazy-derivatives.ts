@@ -114,9 +114,14 @@ function isConnectionTerminationError(error: unknown): boolean {
 async function sendDerivativeFile(
   response: express.Response,
   absolutePath: string,
-  options?: { noStore?: boolean; jpeg?: boolean }
+  options?: { noStore?: boolean; jpeg?: boolean; publicCacheSeconds?: number }
 ): Promise<SendDerivativeResult> {
-  if (options?.noStore) {
+  if (options?.publicCacheSeconds) {
+    response.removeHeader('Vary');
+    response.setHeader('Cache-Control', `public, max-age=${options.publicCacheSeconds}, s-maxage=${options.publicCacheSeconds}`);
+    response.setHeader('X-Robots-Tag', 'noindex, noarchive');
+    response.setHeader('Referrer-Policy', 'no-referrer');
+  } else if (options?.noStore) {
     applyNoStoreMediaHeaders(response);
   } else {
     applyProtectedMediaHeaders(response);
@@ -249,7 +254,7 @@ export async function serveDerivativeForImage(
   response: express.Response,
   imageRecord: ImageRecord,
   kind: 'thumbnail' | 'preview',
-  options?: { noStore?: boolean; jpeg?: boolean }
+  options?: { noStore?: boolean; jpeg?: boolean; publicCacheSeconds?: number }
 ): Promise<void> {
   const requestedPath = kind === 'thumbnail' ? imageRecord.thumbnail_path : imageRecord.preview_path;
   const rootDir = kind === 'thumbnail' ? appConfig.thumbnailsDir : appConfig.previewsDir;

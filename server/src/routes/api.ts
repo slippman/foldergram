@@ -1,6 +1,7 @@
 import { redactPublicMediaMetadata } from '../utils/public-media-metadata.js';
 import express from 'express';
 import { z } from 'zod';
+import { appConfig } from '../config/env.js';
 
 import { AUTH_PASSWORD_MAX_LENGTH, AUTH_PASSWORD_MIN_LENGTH, authService } from '../services/auth-service.js';
 import {
@@ -15,6 +16,8 @@ import { LIBRARY_REBUILD_REQUIRED_MESSAGE, scannerService } from '../services/sc
 import { storageService } from '../services/storage-service.js';
 import { watcherService } from '../services/watcher-service.js';
 import { serveDerivativeForImage } from './lazy-derivatives.js';
+
+import { cacheSharedMediaUrls, mediaCacheUrl, sharedMediaScope } from '../services/shared-media-cache.js';
 
 const router = express.Router();
 
@@ -855,7 +858,7 @@ router.get('/share/folders/:slug', (request, response) => {
     return;
   }
 
-  response.json(folder);
+  response.json(cacheSharedMediaUrls(request, folder));
 });
 
 router.get('/share/folders/:slug/images', (request, response) => {
@@ -872,7 +875,7 @@ router.get('/share/folders/:slug/images', (request, response) => {
     return;
   }
 
-  response.json(payload);
+  response.json(cacheSharedMediaUrls(request, payload));
 });
 
 router.get('/share/images/:id', (request, response) => {
@@ -889,7 +892,7 @@ router.get('/share/images/:id', (request, response) => {
     return;
   }
 
-  response.json(image);
+  response.json(cacheSharedMediaUrls(request, image));
 });
 
 router.get('/share/posts/:id', (request, response) => {
@@ -906,7 +909,7 @@ router.get('/share/posts/:id', (request, response) => {
     return;
   }
 
-  response.json(image);
+  response.json(cacheSharedMediaUrls(request, image));
 });
 
 router.get('/share/images/:id/thumbnail', async (request, response) => {
@@ -939,6 +942,39 @@ router.get('/share/images/:id/preview', async (request, response) => {
   }
 
   await serveDerivativeForImage(response, image, 'preview', { noStore: true });
+});
+
+router.get('/share/media/:token/:file', async (request, response) => {
+  setShareResponseHeaders(response);
+  const { token, file } = request.params;
+  if (!appConfig.mediaCacheEnabled || typeof token !== 'string' || typeof file !== 'string' || !/^(thumbnail|preview|original|source)(?:\.[a-z0-9]+)?$/.test(file)) {
+    response.status(404).end(); return;
+  }
+  // The signed payload carries its asset scope, not a raw album-link credential.
+  let id: number;
+  try {
+    if (token.length > 2048) throw new Error();
+    const payload = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString());
+    id = Number(payload.scopeImageId);
+  } catch { response.status(404).end(); return; }
+  if (!Number.isSafeInteger(id) || id <= 0) { response.status(404).end(); return; }
+  const image = galleryService.getShareDerivativeImage(id);
+  if (!image || !folderShareService.verifyMediaToken(token, image.folder_id, sharedMediaScope(image))) {
+    response.status(404).end(); return;
+  }
+  const kind = file.split('.')[0];
+  if (kind === 'original' || kind === 'source') {
+    const original = galleryService.getOriginalMediaFile(id);
+    if (!original) { response.status(404).end(); return; }
+    response.removeHeader('Vary');
+    response.setHeader('Cache-Control', `public, max-age=${appConfig.mediaCacheTtlSeconds}, s-maxage=${appConfig.mediaCacheTtlSeconds}`);
+    response.setHeader('X-Robots-Tag', 'noindex, noarchive');
+    response.setHeader('Referrer-Policy', 'no-referrer');
+    if (kind === 'original') response.download(original.path, original.filename);
+    else response.sendFile(original.path);
+    return;
+  }
+  await serveDerivativeForImage(response, image, kind as 'thumbnail' | 'preview', { publicCacheSeconds: appConfig.mediaCacheTtlSeconds });
 });
 
 router.get('/share/images/:id/original', (request, response) => {
@@ -1278,6 +1314,12 @@ router.delete(['/posts/:id', '/images/:id'], requireCapability('canDeleteMedia',
 router.get('/originals/:id', (request, response) => {
   const params = imageIdSchema.parse(request.params);
   const query = originalMediaQuerySchema.parse(request.query);
+  const image = appConfig.mediaCacheEnabled ? galleryService.getShareDerivativeImage(params.id) : null;
+  const cachedUrl = image ? mediaCacheUrl(request, image, query.download ? 'original' : 'source') : null;
+  if (cachedUrl) {
+    response.redirect(307, cachedUrl);
+    return;
+  }
   const originalMedia = galleryService.getOriginalMediaFile(params.id);
 
   if (!originalMedia) {

@@ -147,6 +147,7 @@
           :style="mediaShellStyle"
         >
           <CarouselMediaStage
+            :cinema="cinema"
             v-model="carouselIndex"
             :items="image.mediaItems!"
             fit-container
@@ -183,6 +184,7 @@
               preload="metadata"
               >
                 <media-provider />
+              <CinemaVideoStatus v-if="cinema" :player="playerElement" :source="videoSrc" :poster="image.thumbnailUrl" autoplay />
               <media-poster
                 class="viewer__player-poster"
                 :src.prop="image.thumbnailUrl"
@@ -644,6 +646,7 @@
   import PostCaptionModal from "./PostCaptionModal.vue"
   import ResilientImage from "./ResilientImage.vue"
   import VideoProgressFooter from "./VideoProgressFooter.vue"
+  import CinemaVideoStatus from "./CinemaVideoStatus.vue"
   import { formatMediaDuration, formatVideoTimestamp, videoPreviewWouldDownscale } from "../utils/media"
 
   const props = defineProps<{
@@ -711,7 +714,7 @@
   const originalMediaUrl = computed(() => props.sharedSlug ? activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "" : activeMediaItem.value?.originalUrl ?? (activeMediaImageId.value ? getOriginalMediaUrl(activeMediaImageId.value) : ""))
   const downloadOriginalMediaUrl = computed(() => {
     const id = activeMediaImageId.value;
-    if (props.sharedSlug) return props.cinema && id ? getSharedOriginalMediaDownloadUrl(id) : activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "";
+    if (props.sharedSlug) return props.cinema && id ? getSharedOriginalMediaDownloadUrl(id, activeMediaItem.value?.previewUrl ?? props.image?.previewUrl) : activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "";
     return id ? getOriginalMediaDownloadUrl(id) : "";
   })
   const MODAL_SIDEBAR_COLLAPSE_BREAKPOINT = 960

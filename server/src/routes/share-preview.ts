@@ -8,6 +8,22 @@ import { folderShareService } from '../services/folder-share-service.js';
 import { galleryService } from '../services/gallery-service.js';
 import { serveDerivativeForImage } from './lazy-derivatives.js';
 
+function albumShellHtml(): string | null {
+  const indexPath = appConfig.nodeEnv === 'production'
+    ? path.join(repositoryRoot, 'client/dist/index.html') : path.join(repositoryRoot, 'client/index.html');
+  if (!fs.existsSync(indexPath)) return null;
+  let html = fs.readFileSync(indexPath, 'utf8');
+  if (galleryService.getAlbumDisplayTheme() === 'cinema') {
+    html = html.replace('<html ', '<html class="shared-album-entry" ');
+    for (const [original, branded] of [
+      ['/favicon.svg', '/branding/ur-favicon-5e7c17f7ff6b.svg'],
+      ['/icon-32.png', '/branding/ur-favicon-5e7c17f7ff6b-32.png'],
+      ['/icon-16.png', '/branding/ur-favicon-5e7c17f7ff6b-16.png']
+    ]) html = html.replace(`href="${original}"`, `href="${branded}" data-classic-href="${original}"`);
+  }
+  return html;
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
 }
@@ -28,14 +44,11 @@ function previewOrigin(request: express.Request): string | null {
 export const sharePreviewRouter = express.Router();
 
 sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/images/:id'], (request, response, next) => {
-  const indexPath = appConfig.nodeEnv === 'production'
-    ? path.join(repositoryRoot, 'client/dist/index.html')
-    : path.join(repositoryRoot, 'client/index.html');
-  if (!fs.existsSync(indexPath)) return next();
+  let html = albumShellHtml();
+  if (!html) return next();
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('Referrer-Policy', 'no-referrer');
   response.setHeader('X-Robots-Tag', 'noindex, nofollow');
-  let html = fs.readFileSync(indexPath, 'utf8');
   const slug = request.params.slug;
   const folder = typeof slug === 'string' ? folderShareService.getPreviewFolder(slug, request.query.preview) : null;
   const origin = previewOrigin(request);
@@ -60,6 +73,15 @@ sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/
   if (appConfig.nodeEnv !== 'production') {
     html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
   }
+  response.type('html').send(html);
+});
+
+// Bootstrap branding for direct normal-album links before Vue fetches preferences.
+sharePreviewRouter.get(['/f/:slug', '/folders/:slug'], (_request, response, next) => {
+  let html = albumShellHtml();
+  if (!html) return next();
+  response.setHeader('Cache-Control', 'no-store');
+  if (appConfig.nodeEnv !== 'production') html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
   response.type('html').send(html);
 });
 

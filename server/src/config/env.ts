@@ -31,6 +31,8 @@ const envSchema = z.object({
   GALLERY_EXCLUDED_FOLDERS: z.string().optional(),
   IMAGE_DETAIL_SOURCE: z.enum(['preview', 'original']).default('preview'),
   DERIVATIVE_MODE: z.enum(['eager', 'lazy']).default('eager'),
+  MEDIA_CACHE_ENABLED: z.enum(['true', 'false', '1', '0']).default('false'),
+  MEDIA_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).max(604800).default(86400),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development')
 });
 
@@ -154,6 +156,8 @@ export const appConfig = {
   logVerbose,
   scanMediaErrorMode: parsed.SCAN_MEDIA_ERROR_MODE,
   publicDemoMode,
+  mediaCacheEnabled: parseBooleanFlag(parsed.MEDIA_CACHE_ENABLED),
+  mediaCacheTtlSeconds: parsed.MEDIA_CACHE_TTL_SECONDS,
   csrfTrustedOrigins,
   scanDiscoveryConcurrency: parsed.SCAN_DISCOVERY_CONCURRENCY,
   scanDerivativeConcurrency: parsed.SCAN_DERIVATIVE_CONCURRENCY,
