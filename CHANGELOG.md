@@ -4,10 +4,11 @@
 
 ### New features
 - Configure one browser and CDN media-cache lifetime for regular and shared album views. Enable it with MEDIA_CACHE_ENABLED and set the duration with MEDIA_CACHE_TTL_SECONDS. Album data and admin responses remain uncached.
+- Cinema uses a UR browser-tab icon and shows the album-style logo and Foldergram footer at the end of the Home feed.
 
 ### Bug fixes
 - Direct Cinema album links show the UnReeled loading screen from the start.
-- Cinema videos keep their thumbnail visible while playback loads instead of showing a black frame.
+- Cinema videos keep their thumbnail visible until playback starts, show a buffering indicator on slow connections, and offer Retry when loading fails.
 
 ## 1.2.2-slippman.1.5.0 — 2026-10-14
 

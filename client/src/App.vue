@@ -48,6 +48,8 @@ import { useMomentsStore } from './stores/moments';
 import { useReelsStore } from './stores/reels';
 import { useTrashStore } from './stores/trash';
 import { useViewerStore } from './stores/viewer';
+import { useShareStore } from './stores/share';
+import { setCinemaFavicon } from './utils/favicon';
 
 const { t } = useI18n();
 const appStore = useAppStore();
@@ -63,6 +65,7 @@ const route = useRoute();
 const router = useRouter();
 const trashStore = useTrashStore();
 const viewerStore = useViewerStore();
+const shareStore = useShareStore();
 let lockedScrollX = 0;
 let lockedScrollY = 0;
 let modalScrollLocked = false;
@@ -109,6 +112,22 @@ const displayRoute = computed<RouteLocationNormalizedLoaded | undefined>(() =>
   showImageModal.value ? modalBackgroundRoute.value ?? undefined : route
 );
 const showAuthLoading = computed(() => !authStore.ready && authStore.loading);
+
+watch(() => {
+  if (isPublicShareRoute.value) {
+    const folderTheme = shareStore.folder?.slug === route.params.slug ? shareStore.folder.displayTheme : undefined;
+    const theme = route.name === 'shared-folder' ? folderTheme
+      : shareStore.image?.folderSlug === route.params.slug ? shareStore.image.displayTheme : folderTheme;
+    return theme ? theme === 'cinema' : null;
+  }
+  if (authStore.requiresLogin) return false;
+  if (route.name === 'image') return showImageModal.value && isCinemaImageModal.value;
+  if (route.name === 'folder' || route.name === 'home') {
+    if (!appStore.stats) return null;
+    return (route.name === 'folder' ? appStore.folderDisplayTheme : appStore.feedDisplayTheme) === 'cinema';
+  }
+  return false;
+}, setCinemaFavicon, { immediate: true });
 
 function resetProtectedState() {
   unlockModalScroll();

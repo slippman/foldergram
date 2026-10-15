@@ -13,7 +13,14 @@ function albumShellHtml(): string | null {
     ? path.join(repositoryRoot, 'client/dist/index.html') : path.join(repositoryRoot, 'client/index.html');
   if (!fs.existsSync(indexPath)) return null;
   let html = fs.readFileSync(indexPath, 'utf8');
-  if (galleryService.getAlbumDisplayTheme() === 'cinema') html = html.replace('<html ', '<html class="shared-album-entry" ');
+  if (galleryService.getAlbumDisplayTheme() === 'cinema') {
+    html = html.replace('<html ', '<html class="shared-album-entry" ');
+    for (const [original, branded] of [
+      ['/favicon.svg', '/branding/ur-favicon-5e7c17f7ff6b.svg'],
+      ['/icon-32.png', '/branding/ur-favicon-5e7c17f7ff6b-32.png'],
+      ['/icon-16.png', '/branding/ur-favicon-5e7c17f7ff6b-16.png']
+    ]) html = html.replace(`href="${original}"`, `href="${branded}" data-classic-href="${original}"`);
+  }
   return html;
 }
 

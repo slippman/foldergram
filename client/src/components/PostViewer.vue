@@ -182,11 +182,9 @@
               :loop.prop="true"
               load="eager"
               preload="metadata"
-              @load-start="cinemaVideoStarted = false"
-              @playing="cinemaVideoStarted = true"
               >
                 <media-provider />
-              <img v-if="cinema && !cinemaVideoStarted" class="cinema-video-poster" :src="image.thumbnailUrl" alt="" aria-hidden="true" />
+              <CinemaVideoStatus v-if="cinema" :player="playerElement" :source="videoSrc" :poster="image.thumbnailUrl" autoplay />
               <media-poster
                 class="viewer__player-poster"
                 :src.prop="image.thumbnailUrl"
@@ -648,6 +646,7 @@
   import PostCaptionModal from "./PostCaptionModal.vue"
   import ResilientImage from "./ResilientImage.vue"
   import VideoProgressFooter from "./VideoProgressFooter.vue"
+  import CinemaVideoStatus from "./CinemaVideoStatus.vue"
   import { formatMediaDuration, formatVideoTimestamp, videoPreviewWouldDownscale } from "../utils/media"
 
   const props = defineProps<{
@@ -712,7 +711,6 @@
     }
     return props.image?.filename ?? ''
   })
-  const cinemaVideoStarted = ref(false)
   const originalMediaUrl = computed(() => props.sharedSlug ? activeMediaItem.value?.previewUrl ?? props.image?.previewUrl ?? "" : activeMediaItem.value?.originalUrl ?? (activeMediaImageId.value ? getOriginalMediaUrl(activeMediaImageId.value) : ""))
   const downloadOriginalMediaUrl = computed(() => {
     const id = activeMediaImageId.value;
@@ -775,7 +773,6 @@
 
     return props.image.previewUrl
   })
-  watch(videoSrc, () => { cinemaVideoStarted.value = false }, { flush: 'sync' })
   const videoSource = computed<PlayerSrc>(() => {
     if (!props.image || props.image.mediaType !== "video") {
       return { src: props.image?.previewUrl ?? "", type: "video/mp4" }
@@ -1693,7 +1690,6 @@
 </script>
 
 <style scoped>
-.cinema-video-poster { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: contain; background: black; pointer-events: none; }
 .viewer--cinema .cinema-admin-filename { grid-column: 1 / -1; }
 @media (min-width: 769px) {
   .viewer--cinema .viewer__sidebar--drawer { right: 4.5rem; }
