@@ -83,6 +83,31 @@ describe('album startup splash', () => {
     expect(document.querySelector('#fg-splash')).toBeNull();
   });
 
+  it('reveals an ordinary folder loader immediately when it replaces a deferred viewer', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="settled"></main>';
+    start(); await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="loading"></main>';
+    window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
+    await flush();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(document.querySelector('.fg-splash--pending')).not.toBeNull();
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    await flush();
+    const splash = document.querySelector('#fg-splash');
+    expect(splash).not.toBeNull();
+    expect(document.querySelector('.fg-splash--pending')).toBeNull();
+    expect(document.querySelector('.fg-splash--deferred')).toBeNull();
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(document.querySelector('#fg-splash')).toBe(splash);
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    app.querySelector('main')!.setAttribute('data-album-state', 'ready');
+    await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+
   it('cancels a pending reveal when leaving the viewer', async () => {
     const app = document.getElementById('app')!;
     app.innerHTML = '<main data-album-state="settled"></main>';

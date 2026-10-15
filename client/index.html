@@ -285,6 +285,10 @@
           var splash = document.getElementById('fg-splash');
           document.documentElement.classList.add('album-entry', 'shared-album-entry');
           if (splash) {
+            if (!event.detail || !event.detail.defer) {
+              cancelReveal();
+              splash.classList.remove('fg-splash--pending', 'fg-splash--deferred');
+            }
             if (event.detail && event.detail.defer && splash.classList.contains('fg-splash--out')) deferReveal(splash);
             splash.classList.remove('fg-splash--out');
             var text = splash.querySelector('.fg-splash__album p');
