@@ -22,8 +22,11 @@
       :preload="preload"
       @fullscreen-change="handleFullscreenChange"
       @auto-play-fail="handleAutoplayFail"
+      @load-start="cinemaVideoStarted = false"
+      @playing="cinemaVideoStarted = true"
     >
       <media-provider />
+      <img v-if="cinema && poster && !cinemaVideoStarted" class="cinema-video-poster" :src="poster" alt="" aria-hidden="true" />
       <media-poster
         v-if="poster"
         class="video-media-player__poster"
@@ -148,6 +151,7 @@ const props = withDefaults(
     variant?: 'feed' | 'viewer';
     showControls?: boolean;
     timeLabel?: string;
+    cinema?: boolean;
   }>(),
   {
     originalUrl: '',
@@ -186,6 +190,7 @@ const currentTimeSec = ref(0);
 const isPaused = ref(false);
 const showPausedIndicator = ref(false);
 const isHd = ref(false);
+const cinemaVideoStarted = ref(false);
 let pendingRestoreState: { currentTime: number; wasPaused: boolean } | null = null;
 let hidePausedTimer: NodeJS.Timeout | null = null;
 let removeEventListeners: (() => void) | null = null;
@@ -394,6 +399,8 @@ watch(basePreviewUrl, () => {
   pendingRestoreState = null;
 });
 
+watch(activeVideoUrl, () => { cinemaVideoStarted.value = false; }, { flush: 'sync' });
+
 watch(playerElement, () => {
   if (removeEventListeners) removeEventListeners();
   setupListeners();
@@ -411,6 +418,7 @@ defineExpose({
 </script>
 
 <style scoped>
+.cinema-video-poster { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: contain; background: black; pointer-events: none; }
 .video-media-player__player {
   position: relative;
   display: block;

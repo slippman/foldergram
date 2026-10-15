@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2-slippman.1.6.0 — 2026-10-14
+
+### New features
+- Configure one browser and CDN media-cache lifetime for regular and shared album views. Enable it with MEDIA_CACHE_ENABLED and set the duration with MEDIA_CACHE_TTL_SECONDS. Album data and admin responses remain uncached.
+
+### Bug fixes
+- Direct Cinema album links show the UnReeled loading screen from the start.
+- Cinema videos keep their thumbnail visible while playback loads instead of showing a black frame.
+
 ## 1.2.2-slippman.1.5.0 — 2026-10-14
 
 ### New features

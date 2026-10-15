@@ -282,7 +282,7 @@ describe('PostViewer', () => {
   });
   it('keeps shared viewer actions and keyboard navigation inside the album', async () => {
     const image = { ...createImageDetail(12, { previousImageId: 11, nextImageId: 13 }),
-      previewUrl: '/api/share/images/12/preview', originalUrl: '' };
+      previewUrl: '/api/share/media/scoped-asset-12/preview.webp', originalUrl: '' };
     const wrapper = mount(PostViewer, {
       props: { image, sharedSlug: 'animal-planet', cinema: true, isModal: true },
       global: { stubs: globalStubs }
@@ -291,7 +291,7 @@ describe('PostViewer', () => {
     expect(wrapper.find('button[aria-label="Edit caption"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Delete post"]').exists()).toBe(false);
     expect(wrapper.findComponent({ name: 'CollectionBookmark' }).exists()).toBe(false);
-    expect(wrapper.get('a[download]').attributes('href')).toBe('/api/share/images/12/original');
+    expect(wrapper.get('a[download]').attributes('href')).toBe('/api/share/media/scoped-asset-12/original');
     await wrapper.setProps({ cinema: false });
     expect(wrapper.get('a[download]').attributes('href')).toBe(image.previewUrl);
     await wrapper.setProps({ cinema: true });
@@ -410,6 +410,18 @@ describe('PostViewer', () => {
     await wrapper.setProps({ image: createImageDetail(19, { previousImageId: null, nextImageId: null }) });
     expect(wrapper.get('a.photo-download-desktop').attributes('href')).toBe('/api/originals/19?download=1');
     delete mockRouteQuery.media;
+  });
+
+  it('keeps the Cinema viewer poster through an early play request and resets it on navigation', async () => {
+    const wrapper = mount(PostViewer, { props: { image: createVideoDetail(18), cinema: true, isModal: true }, global: { stubs: globalStubs } });
+    await wrapper.get('media-player').trigger('play');
+    expect(wrapper.get('.cinema-video-poster').attributes('src')).toBe('/thumbnails/18.webp');
+    await wrapper.get('media-player').trigger('playing');
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
+    await wrapper.setProps({ image: createVideoDetail(19) });
+    expect(wrapper.get('.cinema-video-poster').attributes('src')).toBe('/thumbnails/19.webp');
+    await wrapper.setProps({ cinema: false });
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
   });
 
   it('renders a download-original control beside the open-original action', () => {

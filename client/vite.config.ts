@@ -112,6 +112,8 @@ export default defineConfig(async ({ command, mode }) => {
         },
         '/api': `http://localhost:${devServerPort}`,
         '/share/': `http://localhost:${devServerPort}`,
+        '/f/': `http://localhost:${devServerPort}`,
+        '/folders/': `http://localhost:${devServerPort}`,
         '/share-preview/': `http://localhost:${devServerPort}`,
         '/thumbnails': `http://localhost:${devServerPort}`,
         '/previews': `http://localhost:${devServerPort}`

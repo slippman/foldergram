@@ -34,36 +34,6 @@ Generated derivatives are now stored under stable asset-key shards instead of mi
 
 ## Features
 
-Cinema can be selected separately for albums and the Home feed in General Settings.
-Album grids open into a vertical scroll with adjacent-image previews. Clicking a
-photo opens a screen-filling viewer; Close or Escape returns to the album. Camera
-and exposure details are available through Info, including for public viewers;
-GPS coordinates and internal file paths remain hidden from public JSON responses.
-Original downloads and native file shares preserve the source file, including
-any embedded location metadata; JSON redaction does not sanitize those files.
-On desktop, click a navigation icon to expand the sidebar, and click outside to
-collapse it. Admins can create album shares from the album menu. New share links
-include an album-cover and title preview for messaging apps. The preview credential
-allows only that cover and title; it cannot unlock the album. Expiring or revoking
-the link stops further preview requests, though messaging apps may retain cached
-previews. Link previews require a server reachable by the messaging service;
-internal-only development addresses cannot be fetched by external crawlers.
-Configure the public HTTPS address in `CSRF_TRUSTED_ORIGINS` so generated image
-URLs use a trusted host. Existing links keep working; create a new link to include
-the message preview. Shared links
-follow the current Album theme, including Cinema's grid, scrolling hints, video
-controls, photo zoom, and camera Info. Shared-album favorites stay in the visitor's
-browser. In Cinema, shared downloads and native file sharing use the original
-file at full resolution, with video sharing limited to 250 MB. Classic retains
-preview downloads. Original access requires a valid grant for that album;
-shared links do not grant access to other albums or admin controls.
-On phones, Cinema photo and video controls offer native file sharing when supported,
-with the same Foldergram share icon. Classic keeps its existing photo-sharing controls. Browsers without file sharing offer Download
-instead; desktop controls retain Download. Sharing requires HTTPS, and large
-files may need a second tap after the file is prepared.
-Mobile Cinema uses a stable viewport height to avoid resizing media as browser
-toolbars move; Info shows the same camera details in scroll and zoom views.
-
 - **Instagram-Inspired UI:** Enjoy a familiar feed layout, dedicated app folders (profiles), and a media viewer.
 - Home feed with `Recent`, `Rediscover`, and `Random` modes.
 - A dedicated `/reels` route with a video-only queue. Settings can default it to `Recommended`, `Recent`, or `Random`.
@@ -437,3 +407,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution policy, local s
 Foldergram supports one post containing 2–20 ordered images, animated images, and videos. Put each post in `AppFolder/carousels/Post name/`; filename order controls its slides and the first item is its cover. A carousel counts as one post, has one caption, and its videos are excluded from Reels. The index stores visible posts separately from physical media through `posts` and `post_items`.
 
 See [Posts with Multiple Photos or Videos](docs/carousel-posts.md) for the complete source tree, edge cases, settings, and troubleshooting guide.
+
+## What this fork adds
+
+- Added support for different themes for Feed and Albums layouts.
+- Added a “Cinema” theme that adds the following features when enabled:
+  - Larger photos and videos, scrolling albums, and fullscreen viewing.
+  - Camera and exposure details in media viewers.
+  - Full-resolution downloads and native mobile sharing for photos and videos.
+- Added album-cover previews for shared links.

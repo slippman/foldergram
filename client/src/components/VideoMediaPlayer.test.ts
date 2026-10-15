@@ -6,6 +6,22 @@ import { i18n } from '../locales';
 import VideoMediaPlayer from './VideoMediaPlayer.vue';
 
 describe('VideoMediaPlayer', () => {
+  it('keeps the Cinema thumbnail until playback starts, and restores it for a new source', async () => {
+    const wrapper = mount(VideoMediaPlayer, { props: { src: '/slow.mp4', poster: '/poster.jpg', cinema: true } });
+    const player = wrapper.get('media-player');
+    await player.trigger('play');
+    await player.trigger('waiting');
+    expect(wrapper.get('.cinema-video-poster').attributes('src')).toBe('/poster.jpg');
+    await player.trigger('playing');
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
+    await player.trigger('waiting');
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
+    await wrapper.setProps({ src: '/next.mp4', poster: '/next.jpg' });
+    expect(wrapper.get('.cinema-video-poster').attributes('src')).toBe('/next.jpg');
+    await wrapper.setProps({ cinema: false });
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
+    wrapper.unmount();
+  });
   beforeEach(() => {
     setActivePinia(createPinia());
   });

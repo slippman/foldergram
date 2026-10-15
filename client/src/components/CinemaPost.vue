@@ -1,10 +1,10 @@
 <template>
   <article ref="postElement" class="cinema-post" :data-album-poster="item.mediaType === 'video' ? item.thumbnailUrl : undefined">
     <div class="cinema-post__media" :style="mediaStyle">
-      <CarouselMediaStage v-if="isCarousel" :items="item.mediaItems!" v-model="carouselIndex" prefer-preview fit-container
+      <CarouselMediaStage v-if="isCarousel" cinema :items="item.mediaItems!" v-model="carouselIndex" prefer-preview fit-container
         :retry-while="appStore.isScanning" :autoplay="isVisible" :muted="videoMuted"
         @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" @click="openCarouselPhoto" />
-      <VideoMediaPlayer v-else-if="item.mediaType === 'video'" :src="item.previewUrl"
+      <VideoMediaPlayer v-else-if="item.mediaType === 'video'" cinema :src="item.previewUrl"
         :poster="item.thumbnailUrl" :original-url="media?.originalUrl"
         :playback-strategy="media?.playbackStrategy" :width="item.width" :height="item.height"
         :alt="item.caption || ''" :muted="videoMuted" :autoplay="isVisible" :loop="false" load="visible"
@@ -132,7 +132,7 @@ const activeMedia = computed(() => detail.value?.mediaItems?.[carouselIndex.valu
 const exifDetails = computed(() => formatExifDetails(activeMedia.value?.exif ?? detail.value?.exif, t));
 const downloadUrl = computed(() => {
   const id = activeMedia.value?.imageId ?? props.item.id;
-  return props.sharedSlug ? getSharedOriginalMediaDownloadUrl(id) : getOriginalMediaDownloadUrl(id);
+  return props.sharedSlug ? getSharedOriginalMediaDownloadUrl(id, activeMedia.value?.previewUrl ?? props.item.previewUrl) : getOriginalMediaDownloadUrl(id);
 });
 const likeLabel = computed(() => likesStore.toggleAriaLabel(likesStore.isLiked(props.item.id)));
 const infoLabel = computed(() => t(showInfo.value ? 'post.viewer.hideDetails' : 'post.viewer.showDetails'));

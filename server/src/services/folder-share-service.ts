@@ -399,6 +399,30 @@ export const folderShareService = {
     return `${linkId}.${signValue(`cover-preview:${linkId}`, getShareSessionSecret())}`;
   },
 
+  createMediaToken(request: express.Request, folderId: number, scope: string, scopeImageId: number): string | null {
+    const session = getShareSessionGrant(request);
+    const grant = session?.folderId === folderId ? session : getGlobalGrant(request, folderId);
+    if (!grant) return null;
+    const windowMs = appConfig.mediaCacheTtlSeconds * 1000;
+    const payload = Buffer.from(JSON.stringify({ ...grant, scope, scopeImageId,
+      exp: (Math.floor(Date.now() / windowMs) + 2) * windowMs })).toString('base64url');
+    return `${payload}.${signValue(`shared-media:v1:${payload}`, getShareSessionSecret())}`;
+  },
+
+  verifyMediaToken(token: string, folderId: number, scope: string): boolean {
+    if (token.length > 2048 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(token)) return false;
+    const [encoded, signature] = token.split('.');
+    const expected = signValue(`shared-media:v1:${encoded}`, getShareSessionSecret());
+    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return false;
+    try {
+      const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+      if (payload.folderId !== folderId || payload.scope !== scope || !Number.isFinite(payload.exp) || payload.exp <= Date.now()) return false;
+      if (payload.kind === 'global') return true;
+      if (payload.kind !== 'link' && payload.kind !== 'password') return false;
+      return Boolean(validateSessionPayload(payload));
+    } catch { return false; }
+  },
+
   copyLink(slug: string, linkId: number): string | null {
     const folder = folderRepository.getNormalBySlug(slug);
     const link = folderShareLinkRepository.getById(linkId);

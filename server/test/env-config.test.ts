@@ -45,9 +45,27 @@ describe.sequential('derivative mode env config', () => {
 
     expect(appConfig.imageDetailSource).toBe('preview');
     expect(appConfig.derivativeMode).toBe('eager');
+    expect(appConfig.mediaCacheEnabled).toBe(false);
+    expect(appConfig.mediaCacheTtlSeconds).toBe(86400);
     expect(appConfig.scanMediaErrorMode).toBe('skip');
     expect(appConfig.scanErrorReportDir).toBe(path.join(tempRoot, 'data', 'scan-errors'));
     expect(appConfig.galleryExcludedFolders).toEqual([]);
+  });
+
+  it('reads configurable media caching without changing the derivative mode', async () => {
+    await stubBaseEnv();
+    vi.stubEnv('MEDIA_CACHE_ENABLED', 'true');
+    vi.stubEnv('MEDIA_CACHE_TTL_SECONDS', '3600');
+    const { appConfig } = await import('../src/config/env.js') as EnvModule;
+    expect(appConfig.mediaCacheEnabled).toBe(true);
+    expect(appConfig.mediaCacheTtlSeconds).toBe(3600);
+    expect(appConfig.derivativeMode).toBe('eager');
+  });
+
+  it.each(['0', '-1', '1.5', '604801', 'invalid'])('rejects invalid cache lifetime %s', async (ttl) => {
+    await stubBaseEnv();
+    vi.stubEnv('MEDIA_CACHE_TTL_SECONDS', ttl);
+    await expect(import('../src/config/env.js')).rejects.toThrow();
   });
 
   it('allows strict scan failure on media errors when requested', async () => {

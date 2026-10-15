@@ -6,6 +6,8 @@ services:
     environment:
       IMAGE_DETAIL_SOURCE: preview
       DERIVATIVE_MODE: eager
+      MEDIA_CACHE_ENABLED: ${MEDIA_CACHE_ENABLED:-false}
+      MEDIA_CACHE_TTL_SECONDS: ${MEDIA_CACHE_TTL_SECONDS:-86400}
       # Optional: skip specific source folders by name or by exact relative path.
       # GALLERY_EXCLUDED_FOLDERS: "@eaDir,thumbnails,Archive/cache"
       # Optional: enable read-only public demo behavior.

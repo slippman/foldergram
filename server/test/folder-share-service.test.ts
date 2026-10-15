@@ -205,6 +205,30 @@ describe.sequential('folder share service', () => {
     expect(folderShareService.verifyLinkToken('album', active.rawToken)).toBeNull();
   });
 
+  it('bounds media capabilities by asset, album, expiration and password version', () => {
+    authService.setAdminPassword('admin-pass-123');
+    const folder = folderRepository.upsert({ slug: 'album', name: 'Album', folderPath: 'album' });
+    folderShareService.setPassword('album', 'share-pass-123');
+    const grant = folderShareService.verifyPassword('album', 'share-pass-123')!;
+    const response = createResponse();
+    folderShareService.setShareSession(response as unknown as express.Response, createRequest(), grant);
+    const request = createRequest({ cookie: extractCookieHeader(response) });
+    const token = folderShareService.createMediaToken(request, folder.id, 'asset-version', 10)!;
+    expect(folderShareService.verifyMediaToken(token, folder.id, 'asset-version')).toBe(true);
+    expect(folderShareService.verifyMediaToken(token, folder.id + 1, 'asset-version')).toBe(false);
+    expect(folderShareService.verifyMediaToken(token, folder.id, 'changed-asset')).toBe(false);
+    const [encoded, signature] = token.split('.');
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+    const tampered = Buffer.from(JSON.stringify({ ...payload, scopeImageId: 11 })).toString('base64url');
+    expect(folderShareService.verifyMediaToken(`${tampered}.${signature}`, folder.id, 'asset-version')).toBe(false);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(payload.exp + 1);
+    try { expect(folderShareService.verifyMediaToken(token, folder.id, 'asset-version')).toBe(false); }
+    finally { clock.mockRestore(); }
+    folderShareService.setPassword('album', 'changed-pass-123');
+    expect(folderShareService.verifyMediaToken(token, folder.id, 'asset-version')).toBe(false);
+    expect(folderShareService.createMediaToken(request, folder.id, 'asset-version', 10)).toBeNull();
+  });
+
   it('invalidates password sessions when the folder password changes or is removed', () => {
     authService.setAdminPassword('admin-pass-123');
     const folder = folderRepository.upsert({ slug: 'album', name: 'Album', folderPath: 'album' });

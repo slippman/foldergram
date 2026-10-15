@@ -25,6 +25,7 @@
         :alt="item.filename"
         :muted="props.muted ?? appStore.videoMuted"
         :autoplay="autoplay"
+        :cinema="cinema"
         variant="viewer"
         @autoplay-muted="handleAutoplayMuted"
         @toggle-mute="toggleMute"
@@ -105,6 +106,7 @@ const props = withDefaults(
     muted?: boolean;
     autoplay?: boolean;
     fitContainer?: boolean;
+    cinema?: boolean;
   }>(),
   {
     modelValue: 0,

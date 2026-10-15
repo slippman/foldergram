@@ -1317,6 +1317,7 @@ function listFallbackAvatarStoryItems(
 }
 
 export const galleryService = {
+  getAlbumDisplayTheme: getFolderDisplayTheme,
   getFeed(page: number, limit: number, mode: FeedMode = 'random', randomSeed?: number) {
     if (!storageService.getState().libraryAvailable) {
       return {
