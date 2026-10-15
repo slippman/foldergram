@@ -10,8 +10,9 @@ export function mediaCacheUrl(request: express.Request, image: ImageRecord, kind
   if (!appConfig.mediaCacheEnabled) return null;
   const token = folderShareService.createMediaToken(request, image.folder_id, sharedMediaScope(image), image.id);
   if (!token) return null;
+  const sourceExtension = image.extension.replace(/^\.+/, '').toLowerCase();
   const extension = kind === 'thumbnail' ? 'webp' : kind === 'preview'
-    ? image.media_type === 'video' ? 'mp4' : image.is_animated ? image.extension : 'webp' : image.extension;
+    ? image.media_type === 'video' ? 'mp4' : image.is_animated ? sourceExtension : 'webp' : sourceExtension;
   return `/api/share/media/${token}/${kind}.${extension}`;
 }
 export function sharedMediaScope(image: ImageRecord): string {

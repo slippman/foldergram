@@ -60,7 +60,7 @@ describe.sequential('folder share API routes', () => {
     imageRepository.upsert({
       folderId: folderA.id,
       filename: 'image-a.jpg',
-      extension: 'jpg',
+      extension: '.jpg',
       relativePath: 'folder-a/image-a.jpg',
       absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'image-a.jpg'),
       fileSize: 1024,
@@ -83,7 +83,7 @@ describe.sequential('folder share API routes', () => {
     imageRepository.upsert({
       folderId: folderB.id,
       filename: 'image-b.jpg',
-      extension: 'jpg',
+      extension: '.jpg',
       relativePath: 'folder-b/image-b.jpg',
       absolutePath: path.join(tempRoot, 'gallery', 'folder-b', 'image-b.jpg'),
       fileSize: 2048,
@@ -114,7 +114,7 @@ describe.sequential('folder share API routes', () => {
       imageRepository.upsert({
         folderId: carouselSource.id,
         filename: '01-image.jpg',
-        extension: 'jpg',
+        extension: '.jpg',
         relativePath: 'folder-a/carousels/trip/01-image.jpg',
         absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'carousels', 'trip', '01-image.jpg'),
         fileSize: 3001,
@@ -136,7 +136,7 @@ describe.sequential('folder share API routes', () => {
       imageRepository.upsert({
         folderId: carouselSource.id,
         filename: '02-animated.gif',
-        extension: 'gif',
+        extension: '.gif',
         relativePath: 'folder-a/carousels/trip/02-animated.gif',
         absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'carousels', 'trip', '02-animated.gif'),
         fileSize: 3002,
@@ -159,7 +159,7 @@ describe.sequential('folder share API routes', () => {
       imageRepository.upsert({
         folderId: carouselSource.id,
         filename: '03-video.mp4',
-        extension: 'mp4',
+        extension: '.mp4',
         relativePath: 'folder-a/carousels/trip/03-video.mp4',
         absolutePath: path.join(tempRoot, 'gallery', 'folder-a', 'carousels', 'trip', '03-video.mp4'),
         fileSize: 3003,
@@ -533,6 +533,32 @@ describe.sequential('folder share API routes', () => {
     } finally {
       appConfig.mediaCacheTtlSeconds = originalTtl;
       appConfig.mediaCacheEnabled = true;
+    }
+  });
+
+  it('serves cached animated previews and video originals with scanner-style dotted extensions', async () => {
+    const { postRepository } = await import('../src/db/repositories.js');
+    const post = postRepository.findBySourcePath('folder-a/carousels/trip')!;
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockRes as any, { secure: false, get: () => undefined } as any, 'viewer');
+    const headers = { Cookie: `foldergram_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` };
+    await fs.mkdir(path.join(tempRoot, 'previews/folder-a/carousels/trip'), { recursive: true });
+    await fs.writeFile(path.join(tempRoot, 'previews/folder-a/carousels/trip/02-animated.gif'), 'animated-preview');
+    await fs.mkdir(path.join(tempRoot, 'gallery/folder-a/carousels/trip'), { recursive: true });
+    await fs.writeFile(path.join(tempRoot, 'gallery/folder-a/carousels/trip/03-video.mp4'), 'video-original');
+    for (const route of [`/api/posts/${post.id}`, `/api/share/posts/${post.id}`]) {
+      const detail = await requestApp(app, 'GET', route, headers);
+      const animated = detail.body.mediaItems.find((item: any) => item.mediaType === 'image' && item.isAnimated);
+      expect(animated.previewUrl).toMatch(/\/preview\.gif$/);
+      const preview = await requestApp(app, 'GET', animated.previewUrl);
+      expect(preview.status).toBe(200);
+      expect(preview.body).toBe('animated-preview');
+      const video = detail.body.mediaItems.find((item: any) => item.mediaType === 'video');
+      const url = video.originalUrl ?? video.previewUrl.replace(/\/preview\.mp4$/, '/original.mp4');
+      expect(url).toMatch(/\/(source|original)\.mp4$/);
+      const original = await requestApp(app, 'GET', url);
+      expect(original.status).toBe(200);
+      expect(original.body).toBe('video-original');
     }
   });
 
