@@ -134,6 +134,31 @@ describe('HomeView', () => {
     });
   });
 
+  it('offers Rediscover only for eligible Cinema posts and falls back from an empty default', async () => {
+    const appStore = useAppStore();
+    const feedStore = useFeedStore();
+    const status = createAppStatus({ isScanning: false });
+    status.preferences.feedDisplayTheme = 'cinema';
+    status.preferences.defaultHomeFeedMode = 'rediscover';
+    status.rediscoverPostCount = 0;
+    appStore.$patch({ stats: status });
+    vi.spyOn(feedStore, 'loadInitial').mockResolvedValue();
+    vi.spyOn(useMomentsStore(), 'fetchMoments').mockResolvedValue();
+    const wrapper = mountHomeView();
+    await flushPromises();
+    const hasRediscover = () => wrapper.findAll('button').some(button => button.text() === 'Rediscover');
+    expect(hasRediscover()).toBe(false);
+    expect(feedStore.mode).toBe('recent');
+    appStore.stats!.rediscoverPostCount = 1;
+    await flushPromises();
+    expect(hasRediscover()).toBe(true);
+    appStore.stats!.rediscoverPostCount = 0;
+    appStore.stats!.preferences.feedDisplayTheme = 'classic';
+    await flushPromises();
+    expect(hasRediscover()).toBe(true);
+    wrapper.unmount();
+  });
+
   it('uses shared Cinema posts on mobile while preserving feed order', async () => {
     window.innerWidth = 390;
     const appStore = useAppStore();

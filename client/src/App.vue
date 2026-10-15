@@ -113,7 +113,7 @@ const displayRoute = computed<RouteLocationNormalizedLoaded | undefined>(() =>
 );
 const showAuthLoading = computed(() => !authStore.ready && authStore.loading);
 
-watch(() => {
+const isCinemaPage = computed(() => {
   if (isPublicShareRoute.value) {
     const folderTheme = shareStore.folder?.slug === route.params.slug ? shareStore.folder.displayTheme : undefined;
     const theme = route.name === 'shared-folder' ? folderTheme
@@ -127,7 +127,26 @@ watch(() => {
     return (route.name === 'folder' ? appStore.folderDisplayTheme : appStore.feedDisplayTheme) === 'cinema';
   }
   return false;
-}, setCinemaFavicon, { immediate: true });
+});
+watch(isCinemaPage, setCinemaFavicon, { immediate: true });
+const classicDocumentTitle = document.title === 'UnReeled Photos' || document.title.endsWith(' | UnReeled Photos')
+  ? 'Foldergram' : document.title;
+
+watch(() => {
+  const cinema = isCinemaPage.value;
+  if (cinema === null) return null;
+  if (!cinema) return classicDocumentTitle;
+  const slug = String(route.params.slug ?? modalBackgroundRoute.value?.params.slug ?? '');
+  let albumName: string | undefined;
+  if (isPublicShareRoute.value) {
+    albumName = shareStore.folder?.slug === slug ? shareStore.folder.name
+      : shareStore.image?.folderSlug === slug ? shareStore.image.folderName : undefined;
+  } else if (route.name === 'folder' || route.name === 'image') {
+    albumName = foldersStore.currentFolder?.slug === slug ? foldersStore.currentFolder.name
+      : viewerStore.image?.folderSlug === slug ? viewerStore.image.folderName : undefined;
+  }
+  return albumName ? `${albumName} | UnReeled Photos` : 'UnReeled Photos';
+}, (title) => { if (title !== null) document.title = title; }, { immediate: true });
 
 function resetProtectedState() {
   unlockModalScroll();

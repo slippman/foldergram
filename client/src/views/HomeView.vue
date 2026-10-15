@@ -355,17 +355,18 @@ const indexedSummaryLabel = computed(() => {
 const formattedIndexedImageCount = computed(() => formatCount(appStore.stats?.indexedImages ?? 0));
 const formattedIndexedVideoCount = computed(() => formatCount(appStore.stats?.indexedVideos ?? 0));
 const formattedFolderCount = computed(() => formatCount(appStore.stats?.folders ?? 0));
+const showRediscover = computed(() => !isCinema.value || (appStore.stats?.rediscoverPostCount ?? 0) > 0);
 const feedModes = computed<Array<{ id: FeedMode; label: string; description: string }>>(() => [
   {
     id: 'recent',
     label: t('settings.general.homeFeed.options.recent.label'),
     description: t('settings.general.homeFeed.options.recent.description')
   },
-  {
-    id: 'rediscover',
+  ...(showRediscover.value ? [{
+    id: 'rediscover' as const,
     label: t('settings.general.homeFeed.options.rediscover.label'),
     description: t('settings.general.homeFeed.options.rediscover.description')
-  },
+  }] : []),
   {
     id: 'random',
     label: t('settings.general.homeFeed.options.random.label'),
@@ -571,8 +572,15 @@ onMounted(async () => {
     return;
   }
 
-  feedStore.initializeMode(appStore.defaultHomeFeedMode);
+  feedStore.initializeMode(appStore.defaultHomeFeedMode === 'rediscover' && !showRediscover.value
+    ? 'recent' : appStore.defaultHomeFeedMode);
   await Promise.all([feedStore.loadInitial(), momentsStore.fetchMoments()]);
+});
+
+watch(showRediscover, (visible) => {
+  if (!visible && feedStore.mode === 'rediscover' && feedStore.initialized) {
+    void feedStore.setMode('recent');
+  }
 });
 
 watch(

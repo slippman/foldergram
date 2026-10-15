@@ -279,6 +279,11 @@ describe.sequential('folder share API routes', () => {
       expect(literalTitlePage.body).toContain('<title>Trip $&amp; $` $&#39; &lt;script&gt;test&lt;/script&gt;</title>');
       expect(literalTitlePage.body).toContain('property="og:title" content="Trip $&amp; $` $&#39; &lt;script&gt;test&lt;/script&gt;"');
       expect(literalTitlePage.body.match(/<!doctype html>/gi)).toHaveLength(1);
+      const { appSettingsRepository } = await import('../src/db/repositories.js');
+      appSettingsRepository.set('folder.display_theme', 'cinema');
+      const cinemaTitlePage = await requestApp(app, 'GET', `/share/folder-a?preview=${preview}`);
+      expect(cinemaTitlePage.body).toContain('<title>Trip $&amp; $` $&#39; &lt;script&gt;test&lt;/script&gt; | UnReeled Photos</title>');
+      appSettingsRepository.set('folder.display_theme', 'classic');
     } finally {
       appConfig.csrfTrustedOrigins.splice(0, appConfig.csrfTrustedOrigins.length, ...originalOrigins);
     }
@@ -592,10 +597,12 @@ describe.sequential('folder share API routes', () => {
     const cinema = await requestApp(app, 'GET', '/f/folder-a?view=scroll&photo=1');
     expect(cinema.status).toBe(200);
     expect(cinema.body).toContain('<html class="shared-album-entry"');
+    expect(cinema.body).toContain('<title>UnReeled Photos</title>');
     expect(cinema.headers.get('Cache-Control')).toBe('no-store');
     appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'classic');
     const classic = await requestApp(app, 'GET', '/f/folder-a');
     expect(classic.body).toContain('<html lang="en">');
+    expect(classic.body).toContain('<title>Foldergram</title>');
   });
 
   it('immediately revokes active share sessions when link is revoked', async () => {
