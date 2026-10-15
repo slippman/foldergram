@@ -50,6 +50,7 @@ import { useTrashStore } from './stores/trash';
 import { useViewerStore } from './stores/viewer';
 import { useShareStore } from './stores/share';
 import { setCinemaFavicon } from './utils/favicon';
+import { createDocumentTitleUpdater } from './utils/document-title';
 
 const { t } = useI18n();
 const appStore = useAppStore();
@@ -113,7 +114,7 @@ const displayRoute = computed<RouteLocationNormalizedLoaded | undefined>(() =>
 );
 const showAuthLoading = computed(() => !authStore.ready && authStore.loading);
 
-watch(() => {
+const isCinemaPage = computed(() => {
   if (isPublicShareRoute.value) {
     const folderTheme = shareStore.folder?.slug === route.params.slug ? shareStore.folder.displayTheme : undefined;
     const theme = route.name === 'shared-folder' ? folderTheme
@@ -127,7 +128,24 @@ watch(() => {
     return (route.name === 'folder' ? appStore.folderDisplayTheme : appStore.feedDisplayTheme) === 'cinema';
   }
   return false;
-}, setCinemaFavicon, { immediate: true });
+});
+watch(isCinemaPage, setCinemaFavicon, { immediate: true });
+const updateDocumentTitle = createDocumentTitleUpdater();
+
+watch(() => {
+  const cinema = isCinemaPage.value;
+  if (cinema !== true) return { cinema, albumName: undefined };
+  const slug = String(route.params.slug ?? modalBackgroundRoute.value?.params.slug ?? '');
+  let albumName: string | undefined;
+  if (isPublicShareRoute.value) {
+    albumName = shareStore.folder?.slug === slug ? shareStore.folder.name
+      : shareStore.image?.folderSlug === slug ? shareStore.image.folderName : undefined;
+  } else if (route.name === 'folder' || route.name === 'image') {
+    albumName = foldersStore.currentFolder?.slug === slug ? foldersStore.currentFolder.name
+      : viewerStore.image?.folderSlug === slug ? viewerStore.image.folderName : undefined;
+  }
+  return { cinema, albumName };
+}, ({ cinema, albumName }) => updateDocumentTitle(cinema, albumName), { immediate: true });
 
 function resetProtectedState() {
   unlockModalScroll();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2-slippman.1.6.1 — 2026-10-15
+
+### Bug fixes
+
+- Cinema browser tabs now show the current album name followed by “| UnReeled Photos” and update as you navigate.
+- Replaced the Cinema favicon with a clearer UR monogram and transparent rounded corners.
+- Cinema hides Rediscover when no posts are at least 180 days old and falls back to Recent when needed.
+
 ## 1.2.2-slippman.1.6.0 — 2026-10-14
 
 ### New features

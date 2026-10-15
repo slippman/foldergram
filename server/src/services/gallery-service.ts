@@ -2175,6 +2175,8 @@ export const galleryService = {
       folders: storageState.libraryAvailable ? folderRepository.count() : 0,
       indexedImages: indexedPosts,
       indexedPosts,
+      rediscoverPostCount: storageState.libraryAvailable
+        ? imageRepository.countRediscover(Date.now() - REDISCOVER_MIN_AGE_MS) : 0,
       indexedMediaAssets: storageState.libraryAvailable ? imageRepository.countVisibleMediaAssets() : 0,
       indexedCarousels: storageState.libraryAvailable ? imageRepository.countVisibleCarousels() : 0,
       indexedVideos: storageState.libraryAvailable ? imageRepository.countVisibleSingleVideos() : 0,
@@ -2249,6 +2251,8 @@ export const galleryService = {
       folders: storageState.libraryAvailable ? folderRepository.count() : 0,
       indexedImages: storageState.libraryAvailable ? imageRepository.countFeed() : 0,
       indexedPosts: storageState.libraryAvailable ? imageRepository.countFeed() : 0,
+      rediscoverPostCount: storageState.libraryAvailable
+        ? imageRepository.countRediscover(Date.now() - REDISCOVER_MIN_AGE_MS) : 0,
       indexedMediaAssets: storageState.libraryAvailable ? imageRepository.countVisibleMediaAssets() : 0,
       indexedCarousels: storageState.libraryAvailable ? imageRepository.countVisibleCarousels() : 0,
       indexedVideos: storageState.libraryAvailable ? imageRepository.countVisibleSingleVideos() : 0,

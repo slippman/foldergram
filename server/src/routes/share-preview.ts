@@ -14,11 +14,12 @@ function albumShellHtml(): string | null {
   if (!fs.existsSync(indexPath)) return null;
   let html = fs.readFileSync(indexPath, 'utf8');
   if (galleryService.getAlbumDisplayTheme() === 'cinema') {
-    html = html.replace('<html ', '<html class="shared-album-entry" ');
+    html = html.replace('<html ', '<html class="shared-album-entry" data-cinema-entry="true" ');
+    html = html.replace('<title>Foldergram</title>', '<title>UnReeled Photos</title>');
     for (const [original, branded] of [
-      ['/favicon.svg', '/branding/ur-favicon-5e7c17f7ff6b.svg'],
-      ['/icon-32.png', '/branding/ur-favicon-5e7c17f7ff6b-32.png'],
-      ['/icon-16.png', '/branding/ur-favicon-5e7c17f7ff6b-16.png']
+      ['/favicon.svg', '/branding/ur-favicon-9a5af93327d1.svg'],
+      ['/icon-32.png', '/branding/ur-favicon-9a5af93327d1-32.png'],
+      ['/icon-16.png', '/branding/ur-favicon-9a5af93327d1-16.png']
     ]) html = html.replace(`href="${original}"`, `href="${branded}" data-classic-href="${original}"`);
   }
   return html;
@@ -67,7 +68,8 @@ sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/
       tags.push('<meta property="og:image:type" content="image/jpeg" />');
       tags.push(`<meta name="twitter:image" content="${escapeHtml(coverUrl)}" />`);
     }
-    html = html.replace('<title>Foldergram</title>', () => `<title>${title}</title>`);
+    const tabTitle = galleryService.getAlbumDisplayTheme() === 'cinema' ? `${title} | UnReeled Photos` : title;
+    html = html.replace(/<title>(?:Foldergram|UnReeled Photos)<\/title>/, () => `<title>${tabTitle}</title>`);
     html = html.replace('</head>', () => `${tags.join('\n')}</head>`);
   }
   if (appConfig.nodeEnv !== 'production') {

@@ -575,6 +575,7 @@ export interface RebuildThumbnailsResult {
 }
 
 export interface AppStatus {
+  rediscoverPostCount?: number;
   folders: number;
   indexedImages: number;
   indexedPosts: number;
