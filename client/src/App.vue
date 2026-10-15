@@ -50,6 +50,7 @@ import { useTrashStore } from './stores/trash';
 import { useViewerStore } from './stores/viewer';
 import { useShareStore } from './stores/share';
 import { setCinemaFavicon } from './utils/favicon';
+import { createDocumentTitleUpdater } from './utils/document-title';
 
 const { t } = useI18n();
 const appStore = useAppStore();
@@ -129,13 +130,11 @@ const isCinemaPage = computed(() => {
   return false;
 });
 watch(isCinemaPage, setCinemaFavicon, { immediate: true });
-const classicDocumentTitle = document.title === 'UnReeled Photos' || document.title.endsWith(' | UnReeled Photos')
-  ? 'Foldergram' : document.title;
+const updateDocumentTitle = createDocumentTitleUpdater();
 
 watch(() => {
   const cinema = isCinemaPage.value;
-  if (cinema === null) return null;
-  if (!cinema) return classicDocumentTitle;
+  if (cinema !== true) return { cinema, albumName: undefined };
   const slug = String(route.params.slug ?? modalBackgroundRoute.value?.params.slug ?? '');
   let albumName: string | undefined;
   if (isPublicShareRoute.value) {
@@ -145,8 +144,8 @@ watch(() => {
     albumName = foldersStore.currentFolder?.slug === slug ? foldersStore.currentFolder.name
       : viewerStore.image?.folderSlug === slug ? viewerStore.image.folderName : undefined;
   }
-  return albumName ? `${albumName} | UnReeled Photos` : 'UnReeled Photos';
-}, (title) => { if (title !== null) document.title = title; }, { immediate: true });
+  return { cinema, albumName };
+}, ({ cinema, albumName }) => updateDocumentTitle(cinema, albumName), { immediate: true });
 
 function resetProtectedState() {
   unlockModalScroll();

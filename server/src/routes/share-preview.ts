@@ -14,7 +14,7 @@ function albumShellHtml(): string | null {
   if (!fs.existsSync(indexPath)) return null;
   let html = fs.readFileSync(indexPath, 'utf8');
   if (galleryService.getAlbumDisplayTheme() === 'cinema') {
-    html = html.replace('<html ', '<html class="shared-album-entry" ');
+    html = html.replace('<html ', '<html class="shared-album-entry" data-cinema-entry="true" ');
     html = html.replace('<title>Foldergram</title>', '<title>UnReeled Photos</title>');
     for (const [original, branded] of [
       ['/favicon.svg', '/branding/ur-favicon-9a5af93327d1.svg'],

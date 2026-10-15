@@ -598,11 +598,13 @@ describe.sequential('folder share API routes', () => {
     expect(cinema.status).toBe(200);
     expect(cinema.body).toContain('<html class="shared-album-entry"');
     expect(cinema.body).toContain('<title>UnReeled Photos</title>');
+    expect(cinema.body).toContain('data-cinema-entry="true"');
     expect(cinema.headers.get('Cache-Control')).toBe('no-store');
     appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'classic');
     const classic = await requestApp(app, 'GET', '/f/folder-a');
     expect(classic.body).toContain('<html lang="en">');
     expect(classic.body).toContain('<title>Foldergram</title>');
+    expect(classic.body).not.toContain('data-cinema-entry');
   });
 
   it('immediately revokes active share sessions when link is revoked', async () => {
