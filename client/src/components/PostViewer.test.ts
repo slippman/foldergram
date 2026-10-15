@@ -476,6 +476,25 @@ describe('PostViewer', () => {
     }
   });
 
+  it('unlocks a retained movie when navigation returns fresh data for the same post', async () => {
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(22), nextImageId: 23 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    await wrapper.get('.viewer__next').trigger('click');
+    expect(player.paused).toBe(true);
+    // The request for B was abandoned; returning to A replaces its data without changing its ID.
+    await wrapper.setProps({ image: { ...createVideoDetail(22), nextImageId: 23 } });
+    await flushPromises();
+    expect(player.paused).toBe(false);
+    await wrapper.get('.viewer__media-shell--video').trigger('click');
+    expect(player.paused).toBe(true);
+    await wrapper.get('.viewer__media-shell--video').trigger('click');
+    expect(player.paused).toBe(false);
+  });
+
   it('pauses the movie before keyboard navigation and before closing the viewer', async () => {
     const wrapper = mount(PostViewer, {
       props: { image: { ...createVideoDetail(22), nextImageId: 23 }, cinema: true, isModal: true },

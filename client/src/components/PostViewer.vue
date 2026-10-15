@@ -1522,6 +1522,15 @@
     }
   }
 
+  watch(() => props.image, (image, previous) => {
+    // A rapid A → B → A navigation can finish with fresh data for the retained ID.
+    if (mediaNavigationPending.value && image && image.id === previous?.id) {
+      mediaNavigationPending.value = false
+      navigationLockedUntil.value = 0
+      void attemptVideoPlayback()
+    }
+  })
+
   watch(
     () => props.image?.id ?? null,
     () => {
