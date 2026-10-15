@@ -347,7 +347,23 @@ function getPasswordRecord(folderId: number): FolderSharePasswordRecord | undefi
   return folderSharePasswordRepository.get(folderId);
 }
 
+function createMediaTokenFactory(request: express.Request) {
+  const session = getShareSessionGrant(request);
+  const global = getGlobalGrant(request, 0);
+  const windowMs = appConfig.mediaCacheTtlSeconds * 1000;
+  const exp = (Math.floor(Date.now() / windowMs) + 2) * windowMs;
+  let secret: Buffer | undefined;
+  return (folderId: number, scope: string, scopeImageId: number): string | null => {
+    const grant = session?.folderId === folderId ? session : global ? { folderId, kind: 'global' as const } : null;
+    if (!grant) return null;
+    secret ??= getShareSessionSecret();
+    const payload = Buffer.from(JSON.stringify({ ...grant, scope, scopeImageId, exp })).toString('base64url');
+    return `${payload}.${signValue(`shared-media:v1:${payload}`, secret)}`;
+  };
+}
+
 export const folderShareService = {
+  createMediaTokenFactory,
   listLinks(slug: string): { folder: FolderRecord; links: PublicFolderShareLink[]; password: { enabled: boolean; updatedAt: string | null } } | null {
     const folder = folderRepository.getNormalBySlug(slug);
     if (!folder) {
@@ -400,13 +416,7 @@ export const folderShareService = {
   },
 
   createMediaToken(request: express.Request, folderId: number, scope: string, scopeImageId: number): string | null {
-    const session = getShareSessionGrant(request);
-    const grant = session?.folderId === folderId ? session : getGlobalGrant(request, folderId);
-    if (!grant) return null;
-    const windowMs = appConfig.mediaCacheTtlSeconds * 1000;
-    const payload = Buffer.from(JSON.stringify({ ...grant, scope, scopeImageId,
-      exp: (Math.floor(Date.now() / windowMs) + 2) * windowMs })).toString('base64url');
-    return `${payload}.${signValue(`shared-media:v1:${payload}`, getShareSessionSecret())}`;
+    return createMediaTokenFactory(request)(folderId, scope, scopeImageId);
   },
 
   verifyMediaToken(token: string, folderId: number, scope: string): boolean {

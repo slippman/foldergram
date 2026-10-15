@@ -562,6 +562,29 @@ describe.sequential('folder share API routes', () => {
     }
   });
 
+  it('reuses image, folder, scan and signing context across media variants in one response', async () => {
+    const { imageRepository, folderRepository, scanRunRepository } = await import('../src/db/repositories.js');
+    const { cacheLibraryMediaUrls } = await import('../src/services/shared-media-cache.js');
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const template = imageRepository.getById(1)!;
+    const images = Array.from({ length: 60 }, (_, index) => ({ ...template, id: index + 100,
+      thumbnail_path: `performance/${index}.webp`, preview_path: `performance/${index}.webp` }));
+    const mockRes = { cookie: vi.fn().mockReturnThis(), setHeader: vi.fn() };
+    authService.setAuthenticatedSession(mockRes as any, { secure: false, get: () => undefined } as any, 'viewer');
+    const request = { get: (name: string) => name.toLowerCase() === 'cookie' ? `foldergram_session=${mockRes.cookie.mock.calls.at(-1)?.[1]}` : undefined } as any;
+    const spies = [vi.spyOn(imageRepository, 'getById'), vi.spyOn(imageRepository, 'getByThumbnailPath').mockImplementation(path => images.find(image => image.thumbnail_path === path)),
+      vi.spyOn(imageRepository, 'getByPreviewPath'), vi.spyOn(folderRepository, 'getById'), vi.spyOn(scanRunRepository, 'latestCompleted'),
+      vi.spyOn(folderShareService, 'createMediaTokenFactory')];
+    try {
+      const result = cacheLibraryMediaUrls(request, images.map(image => ({
+        thumbnailUrl: `/thumbnails/${image.thumbnail_path}`, previewUrl: `/previews/${image.preview_path}`, originalUrl: `/api/originals/${image.id}`
+      })));
+      expect(result[0].originalUrl).toMatch(/\/source\.jpg$/);
+      expect(result.every(image => image.previewUrl.includes('/api/share/media/'))).toBe(true);
+      expect(spies.map(spy => spy.mock.calls.length)).toEqual([0, 60, 0, 1, 1, 1]);
+    } finally { spies.forEach(spy => spy.mockRestore()); }
+  });
+
   it('boots direct Cinema album HTML with UnReeled branding and preserves Classic', async () => {
     const { appSettingsRepository } = await import('../src/db/repositories.js');
     const { FOLDER_DISPLAY_THEME_SETTING_KEY } = await import('../src/constants/app-setting-keys.js');
