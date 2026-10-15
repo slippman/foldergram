@@ -447,6 +447,58 @@ describe('PostViewer', () => {
     expect(originalLink.attributes('title')).toBe('Open original file');
   });
 
+  it.each([390, 1280])('pauses before an arrow transition at width %s and rejects late autoplay', async (width) => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(22), previousImageId: 21, nextImageId: 23 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    try {
+      await flushPromises();
+      const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+      expect(player.paused).toBe(false);
+      await wrapper.get('.viewer__next').trigger('click');
+      expect(player.paused).toBe(true);
+      const plays = player.playCallCount;
+      player.dispatchEvent(new Event('can-play'));
+      await flushPromises();
+      expect(player.playCallCount).toBe(plays);
+      expect(player.paused).toBe(true);
+      await wrapper.setProps({ image: { ...createVideoDetail(23), previousImageId: 22 } });
+      await flushPromises();
+      expect(player.paused).toBe(false);
+      await wrapper.get('a[aria-label="Previous post"]').trigger('click');
+      expect(player.paused).toBe(true);
+    } finally {
+      wrapper.unmount();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    }
+  });
+
+  it('pauses the movie before keyboard navigation and before closing the viewer', async () => {
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(22), nextImageId: 23 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    mockRouterPush.mockImplementation(() => {
+      expect(player.paused).toBe(true);
+      return Promise.resolve();
+    });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }));
+    await flushPromises();
+    expect(mockRouterPush).toHaveBeenCalled();
+    expect(player.paused).toBe(true);
+    await wrapper.setProps({ image: createVideoDetail(23) });
+    await flushPromises();
+    expect(player.paused).toBe(false);
+    await wrapper.get('.viewer__modal-close').trigger('click');
+    expect(player.paused).toBe(true);
+    expect(wrapper.emitted('close')).toHaveLength(1);
+  });
+
   it('toggles video playback from stage clicks and shows the paused indicator', async () => {
     const wrapper = mount(PostViewer, {
       props: {

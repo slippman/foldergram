@@ -1,10 +1,10 @@
 <template>
-  <section :data-album-theme="isCinema ? 'cinema' : viewerImage || shareStore.imageError ? 'classic' : 'unknown'" :data-album-state="shareStore.imageError ? 'settled' : viewerImage ? 'ready' : 'loading'" v-if="isCinema" class="shared-cinema-viewer">
+  <section :data-album-theme="isCinema ? 'cinema' : viewerImage || shareStore.imageError ? 'classic' : 'unknown'" :data-album-state="shareStore.imageError ? 'settled' : viewerImage && !shareStore.loadingImage ? 'ready' : 'loading'" v-if="isCinema" class="shared-cinema-viewer">
     <ErrorState v-if="shareStore.imageError" :title="t('share.postErrorTitle')" :message="shareStore.imageError" />
-    <PostViewer v-else-if="viewerImage" :image="viewerImage" :folder="viewerFolder" :shared-slug="slug" cinema is-modal @close="close" />
-    <p v-else class="p-6 text-center">{{ t('common.loading') }}</p>
+    <PostViewer ref="postViewer" v-else-if="viewerImage" :image="viewerImage" :folder="viewerFolder" :shared-slug="slug" cinema is-modal @close="close" />
+    <div v-else aria-busy="true" />
   </section>
-  <main :data-album-theme="isCinema ? 'cinema' : viewerImage || shareStore.imageError ? 'classic' : 'unknown'" :data-album-state="shareStore.imageError ? 'settled' : viewerImage ? 'ready' : 'loading'" v-else class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
+  <main :data-album-theme="isCinema ? 'cinema' : viewerImage || shareStore.imageError ? 'classic' : 'unknown'" :data-album-state="shareStore.imageError ? 'settled' : viewerImage && !shareStore.loadingImage ? 'ready' : 'loading'" v-else class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
     <section class="mx-auto grid w-full max-w-[72rem] gap-5">
       <RouterLink
         class="inline-flex w-fit items-center gap-2 rounded-[0.8rem] border border-border bg-surface px-3 py-2 text-[0.86rem] font-semibold text-text no-underline hover:bg-surface-hover"
@@ -104,6 +104,8 @@ import { useShareStore } from '../stores/share';
 import { resolveDisplayCaption } from '../utils/caption';
 import { formatMediaDuration } from '../utils/media';
 
+const postViewer = ref<InstanceType<typeof PostViewer> | null>(null);
+
 const props = defineProps<{
   slug: string;
   id: string;
@@ -117,9 +119,19 @@ const route = useRoute();
 const shareStore = useShareStore();
 const isCinema = computed(() => (shareStore.image?.folderSlug === props.slug ? shareStore.image.displayTheme : shareStore.folder?.slug === props.slug ? shareStore.folder.displayTheme : 'classic') === 'cinema');
 watch(() => [isCinema.value, props.slug, props.id] as const, ([cinema]) => {
-  if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading'));
+  if (cinema) window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
 }, { immediate: true, flush: 'post' });
-const viewerImage = computed(() => !shareStore.loadingImage && shareStore.image?.folderSlug === props.slug ? sharedImageDetail(shareStore.image) : null);
+const lastDisplayedImage = ref<ReturnType<typeof sharedImageDetail> | null>(null);
+watch(() => shareStore.image, (image) => {
+  if (image?.folderSlug === props.slug && image.id === Number(props.id)) lastDisplayedImage.value = sharedImageDetail(image);
+}, { immediate: true });
+const viewerImage = computed(() => {
+  if (!shareStore.loadingImage && shareStore.image?.folderSlug === props.slug && shareStore.image.id === Number(props.id)) {
+    return sharedImageDetail(shareStore.image);
+  }
+  return isCinema.value && shareStore.loadingImage && lastDisplayedImage.value?.folderSlug === props.slug
+    ? lastDisplayedImage.value : null;
+});
 const viewerFolder = computed(() => shareStore.folder?.slug === props.slug && shareStore.folder ? { ...shareStore.folder, folderPath: '', breadcrumb: null, latestImageMtimeMs: null, avatarImageId: null, avatarUrl: shareStore.folder.avatarThumbnailUrl } : null);
 function handleEscape(event: KeyboardEvent) {
   if (props.modal || !isCinema.value || event.key !== 'Escape' || event.defaultPrevented) return;
@@ -139,6 +151,7 @@ const isCarousel = computed(() => shareStore.image?.postType === 'carousel' && (
 const activeMedia = computed(() => isCarousel.value ? shareStore.image?.mediaItems?.[carouselIndex.value] ?? null : null);
 
 async function loadImage() {
+  postViewer.value?.pause?.();
   carouselIndex.value = 0;
   if (Number.isFinite(imageId.value)) {
     await shareStore.loadImage(imageId.value, undefined, { legacyImageAlias: route.name === 'shared-image' });

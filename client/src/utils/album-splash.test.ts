@@ -35,6 +35,67 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('album startup splash', () => {
+  it('never reveals the deferred viewer loader when the next image is ready before 1 second', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="settled"></main>';
+    start(); await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="loading"></main>';
+    const ready = vi.fn();
+    window.addEventListener('foldergram:album-ready', ready);
+    window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
+    await flush();
+    expect(document.querySelector('.fg-splash--pending')).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(900);
+    app.querySelector('main')!.setAttribute('data-album-state', 'ready');
+    await flush();
+    expect(document.querySelector('#fg-splash')).toBeNull();
+    expect(ready).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+
+  it('delays one unified viewer loader through fetch and image phases without resetting on duplicate events', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="settled"></main>';
+    start(); await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="loading"></main>';
+    const notify = () => window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
+    notify(); await flush();
+    const splash = document.querySelector('#fg-splash');
+    await vi.advanceTimersByTimeAsync(200);
+    notify(); await flush();
+    await vi.advanceTimersByTimeAsync(799);
+    expect(document.querySelector('.fg-splash--pending')).toBe(splash);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(document.querySelector('.fg-splash--pending')).toBeNull();
+    expect(document.querySelector('#fg-splash')).toBe(splash);
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="ready"><img src="/next.jpg"></main>';
+    const img = visibleImage();
+    await flush();
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    Object.defineProperty(img, 'complete', { value: true });
+    img.dispatchEvent(new Event('load'));
+    await flush();
+    expect(document.querySelector('.fg-splash--out')).toBe(splash);
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+
+  it('cancels a pending reveal when leaving the viewer', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="settled"></main>';
+    start(); await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="loading"></main>';
+    window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
+    await flush();
+    window.dispatchEvent(new Event('foldergram:album-view-cancel'));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+
   it('keeps the original generic splash for Classic and does not wait on its images', async () => {
     document.documentElement.classList.remove('shared-album-entry');
     document.getElementById('app')!.innerHTML = '<main data-album-theme="classic" data-album-state="loading"><img src="/classic-pending.jpg" loading="lazy"></main>';

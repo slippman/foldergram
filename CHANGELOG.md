@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2-slippman.1.6.2 — 2026-10-15
+
+### Bug fixes
+
+- Fullscreen videos pause as soon as you leave them, including when navigating with side arrows or the keyboard.
+- Cinema fullscreen navigation shows its loading screen only when the next item takes longer than one second to load.
+- Shared Cinema viewers retain the current item during navigation without a separate loading-photo message.
+
 ## 1.2.2-slippman.1.6.1 — 2026-10-15
 
 ### Bug fixes

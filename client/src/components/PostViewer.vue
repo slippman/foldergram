@@ -1,6 +1,8 @@
 <template>
   <section
     v-if="image"
+    ref="viewerElement"
+    @play.capture="handleViewerPlay"
     :class="['viewer relative', { 'viewer--modal': isModal, 'viewer--cinema': cinema }]"
     @wheel="handleWheel"
   >
@@ -10,7 +12,7 @@
       :class="['viewer__modal-close', { 'media-action': cinema }]"
       type="button"
       :aria-label="t('post.viewer.close')"
-      @click="$emit('close')"
+      @click="closeViewer"
     >
       <svg
         class="viewer__modal-close-icon"
@@ -43,6 +45,7 @@
         query: route.query,
       }"
       :aria-label="t('post.viewer.previous')"
+      @click.capture="pauseForNavigationClick"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" role="presentation">
         <path
@@ -72,6 +75,7 @@
         query: route.query,
       }"
       :aria-label="t('post.viewer.next')"
+      @click.capture="pauseForNavigationClick"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" role="presentation">
         <path
@@ -157,7 +161,7 @@
             :muted="appStore.videoMuted"
             @toggle-mute="appStore.setVideoMuted(!appStore.videoMuted)"
             @autoplay-muted="appStore.setVideoMuted(true)"
-            autoplay
+            :autoplay="!mediaNavigationPending"
           />
         </div>
         <template v-else-if="image.mediaType === 'video'">
@@ -284,7 +288,7 @@
           :style="mediaShellStyle"
         >
           <ResilientImage
-            show-loading
+            :show-loading="!cinema"
             class="viewer__media-image"
             :src="image.previewUrl"
             :fallback-src="image.originalUrl"
@@ -620,7 +624,7 @@
 <script setup lang="ts">
   import "vidstack/bundle"
 
-  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
+  import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from "vue"
   import { useI18n } from "vue-i18n"
   import { RouterLink, useRoute, useRouter } from "vue-router"
   import type { PlayerSrc } from "vidstack"
@@ -658,7 +662,7 @@
     deleting?: boolean
   }>()
 
-  defineEmits<{
+  const emit = defineEmits<{
     close: []
     delete: []
   }>()
@@ -671,6 +675,38 @@
   const router = useRouter()
   const { locale, t } = useI18n()
   const playerElement = ref<MediaPlayerElement | null>(null)
+  const viewerElement = ref<HTMLElement | null>(null)
+  const mediaNavigationPending = ref(false)
+
+  function pauseViewerMedia() {
+    mediaNavigationPending.value = true
+    isVideoPaused.value = true
+    pendingVideoRestore = null
+    const players = new Set<MediaPlayerElement | HTMLMediaElement>(
+      viewerElement.value?.querySelectorAll<MediaPlayerElement | HTMLMediaElement>('media-player, video, audio') ?? [],
+    )
+    if (playerElement.value) players.add(playerElement.value)
+    for (const player of players) {
+      if (player.paused) continue
+      try { void player.pause()?.catch(() => { /* provider may be changing */ }) } catch { /* provider may be detached */ }
+    }
+  }
+
+  function pauseForNavigationClick(event: MouseEvent) {
+    if (isPrimaryPlainClick(event)) pauseViewerMedia()
+  }
+
+  function handleViewerPlay() {
+    if (mediaNavigationPending.value) pauseViewerMedia()
+  }
+
+  function closeViewer() {
+    pauseViewerMedia()
+    emit('close')
+  }
+
+  defineExpose({ pause: pauseViewerMedia })
+  onBeforeUnmount(pauseViewerMedia)
   const cardWrapperElement = ref<HTMLElement | null>(null)
   const sidebarElement = ref<HTMLElement | null>(null)
   const sidebarToggleElement = ref<HTMLButtonElement | null>(null)
@@ -1307,11 +1343,12 @@
   }
 
   async function attemptVideoPlayback(): Promise<void> {
-    if (props.image?.mediaType !== "video") {
+    if (props.image?.mediaType !== "video" || mediaNavigationPending.value) {
       return
     }
 
     await nextTick()
+    if (mediaNavigationPending.value) return
     const player = playerElement.value
     if (!player) {
       return
@@ -1321,9 +1358,11 @@
 
     try {
       await player.play()
+      if (mediaNavigationPending.value) { pauseViewerMedia(); return }
       isVideoPaused.value = false
       return
     } catch {
+      if (mediaNavigationPending.value) return
       if (appStore.videoMuted) {
         // Ignore autoplay rejections and leave manual controls available.
         isVideoPaused.value = true
@@ -1343,6 +1382,7 @@
   }
 
   async function resumeVideoPlayback() {
+    if (mediaNavigationPending.value) return
     const player = playerElement.value
     if (!player || props.image?.mediaType !== "video") {
       return
@@ -1388,6 +1428,7 @@
   }
 
   async function handlePlayerReadyForPlayback(): Promise<void> {
+    if (mediaNavigationPending.value) { pauseViewerMedia(); return }
     const player = playerElement.value
     if (player && pendingVideoRestore) {
       const restoreState = pendingVideoRestore
@@ -1420,6 +1461,7 @@
       void handlePlayerReadyForPlayback()
     }
     const handlePlay = () => {
+      if (mediaNavigationPending.value) { pauseViewerMedia(); return }
       isVideoPaused.value = false
       syncVideoTimelineState(player)
     }
@@ -1483,6 +1525,7 @@
   watch(
     () => props.image?.id ?? null,
     () => {
+      mediaNavigationPending.value = false
       wheelDeltaAccumulator.value = 0
       navigationLockedUntil.value = 0
       resetSidebarSheetGesture()
@@ -1531,6 +1574,7 @@
       return
     }
 
+    pauseViewerMedia()
     navigationLockedUntil.value = Date.now() + NAVIGATION_COOLDOWN_MS
     await router.push({
       name: props.sharedSlug ? "shared-post" : "image",

@@ -2,6 +2,7 @@
   <div :data-album-theme="cinema ? 'cinema' : 'classic'" :data-album-state="viewerStore.error ? 'settled' : activeImage && !viewerStore.loading ? 'ready' : 'loading'" :class="modal ? 'image-view image-view--modal' : 'image-view image-view--page'" @click.stop>
     <ErrorState v-if="viewerStore.error" title="Could not load post" :message="viewerStore.error" />
     <PostViewer
+      ref="postViewer"
       v-else-if="activeImage"
       :image="activeImage"
       :folder="folder"
@@ -11,7 +12,7 @@
       @close="emit('close')"
       @delete="openDeleteDialog"
     />
-    <div v-else-if="viewerStore.loading" class="card p-8 text-center">
+    <div v-else-if="viewerStore.loading && !cinema" class="card p-8 text-center">
       <p class="text-muted">Loading post...</p>
     </div>
     <ConfirmDialog
@@ -68,6 +69,8 @@ import { useFoldersStore } from '../stores/folders';
 import { useMomentsStore } from '../stores/moments';
 import { useViewerStore } from '../stores/viewer';
 
+const postViewer = ref<InstanceType<typeof PostViewer> | null>(null);
+
 const props = defineProps<{
   id: string;
   modal?: boolean;
@@ -113,6 +116,7 @@ const deleteDialogMessage = computed(() =>
 const deleteDialogConfirmLabel = computed(() => (deleteOriginalFromDisk.value ? 'Permanently Delete' : 'Delete'));
 
 async function loadImage() {
+  postViewer.value?.pause?.();
   if (Number.isFinite(imageId.value)) {
     await viewerStore.loadImage(imageId.value, activeMediaType.value);
   }
@@ -120,7 +124,7 @@ async function loadImage() {
 
 watch(() => [imageId.value, activeMediaType.value] as const, loadImage, { immediate: true });
 watch(() => [props.cinema, imageId.value] as const, ([cinema]) => {
-  if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading'));
+  if (cinema) window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
 }, { immediate: true, flush: 'post' });
 
 function openDeleteDialog() {
