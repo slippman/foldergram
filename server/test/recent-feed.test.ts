@@ -61,6 +61,18 @@ describe.sequential('recent feed ordering', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('reports the same eligible Rediscover count for viewers, admins, and the feed', async () => {
+    expect(galleryService.getStatus().rediscoverPostCount).toBe(0);
+    expect(galleryService.getStats().rediscoverPostCount).toBe(0);
+    const now = Date.now();
+    await createIndexedImage('trip', 'old.jpg', now, now - 200 * 86400000);
+    await createIndexedImage('trip', 'recent.jpg', now, now - 10 * 86400000);
+    await createIndexedImage('trip', 'cover.jpg', now, now - 300 * 86400000);
+    expect(galleryService.getFeed(1, 10, 'rediscover').total).toBe(1);
+    expect(galleryService.getStatus().rediscoverPostCount).toBe(1);
+    expect(galleryService.getStats().rediscoverPostCount).toBe(1);
+  });
+
   it('keeps recent mode in strict reverse chronological order even when one folder has a burst', async () => {
     const julyNewer = await createIndexedImage('mi-11t', 'IMG_20220710_071100.jpg', Date.UTC(2022, 6, 10, 7, 11, 0));
     const julyOlder = await createIndexedImage('mi-11t', 'IMG_20220710_071048.jpg', Date.UTC(2022, 6, 10, 7, 10, 48));
