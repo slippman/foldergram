@@ -577,8 +577,8 @@ onMounted(async () => {
   await Promise.all([feedStore.loadInitial(), momentsStore.fetchMoments()]);
 });
 
-watch(showRediscover, (visible) => {
-  if (!visible && feedStore.mode === 'rediscover' && feedStore.initialized) {
+watch(() => [showRediscover.value, feedStore.initialized] as const, ([visible, initialized]) => {
+  if (!visible && feedStore.mode === 'rediscover' && initialized) {
     void feedStore.setMode('recent');
   }
 });

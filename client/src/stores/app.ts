@@ -391,6 +391,9 @@ export const useAppStore = defineStore('app', {
       if (mediaType === 'video') {
         this.stats.indexedVideos = Math.max(0, this.stats.indexedVideos - 1);
       }
+      if (this.feedDisplayTheme === 'cinema') {
+        void this.fetchStats({ background: true });
+      }
     },
 
     removeFolder(deletedImageCount: number) {
@@ -400,6 +403,9 @@ export const useAppStore = defineStore('app', {
 
       this.stats.folders = Math.max(0, this.stats.folders - 1);
       this.stats.indexedImages = Math.max(0, this.stats.indexedImages - deletedImageCount);
+      if (this.feedDisplayTheme === 'cinema') {
+        void this.fetchStats({ background: true });
+      }
     },
 
     async fetchStats(options: { background?: boolean } = {}) {
