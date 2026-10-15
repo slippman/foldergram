@@ -9,6 +9,7 @@
       :is-modal="modal"
       :cinema="cinema"
       :deleting="viewerStore.deleting"
+      :loading="viewerStore.loading"
       @close="emit('close')"
       @delete="openDeleteDialog"
     />

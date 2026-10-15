@@ -485,8 +485,13 @@ describe('PostViewer', () => {
     const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
     await wrapper.get('.viewer__next').trigger('click');
     expect(player.paused).toBe(true);
-    // The request for B was abandoned; returning to A replaces its data without changing its ID.
+    await wrapper.setProps({ loading: true });
+    // Shared retention can replace A's object while B is still being fetched.
     await wrapper.setProps({ image: { ...createVideoDetail(22), nextImageId: 23 } });
+    await flushPromises();
+    expect(player.paused).toBe(true);
+    // B was abandoned and the request for A completed, still with the same ID.
+    await wrapper.setProps({ loading: false });
     await flushPromises();
     expect(player.paused).toBe(false);
     await wrapper.get('.viewer__media-shell--video').trigger('click');

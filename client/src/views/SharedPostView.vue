@@ -1,7 +1,7 @@
 <template>
   <section :data-album-theme="isCinema ? 'cinema' : viewerImage || shareStore.imageError ? 'classic' : 'unknown'" :data-album-state="shareStore.imageError ? 'settled' : viewerImage && !shareStore.loadingImage ? 'ready' : 'loading'" v-if="isCinema" class="shared-cinema-viewer">
     <ErrorState v-if="shareStore.imageError" :title="t('share.postErrorTitle')" :message="shareStore.imageError" />
-    <PostViewer ref="postViewer" v-else-if="viewerImage" :image="viewerImage" :folder="viewerFolder" :shared-slug="slug" cinema is-modal @close="close" />
+    <PostViewer ref="postViewer" v-else-if="viewerImage" :image="viewerImage" :loading="shareStore.loadingImage" :folder="viewerFolder" :shared-slug="slug" cinema is-modal @close="close" />
     <div v-else aria-busy="true" />
   </section>
   <main :data-album-theme="isCinema ? 'cinema' : viewerImage || shareStore.imageError ? 'classic' : 'unknown'" :data-album-state="shareStore.imageError ? 'settled' : viewerImage && !shareStore.loadingImage ? 'ready' : 'loading'" v-else class="min-h-screen bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">

@@ -660,6 +660,7 @@
     isModal?: boolean
     sharedSlug?: string
     deleting?: boolean
+    loading?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -1522,18 +1523,10 @@
     }
   }
 
-  watch(() => props.image, (image, previous) => {
-    // A rapid A → B → A navigation can finish with fresh data for the retained ID.
-    if (mediaNavigationPending.value && image && image.id === previous?.id) {
-      mediaNavigationPending.value = false
-      navigationLockedUntil.value = 0
-      void attemptVideoPlayback()
-    }
-  })
-
   watch(
-    () => props.image?.id ?? null,
-    () => {
+    () => [props.image?.id ?? null, props.loading === true] as const,
+    ([, loading]) => {
+      if (loading) { pauseViewerMedia(); return }
       mediaNavigationPending.value = false
       wheelDeltaAccumulator.value = 0
       navigationLockedUntil.value = 0
