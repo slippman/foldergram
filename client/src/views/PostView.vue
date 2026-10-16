@@ -1,17 +1,19 @@
 <template>
-  <div :data-album-theme="cinema ? 'cinema' : 'classic'" :data-album-state="viewerStore.error ? 'settled' : activeImage && !viewerStore.loading ? 'ready' : 'loading'" :class="modal ? 'image-view image-view--modal' : 'image-view image-view--page'" @click.stop>
+  <div :data-album-theme="viewerTheme" :data-album-state="viewerStore.error ? 'settled' : activeImage && !viewerStore.loading ? 'ready' : 'loading'" :class="['image-view', modal ? 'image-view--modal' : 'image-view--page', { 'image-view--standalone-cinema': cinema && !props.modal }]" @click.stop>
     <ErrorState v-if="viewerStore.error" title="Could not load post" :message="viewerStore.error" />
     <PostViewer
+      ref="postViewer"
       v-else-if="activeImage"
       :image="activeImage"
       :folder="folder"
       :is-modal="modal"
       :cinema="cinema"
       :deleting="viewerStore.deleting"
-      @close="emit('close')"
+      :loading="viewerStore.loading"
+      @close="closeViewer"
       @delete="openDeleteDialog"
     />
-    <div v-else-if="viewerStore.loading" class="card p-8 text-center">
+    <div v-else-if="viewerStore.loading && !cinema" class="card p-8 text-center">
       <p class="text-muted">Loading post...</p>
     </div>
     <ConfirmDialog
@@ -54,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import ConfirmDialog from '../components/ConfirmDialog.vue';
@@ -68,17 +70,33 @@ import { useFoldersStore } from '../stores/folders';
 import { useMomentsStore } from '../stores/moments';
 import { useViewerStore } from '../stores/viewer';
 
-const props = defineProps<{
+const postViewer = ref<InstanceType<typeof PostViewer> | null>(null);
+
+const props = withDefaults(defineProps<{
   id: string;
   modal?: boolean;
   cinema?: boolean;
-}>();
+}>(), { cinema: undefined });
 
 const emit = defineEmits<{
   close: [];
 }>();
 
 const appStore = useAppStore();
+// Until preferences arrive, retain the server's explicit Cinema selection.
+const cinema = computed(() => props.cinema ?? (appStore.stats
+  ? appStore.folderDisplayTheme === 'cinema'
+  : document.documentElement.dataset.cinemaEntry === 'true'));
+const viewerTheme = computed(() => props.cinema === undefined && !appStore.stats && !appStore.error && !viewerStore.error
+  ? 'unknown' : cinema.value ? 'cinema' : 'classic');
+const modal = computed(() => props.modal || cinema.value);
+function closeViewer() {
+  postViewer.value?.pause?.();
+  if (props.modal) emit('close');
+  else if (viewerStore.image) void router.replace({ name: 'folder', params: { slug: viewerStore.image.folderSlug } });
+  else void router.replace({ name: 'home' });
+}
+
 const feedStore = useFeedStore();
 const likesStore = useLikesStore();
 const viewerStore = useViewerStore();
@@ -86,6 +104,14 @@ const foldersStore = useFoldersStore();
 const momentsStore = useMomentsStore();
 const route = useRoute();
 const router = useRouter();
+function handleStandaloneEscape(event: KeyboardEvent) {
+  if (props.modal || !cinema.value || event.key !== 'Escape' || event.defaultPrevented) return;
+  if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+  event.preventDefault();
+  closeViewer();
+}
+onMounted(() => window.addEventListener('keydown', handleStandaloneEscape));
+onUnmounted(() => window.removeEventListener('keydown', handleStandaloneEscape));
 const confirmDeleteOpen = ref(false);
 const deleteTarget = ref<Pick<ImageDetail, 'id' | 'mediaType'> | null>(null);
 const deleteOriginalFromDisk = ref(false);
@@ -100,7 +126,7 @@ watch(() => viewerStore.image, (image) => {
 const activeImage = computed(() =>
   viewerStore.image?.id === imageId.value
     ? viewerStore.image
-    : props.cinema && viewerStore.loading ? lastDisplayedImage.value : null
+    : cinema.value && viewerStore.loading ? lastDisplayedImage.value : null
 );
 const folder = computed(() =>
   activeImage.value ? foldersStore.items.find((entry) => entry.slug === activeImage.value?.folderSlug) ?? null : null
@@ -113,14 +139,15 @@ const deleteDialogMessage = computed(() =>
 const deleteDialogConfirmLabel = computed(() => (deleteOriginalFromDisk.value ? 'Permanently Delete' : 'Delete'));
 
 async function loadImage() {
+  postViewer.value?.pause?.();
   if (Number.isFinite(imageId.value)) {
     await viewerStore.loadImage(imageId.value, activeMediaType.value);
   }
 }
 
 watch(() => [imageId.value, activeMediaType.value] as const, loadImage, { immediate: true });
-watch(() => [props.cinema, imageId.value] as const, ([cinema]) => {
-  if (cinema) window.dispatchEvent(new Event('foldergram:album-view-loading'));
+watch(() => [cinema.value, imageId.value] as const, ([cinema]) => {
+  if (cinema) window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
 }, { immediate: true, flush: 'post' });
 
 function openDeleteDialog() {
@@ -170,6 +197,14 @@ async function handleDelete() {
 </script>
 
 <style scoped>
+.image-view.image-view--standalone-cinema {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100%;
+  background: #000;
+}
+
 .image-view {
   width: min(100%, 72rem);
 }

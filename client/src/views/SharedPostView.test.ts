@@ -38,10 +38,12 @@ describe('shared post readiness', () => {
       await wrapper.setProps({ id: '3' });
       expect(store.image?.id).toBe(2);
       expect(wrapper.attributes('data-album-state')).toBe('loading');
+      if (displayTheme === 'cinema') expect(wrapper.findComponent({ name: 'PostViewer' }).props('loading')).toBe(true);
       resolve(image(3));
       await flushPromises();
       expect(wrapper.attributes('data-album-state')).toBe('ready');
       expect(store.image?.id).toBe(3);
+      if (displayTheme === 'cinema') expect(wrapper.findComponent({ name: 'PostViewer' }).props('loading')).toBe(false);
     } finally { wrapper.unmount(); fetch.mockRestore(); }
   });
 });

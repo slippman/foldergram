@@ -13,6 +13,13 @@ function albumShellHtml(): string | null {
     ? path.join(repositoryRoot, 'client/dist/index.html') : path.join(repositoryRoot, 'client/index.html');
   if (!fs.existsSync(indexPath)) return null;
   let html = fs.readFileSync(indexPath, 'utf8');
+  // Production HTML contains the build-time value; development album shells bypass Vite.
+  if (appConfig.nodeEnv !== 'production') {
+    const config = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'client/viewer-config.json'), 'utf8'));
+    const delay = config.loaderDelayMs;
+    if (!Number.isInteger(delay) || delay < 0 || delay > 10000) throw new Error('Invalid viewer loader delay');
+    html = html.replace('</head>', `<meta name="cinema-viewer-loader-delay-ms" content="${delay}"></head>`);
+  }
   if (galleryService.getAlbumDisplayTheme() === 'cinema') {
     html = html.replace('<html ', '<html class="shared-album-entry" data-cinema-entry="true" ');
     html = html.replace('<title>Foldergram</title>', '<title>UnReeled Photos</title>');
@@ -78,8 +85,8 @@ sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/
   response.type('html').send(html);
 });
 
-// Bootstrap branding for direct normal-album links before Vue fetches preferences.
-sharePreviewRouter.get(['/f/:slug', '/folders/:slug'], (_request, response, next) => {
+// Bootstrap branding for direct albums and fullscreen posts before Vue fetches preferences.
+sharePreviewRouter.get(['/f/:slug', '/folders/:slug', '/post/:id', '/image/:id'], (_request, response, next) => {
   let html = albumShellHtml();
   if (!html) return next();
   response.setHeader('Cache-Control', 'no-store');

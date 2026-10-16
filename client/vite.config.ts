@@ -50,6 +50,10 @@ async function resolveDevClientPort(basePort: number, host: string): Promise<num
 
 export default defineConfig(async ({ command, mode }) => {
   const env = loadEnv(mode, repositoryRoot, '');
+  const viewerLoaderDelay = JSON.parse(readFileSync(path.join(configDirectory, 'viewer-config.json'), 'utf8')).loaderDelayMs;
+  if (!Number.isInteger(viewerLoaderDelay) || viewerLoaderDelay < 0 || viewerLoaderDelay > 10000) {
+    throw new Error('viewer-config.json loaderDelayMs must be an integer from 0 to 10000.');
+  }
   const devServerPort = Number.parseInt(env.DEV_SERVER_PORT ?? '4140', 10);
   const devClientPort = Number.parseInt(env.DEV_CLIENT_PORT ?? '4141', 10);
   const devHost = '0.0.0.0';
@@ -65,6 +69,12 @@ export default defineConfig(async ({ command, mode }) => {
       __INTLIFY_PROD_DEVTOOLS__: JSON.stringify(false)
     },
     plugins: [
+      {
+        name: 'foldergram-viewer-loader-config',
+        transformIndexHtml() {
+          return [{ tag: 'meta', attrs: { name: 'cinema-viewer-loader-delay-ms', content: String(viewerLoaderDelay) }, injectTo: 'head' }];
+        }
+      } satisfies Plugin,
       {
         name: 'foldergram-dev-fresh-modules',
         apply: 'serve',
@@ -114,6 +124,8 @@ export default defineConfig(async ({ command, mode }) => {
         '/share/': `http://localhost:${devServerPort}`,
         '/f/': `http://localhost:${devServerPort}`,
         '/folders/': `http://localhost:${devServerPort}`,
+        '/post/': `http://localhost:${devServerPort}`,
+        '/image/': `http://localhost:${devServerPort}`,
         '/share-preview/': `http://localhost:${devServerPort}`,
         '/thumbnails': `http://localhost:${devServerPort}`,
         '/previews': `http://localhost:${devServerPort}`

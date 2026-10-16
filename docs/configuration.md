@@ -441,3 +441,16 @@ without the Classic summary sidebar. Feed ordering and pagination are unchanged.
 Cinema uses compact sticky headers: the album name with a back-to-grid arrow
 in albums, and a stable Feed heading in Home. Feed items link to their album
 below the media, centered above capture time, on computers and phones.
+
+## Cinema fullscreen loading
+
+Set `loaderDelayMs` in `client/viewer-config.json` to configure the Cinema fullscreen
+loader delay in milliseconds (0–10000, default 1000). Restart development services
+after editing it; production installs require rebuilding the client/Docker image.
+Regular and shared Cinema viewers use the same value. Navigation immediately
+pauses and hides the departing media; the loader appears only if loading outlasts
+the delay. Initial album loading remains immediate. Classic presentation is unchanged.
+
+Cinema fullscreen videos remember their playback position in page memory while
+browsing. Returning resumes at that position; completed videos restart at zero.
+Positions are discarded on a page reload and are never written to persistent storage.

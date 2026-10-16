@@ -122,7 +122,8 @@ const isCinemaPage = computed(() => {
     return theme ? theme === 'cinema' : null;
   }
   if (authStore.requiresLogin) return false;
-  if (route.name === 'image') return showImageModal.value && isCinemaImageModal.value;
+  if (route.name === 'image') return showImageModal.value ? isCinemaImageModal.value
+    : appStore.stats ? appStore.folderDisplayTheme === 'cinema' : null;
   if (route.name === 'folder' || route.name === 'home') {
     if (!appStore.stats) return null;
     return (route.name === 'folder' ? appStore.folderDisplayTheme : appStore.feedDisplayTheme) === 'cinema';
@@ -135,7 +136,7 @@ const updateDocumentTitle = createDocumentTitleUpdater();
 watch(() => {
   const cinema = isCinemaPage.value;
   if (cinema !== true) return { cinema, albumName: undefined };
-  const slug = String(route.params.slug ?? modalBackgroundRoute.value?.params.slug ?? '');
+  const slug = String(route.params.slug ?? modalBackgroundRoute.value?.params.slug ?? (route.name === 'image' ? viewerStore.image?.folderSlug : '') ?? '');
   let albumName: string | undefined;
   if (isPublicShareRoute.value) {
     albumName = shareStore.folder?.slug === slug ? shareStore.folder.name

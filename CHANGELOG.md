@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2-slippman.1.6.2 — 2026-10-16
+
+### Bug fixes
+
+- Fullscreen videos pause immediately when you navigate away. Returning to a video resumes its position during the current browsing session; finished videos restart without flashing the ending frame.
+- Cinema fullscreen navigation clears the previous media immediately and shows its loader only after a configurable delay, defaulting to one second.
+- Reloading a direct Cinema post link preserves fullscreen mode, starts with details closed, and keeps UR loading branding while the app starts.
+- Cinema navigation arrows have a glass finish and stay clear of the desktop action icons.
+
 ## 1.2.2-slippman.1.6.1 — 2026-10-15
 
 ### Bug fixes

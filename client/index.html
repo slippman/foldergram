@@ -21,7 +21,7 @@
     />
     <title>Foldergram</title>
     <script>
-      if (/^\/(share|f|folders)\//.test(window.location.pathname)) document.documentElement.classList.add('album-entry');
+      if (/^\/(share|f|folders)\//.test(window.location.pathname) || document.documentElement.dataset.cinemaEntry === 'true') document.documentElement.classList.add('album-entry');
     </script>
     <style>
       :root { --ur-logo-filter: none; --ur-logo-blend: multiply; }
@@ -48,6 +48,9 @@
         visibility: hidden;
         pointer-events: none;
       }
+      #fg-splash.fg-splash--deferred { transition: opacity 180ms ease, visibility 180ms ease; }
+      #fg-splash.fg-splash--pending { opacity: 0; visibility: hidden; pointer-events: none; }
+      @media (prefers-reduced-motion: reduce) { #fg-splash.fg-splash--deferred { transition: none; } }
       .fg-splash__ring {
         position: absolute;
         width: 110px;
@@ -122,6 +125,19 @@
         var splashTemplate = initialSplash.cloneNode(true);
         var stopCurrentRun = null;
         var generation = 0;
+        var revealTimer = null;
+        var delayMeta = document.querySelector('meta[name="cinema-viewer-loader-delay-ms"]');
+        var configuredDelay = Number(delayMeta ? delayMeta.content : 1000);
+        var viewerLoaderDelay = Number.isFinite(configuredDelay) && configuredDelay >= 0 && configuredDelay <= 10000 ? configuredDelay : 1000;
+        function cancelReveal() { clearTimeout(revealTimer); revealTimer = null; }
+        function deferReveal(splash) {
+          cancelReveal();
+          splash.classList.add('fg-splash--deferred', 'fg-splash--pending');
+          revealTimer = setTimeout(function () {
+            revealTimer = null;
+            if (splash.isConnected) splash.classList.remove('fg-splash--pending');
+          }, viewerLoaderDelay);
+        }
         function run() {
           var splash = document.getElementById('fg-splash');
           var app = document.getElementById('app');
@@ -224,6 +240,13 @@
                 }
                 clearTimeout(startupDeadline);
                 observer.disconnect();
+                if (splash.classList.contains('fg-splash--pending')) {
+                  cancelReveal();
+                  stopCurrentRun = null;
+                  splash.remove();
+                  window.dispatchEvent(new Event('foldergram:album-ready'));
+                  return;
+                }
                 splash.classList.add('fg-splash--out');
                 setTimeout(function () {
                   if (cancelled) return;
@@ -249,6 +272,7 @@
         }
         window.addEventListener('foldergram:album-view-cancel', function () {
           generation++;
+          cancelReveal();
           var splash = document.getElementById('fg-splash');
           if (stopCurrentRun) stopCurrentRun();
           stopCurrentRun = null;
@@ -257,13 +281,18 @@
           document.documentElement.classList.remove('album-entry');
           if (splash) window.dispatchEvent(new Event('foldergram:album-ready'));
         });
-        window.addEventListener('foldergram:album-view-loading', function () {
+        window.addEventListener('foldergram:album-view-loading', function (event) {
           var nextGeneration = ++generation;
           if (stopCurrentRun) stopCurrentRun();
           stopCurrentRun = null;
           var splash = document.getElementById('fg-splash');
           document.documentElement.classList.add('album-entry', 'shared-album-entry');
           if (splash) {
+            if (!event.detail || !event.detail.defer) {
+              cancelReveal();
+              splash.classList.remove('fg-splash--pending', 'fg-splash--deferred');
+            }
+            if (event.detail && event.detail.defer && splash.classList.contains('fg-splash--out')) deferReveal(splash);
             splash.classList.remove('fg-splash--out');
             var text = splash.querySelector('.fg-splash__album p');
             var retry = splash.querySelector('.fg-splash__retry');
@@ -272,7 +301,13 @@
             if (retry) retry.hidden = true;
             if (indicator) indicator.hidden = false;
           }
-          else document.body.appendChild(splashTemplate.cloneNode(true));
+          else {
+            splash = splashTemplate.cloneNode(true);
+            if (event.detail && event.detail.defer) {
+              deferReveal(splash);
+            }
+            document.body.appendChild(splash);
+          }
           requestAnimationFrame(function () { if (generation === nextGeneration) run(); });
         });
         run();

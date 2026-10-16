@@ -1,6 +1,9 @@
 <template>
   <section
     v-if="image"
+    ref="viewerElement"
+    :style="cinema ? { '--viewer-navigation-aspect': activeMediaWidth / (activeMediaHeight || 1) } : undefined"
+    @play.capture="handleViewerPlay"
     :class="['viewer relative', { 'viewer--modal': isModal, 'viewer--cinema': cinema }]"
     @wheel="handleWheel"
   >
@@ -10,7 +13,7 @@
       :class="['viewer__modal-close', { 'media-action': cinema }]"
       type="button"
       :aria-label="t('post.viewer.close')"
-      @click="$emit('close')"
+      @click="closeViewer"
     >
       <svg
         class="viewer__modal-close-icon"
@@ -30,6 +33,7 @@
 
     <!-- Previous nav -->
     <RouterLink
+      class="viewer__previous"
       v-if="previousNavigationImageId"
       :class="[
         'inline-flex items-center justify-center w-[2.2rem] h-[2.2rem] rounded-full text-[#111] bg-white/88 shadow-[0_8px_20px_rgba(0,0,0,0.18)]',
@@ -43,6 +47,7 @@
         query: route.query,
       }"
       :aria-label="t('post.viewer.previous')"
+      @click.capture="pauseForNavigationClick"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" role="presentation">
         <path
@@ -72,6 +77,7 @@
         query: route.query,
       }"
       :aria-label="t('post.viewer.next')"
+      @click.capture="pauseForNavigationClick"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" role="presentation">
         <path
@@ -122,6 +128,7 @@
           'viewer__card-wrapper--modal': isModal,
           'viewer__card-wrapper--compact': isModalSidebarCollapsible,
           'viewer__card-wrapper--carousel': isCarousel,
+          'viewer__card-wrapper--navigating': cinema && mediaNavigationPending,
         },
       ]"
     >
@@ -157,7 +164,7 @@
             :muted="appStore.videoMuted"
             @toggle-mute="appStore.setVideoMuted(!appStore.videoMuted)"
             @autoplay-muted="appStore.setVideoMuted(true)"
-            autoplay
+            :autoplay="!mediaNavigationPending"
           />
         </div>
         <template v-else-if="image.mediaType === 'video'">
@@ -171,6 +178,7 @@
             @keydown="handleVideoSurfaceKeydown"
           >
             <media-player
+              :key="cinema ? image.id : undefined"
               ref="playerElement"
               class="viewer__player"
               :data-album-poster="image.thumbnailUrl"
@@ -284,7 +292,7 @@
           :style="mediaShellStyle"
         >
           <ResilientImage
-            show-loading
+            :show-loading="!cinema"
             class="viewer__media-image"
             :src="image.previewUrl"
             :fallback-src="image.originalUrl"
@@ -620,7 +628,7 @@
 <script setup lang="ts">
   import "vidstack/bundle"
 
-  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
+  import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from "vue"
   import { useI18n } from "vue-i18n"
   import { RouterLink, useRoute, useRouter } from "vue-router"
   import type { PlayerSrc } from "vidstack"
@@ -646,6 +654,7 @@
   import PostCaptionModal from "./PostCaptionModal.vue"
   import ResilientImage from "./ResilientImage.vue"
   import VideoProgressFooter from "./VideoProgressFooter.vue"
+  import { rememberVideoPosition, videoSessionPosition } from '../utils/video-session'
   import CinemaVideoStatus from "./CinemaVideoStatus.vue"
   import { formatMediaDuration, formatVideoTimestamp, videoPreviewWouldDownscale } from "../utils/media"
 
@@ -656,9 +665,10 @@
     isModal?: boolean
     sharedSlug?: string
     deleting?: boolean
+    loading?: boolean
   }>()
 
-  defineEmits<{
+  const emit = defineEmits<{
     close: []
     delete: []
   }>()
@@ -671,13 +681,67 @@
   const router = useRouter()
   const { locale, t } = useI18n()
   const playerElement = ref<MediaPlayerElement | null>(null)
+  const viewerElement = ref<HTMLElement | null>(null)
+  const mediaNavigationPending = ref(false)
+  let boundVideoKey: string | null = null
+  const restoredPlayers = new WeakSet<MediaPlayerElement>()
+  function rememberCurrentVideo() {
+    const player = playerElement.value
+    if (boundVideoKey && player && !mediaNavigationPending.value) {
+      rememberVideoPosition(boundVideoKey, player.currentTime, player.duration, player.state?.ended === true)
+    }
+  }
+  function restoreSessionPosition(player: MediaPlayerElement) {
+    if (!props.cinema || restoredPlayers.has(player) || !boundVideoKey) return
+    const position = videoSessionPosition(boundVideoKey)
+    player.currentTime = position
+    // Apply after metadata as well: a reused provider can retain a native frame
+    // even while its new Vidstack state still reports time zero.
+    const native = player.querySelector('video')
+    if (native && native.readyState >= 1 && native.currentTime !== position) {
+      native.currentTime = position
+    }
+    if (playerReady) restoredPlayers.add(player)
+    syncVideoTimelineState(player)
+  }
+
+  function pauseViewerMedia() {
+    rememberCurrentVideo()
+    mediaNavigationPending.value = true
+    isVideoPaused.value = true
+    pendingVideoRestore = null
+    const players = new Set<MediaPlayerElement | HTMLMediaElement>(
+      viewerElement.value?.querySelectorAll<MediaPlayerElement | HTMLMediaElement>('media-player, video, audio') ?? [],
+    )
+    if (playerElement.value) players.add(playerElement.value)
+    for (const player of players) {
+      if (player.paused) continue
+      try { void player.pause()?.catch(() => { /* provider may be changing */ }) } catch { /* provider may be detached */ }
+    }
+  }
+
+  function pauseForNavigationClick(event: MouseEvent) {
+    if (isPrimaryPlainClick(event)) pauseViewerMedia()
+  }
+
+  function handleViewerPlay() {
+    if (mediaNavigationPending.value) pauseViewerMedia()
+  }
+
+  function closeViewer() {
+    pauseViewerMedia()
+    emit('close')
+  }
+
+  defineExpose({ pause: pauseViewerMedia })
+  onBeforeUnmount(pauseViewerMedia)
   const cardWrapperElement = ref<HTMLElement | null>(null)
   const sidebarElement = ref<HTMLElement | null>(null)
   const sidebarToggleElement = ref<HTMLButtonElement | null>(null)
   const wheelDeltaAccumulator = ref(0)
   const navigationLockedUntil = ref(0)
-  const isSidebarCollapsible = ref(false)
-  const isSidebarExpanded = ref(true)
+  const isSidebarCollapsible = ref(props.isModal === true && props.cinema === true)
+  const isSidebarExpanded = ref(!(props.isModal === true && props.cinema === true))
   const isSidebarSheetDragging = ref(false)
   const isPlayingHd = ref(false)
   const isVideoPaused = ref(false)
@@ -1307,23 +1371,27 @@
   }
 
   async function attemptVideoPlayback(): Promise<void> {
-    if (props.image?.mediaType !== "video") {
+    if (props.image?.mediaType !== "video" || mediaNavigationPending.value) {
       return
     }
 
     await nextTick()
+    if (mediaNavigationPending.value) return
     const player = playerElement.value
     if (!player) {
       return
     }
 
+    restoreSessionPosition(player)
     syncVideoMuted(player, appStore.videoMuted)
 
     try {
       await player.play()
+      if (mediaNavigationPending.value) { pauseViewerMedia(); return }
       isVideoPaused.value = false
       return
     } catch {
+      if (mediaNavigationPending.value) return
       if (appStore.videoMuted) {
         // Ignore autoplay rejections and leave manual controls available.
         isVideoPaused.value = true
@@ -1343,6 +1411,7 @@
   }
 
   async function resumeVideoPlayback() {
+    if (mediaNavigationPending.value) return
     const player = playerElement.value
     if (!player || props.image?.mediaType !== "video") {
       return
@@ -1388,6 +1457,7 @@
   }
 
   async function handlePlayerReadyForPlayback(): Promise<void> {
+    if (mediaNavigationPending.value) { pauseViewerMedia(); return }
     const player = playerElement.value
     if (player && pendingVideoRestore) {
       const restoreState = pendingVideoRestore
@@ -1411,6 +1481,7 @@
     removePlayerEventListeners?.()
     removePlayerEventListeners = null
 
+    boundVideoKey = props.cinema && props.image ? `fullscreen:${props.image.id}` : null
     if (!player) {
       return
     }
@@ -1420,10 +1491,12 @@
       void handlePlayerReadyForPlayback()
     }
     const handlePlay = () => {
+      if (mediaNavigationPending.value) { pauseViewerMedia(); return }
       isVideoPaused.value = false
       syncVideoTimelineState(player)
     }
     const handlePause = () => {
+      rememberCurrentVideo()
       isVideoPaused.value = props.image?.mediaType === "video"
       syncVideoTimelineState(player)
     }
@@ -1452,6 +1525,7 @@
       syncVideoTimelineState(player)
     }
     const handleEnded = () => {
+      if (boundVideoKey) rememberVideoPosition(boundVideoKey, player.currentTime, player.duration, true)
       videoCurrentTimeMs.value = videoDurationMs.value
     }
 
@@ -1481,8 +1555,10 @@
   }
 
   watch(
-    () => props.image?.id ?? null,
-    () => {
+    () => [props.image?.id ?? null, props.loading === true] as const,
+    ([, loading]) => {
+      if (loading) { pauseViewerMedia(); return }
+      mediaNavigationPending.value = false
       wheelDeltaAccumulator.value = 0
       navigationLockedUntil.value = 0
       resetSidebarSheetGesture()
@@ -1531,6 +1607,7 @@
       return
     }
 
+    pauseViewerMedia()
     navigationLockedUntil.value = Date.now() + NAVIGATION_COOLDOWN_MS
     await router.push({
       name: props.sharedSlug ? "shared-post" : "image",
@@ -1690,9 +1767,40 @@
 </script>
 
 <style scoped>
+.viewer--cinema .viewer__card-wrapper--navigating {
+  visibility: hidden;
+  pointer-events: none;
+}
 .viewer--cinema .cinema-admin-filename { grid-column: 1 / -1; }
 @media (min-width: 769px) {
   .viewer--cinema .viewer__sidebar--drawer { right: 4.5rem; }
 }
-.viewer--cinema.viewer--modal > .viewer__next { right: 4.1rem; }
+.viewer--cinema.viewer--modal > .viewer__next { right: max(0.5rem, env(safe-area-inset-right)); }
+.viewer--cinema.viewer--modal > .viewer__previous { left: max(0.5rem, env(safe-area-inset-left)); }
+@media (min-width: 769px) {
+  /* Follow the contained photo edges, while reserving a separate action column. */
+  .viewer--cinema.viewer--modal > .viewer__next {
+    right: max(4.5rem, calc((100vw - min(100vw, 100dvh * var(--viewer-navigation-aspect, 1))) / 2 + 0.5rem));
+  }
+  .viewer--cinema.viewer--modal > .viewer__previous {
+    left: max(4.5rem, calc((100vw - min(100vw, 100dvh * var(--viewer-navigation-aspect, 1))) / 2 + 0.5rem));
+  }
+}
+.viewer--cinema > :is(.viewer__previous, .viewer__next) {
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.04)), rgba(16,20,25,0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 3px 14px rgba(0,0,0,0.18);
+}
+.viewer--cinema > :is(.viewer__previous, .viewer__next):hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.28), rgba(255,255,255,0.08)), rgba(16,20,25,0.48);
+}
+.viewer--cinema > :is(.viewer__previous, .viewer__next):focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
 </style>

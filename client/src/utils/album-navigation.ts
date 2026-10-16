@@ -11,7 +11,7 @@ export function notifyAlbumLoading(to: RouteLocationNormalized, from: RouteLocat
   if (imageRoutes.includes(String(from.name)) && to.fullPath === modalBackgroundPath) return;
   if (to.name === 'shared-post' || to.name === 'shared-image') {
     if (!modalBackgroundPath && to.fullPath !== from.fullPath) {
-      window.dispatchEvent(new Event('foldergram:album-view-loading'));
+      window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
     }
     return;
   }

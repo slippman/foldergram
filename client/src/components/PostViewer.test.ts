@@ -33,12 +33,14 @@ class FakeMediaPlayerElement extends HTMLElement {
   muted = true;
   paused = true;
   playCallCount = 0;
+  playedAtTimes: number[] = [];
   pauseCallCount = 0;
   currentTime = 0;
   duration = 0;
 
   async play() {
     this.playCallCount += 1;
+    this.playedAtTimes.push(this.currentTime);
     this.paused = false;
     this.dispatchEvent(new Event('play'));
   }
@@ -445,6 +447,115 @@ describe('PostViewer', () => {
     expect(downloadLink.attributes('title')).toBe('Download original file');
     expect(originalLink.attributes('href')).toBe('/api/originals/18');
     expect(originalLink.attributes('title')).toBe('Open original file');
+  });
+
+  it.each([390, 1280])('pauses before an arrow transition at width %s and rejects late autoplay', async (width) => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(22), previousImageId: 21, nextImageId: 23 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    try {
+      await flushPromises();
+      let player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+      expect(player.paused).toBe(false);
+      await wrapper.get('.viewer__next').trigger('click');
+      expect(player.paused).toBe(true);
+      expect(wrapper.get('.viewer__card-wrapper').classes()).toContain('viewer__card-wrapper--navigating');
+      const plays = player.playCallCount;
+      player.dispatchEvent(new Event('can-play'));
+      await flushPromises();
+      expect(player.playCallCount).toBe(plays);
+      expect(player.paused).toBe(true);
+      await wrapper.setProps({ image: { ...createVideoDetail(23), previousImageId: 22 } });
+      await flushPromises();
+      player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+      expect(player.paused).toBe(false);
+      expect(wrapper.get('.viewer__card-wrapper').classes()).not.toContain('viewer__card-wrapper--navigating');
+      await wrapper.get('a[aria-label="Previous post"]').trigger('click');
+      expect(player.paused).toBe(true);
+    } finally {
+      wrapper.unmount();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    }
+  });
+
+  it.each([false, true])('restores session time before playback without reusing an old frame (finished: %s)', async (finished) => {
+    const id = finished ? 902 : 901;
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(id), nextImageId: id + 10 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    const departing = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    departing.duration = 9;
+    departing.currentTime = finished ? 9 : 4.5;
+    if (finished) departing.dispatchEvent(new Event('ended'));
+    await wrapper.get('.viewer__next').trigger('click');
+    await wrapper.setProps({ image: createImageDetail(id + 10, {}) });
+    await flushPromises();
+    await wrapper.setProps({ image: createVideoDetail(id) });
+    await flushPromises();
+    const returning = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    expect(returning).not.toBe(departing);
+    expect(returning.currentTime).toBe(finished ? 0 : 4.5);
+    expect(returning.playedAtTimes[0]).toBe(finished ? 0 : 4.5);
+    expect(returning.paused).toBe(false);
+    expect(departing.paused).toBe(true);
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(true);
+    returning.dispatchEvent(new Event('playing'));
+    await flushPromises();
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('unlocks a retained movie when navigation returns fresh data for the same post', async () => {
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(22), nextImageId: 23 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    await wrapper.get('.viewer__next').trigger('click');
+    expect(player.paused).toBe(true);
+    await wrapper.setProps({ loading: true });
+    // Shared retention can replace A's object while B is still being fetched.
+    await wrapper.setProps({ image: { ...createVideoDetail(22), nextImageId: 23 } });
+    await flushPromises();
+    expect(player.paused).toBe(true);
+    // B was abandoned and the request for A completed, still with the same ID.
+    await wrapper.setProps({ loading: false });
+    await flushPromises();
+    expect(player.paused).toBe(false);
+    await wrapper.get('.viewer__media-shell--video').trigger('click');
+    expect(player.paused).toBe(true);
+    await wrapper.get('.viewer__media-shell--video').trigger('click');
+    expect(player.paused).toBe(false);
+  });
+
+  it('pauses the movie before keyboard navigation and before closing the viewer', async () => {
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(22), nextImageId: 23 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    let player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    mockRouterPush.mockImplementation(() => {
+      expect(player.paused).toBe(true);
+      return Promise.resolve();
+    });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }));
+    await flushPromises();
+    expect(mockRouterPush).toHaveBeenCalled();
+    expect(player.paused).toBe(true);
+    await wrapper.setProps({ image: createVideoDetail(23) });
+    await flushPromises();
+    player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    expect(player.paused).toBe(false);
+    await wrapper.get('.viewer__modal-close').trigger('click');
+    expect(player.paused).toBe(true);
+    expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
   it('toggles video playback from stage clicks and shows the paused indicator', async () => {
