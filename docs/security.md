@@ -67,10 +67,10 @@ folder password.
 For share links:
 
 - the raw token is returned at creation and can be copied again by an admin while the link is active
-- the share URL places the raw token in the URL fragment as `#token=...`
+- compact `/s/<signed-code>` URLs redirect to the album URL with the raw token in its fragment as `#token=...`
 - SQLite stores only a SHA-256 token hash plus a short token prefix
 - reusable links are derived using a separate key at `<DATA_ROOT>/secrets/share-link-recovery.key`, created with owner-only permissions; a database copy alone cannot recover them
-- back up this key separately and protect it like a password; losing it prevents re-copying existing links but does not revoke links already sent
+- back up this key together with SQLite and protect it like a password; compact URLs require it on every visit. Losing or replacing it makes already-sent compact URLs unavailable, and an unreadable or corrupt key causes resolution errors. Restore the original key with its owner-only permissions to recover those URLs, or create and distribute replacement links. Previously sent full URLs containing `#token=...` still validate against their stored token hashes without this key
 - Docker deployments must persist `<DATA_ROOT>/secrets` across container replacements; the supplied Compose file mounts it separately, and mounting the whole data root also preserves it
 - older links remain valid but require a replacement once to enable copying
 - expired and revoked links stop creating or validating share sessions

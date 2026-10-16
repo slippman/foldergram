@@ -127,8 +127,11 @@ describe.sequential('folder share service', () => {
     expect(key).toHaveLength(32);
     await fs.writeFile(keyPath, Buffer.alloc(32));
     expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
+    expect(folderShareService.resolveShortLink(code)).toBeNull();
+    expect(folderShareService.verifyLinkToken('family', created!.rawToken)).not.toBeNull();
     await fs.writeFile(keyPath, key);
     expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
+    expect(folderShareService.resolveShortLink(code)).toContain(`#token=${created!.rawToken}`);
     folderShareService.revokeLink('family', created!.link.id);
     expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
     expect(folderShareService.resolveShortLink(code)).toBeNull();
