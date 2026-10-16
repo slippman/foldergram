@@ -1,12 +1,14 @@
 import { defineComponent } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ImageDetail } from '../types/api';
 import { useViewerStore } from '../stores/viewer';
 import { useAppStore } from '../stores/app';
 import PostView from './PostView.vue';
+
+const { replaceRoute } = vi.hoisted(() => ({ replaceRoute: vi.fn() }));
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
@@ -17,7 +19,7 @@ vi.mock('vue-router', async () => {
       query: {}
     }),
     useRouter: () => ({
-      replace: vi.fn()
+      replace: replaceRoute
     })
   };
 });
@@ -98,8 +100,10 @@ function createImageDetail(id: number): ImageDetail {
 }
 
 describe('PostView', () => {
+  enableAutoUnmount(afterEach);
   beforeEach(() => {
     setActivePinia(createPinia());
+    replaceRoute.mockReset();
   });
 
   it('does not render the previously loaded post while a new modal image is loading', async () => {
@@ -144,6 +148,43 @@ describe('PostView', () => {
 
     expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('2');
   });
+  it('reveals a usable server-selected Cinema post if preferences fail', async () => {
+    document.documentElement.dataset.cinemaEntry = 'true';
+    const viewer = useViewerStore();
+    vi.spyOn(viewer, 'loadImage').mockImplementation(async (id) => { viewer.image = createImageDetail(id); });
+    useAppStore().error = 'Preferences request failed';
+    const wrapper = mount(PostView, { props: { id: '109' } });
+    try {
+      await flushPromises();
+      expect(wrapper.attributes('data-album-state')).toBe('ready');
+      expect(wrapper.attributes('data-album-theme')).toBe('cinema');
+      expect(wrapper.findComponent({ name: 'PostViewer' }).props('isModal')).toBe(true);
+    } finally { delete document.documentElement.dataset.cinemaEntry; }
+  });
+
+  it.each(['cinema', 'classic'] as const)('handles standalone Escape only for %s with child-dialog guards', async (theme) => {
+    useAppStore().stats = { preferences: { folderDisplayTheme: theme } } as any;
+    const viewer = useViewerStore();
+    vi.spyOn(viewer, 'loadImage').mockImplementation(async (id) => { viewer.image = createImageDetail(id); });
+    const wrapper = mount(PostView, { props: { id: '109' } });
+    await flushPromises();
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog'); dialog.setAttribute('aria-modal', 'true');
+    document.body.append(dialog);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+    expect(replaceRoute).not.toHaveBeenCalled();
+    dialog.remove();
+    const handled = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+    handled.preventDefault(); window.dispatchEvent(handled);
+    expect(replaceRoute).not.toHaveBeenCalled();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+    if (theme === 'cinema') expect(replaceRoute).toHaveBeenCalledWith({ name: 'folder', params: { slug: 'peopleplanet' } });
+    else expect(replaceRoute).not.toHaveBeenCalled();
+    wrapper.unmount(); replaceRoute.mockClear();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+    expect(replaceRoute).not.toHaveBeenCalled();
+  });
+
   it('keeps server-selected Cinema while preferences are still loading', async () => {
     document.documentElement.dataset.cinemaEntry = 'true';
     const viewerStore = useViewerStore();

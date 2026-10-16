@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import ConfirmDialog from '../components/ConfirmDialog.vue';
@@ -87,10 +87,11 @@ const appStore = useAppStore();
 const cinema = computed(() => props.cinema ?? (appStore.stats
   ? appStore.folderDisplayTheme === 'cinema'
   : document.documentElement.dataset.cinemaEntry === 'true'));
-const viewerTheme = computed(() => props.cinema === undefined && !appStore.stats && !viewerStore.error
+const viewerTheme = computed(() => props.cinema === undefined && !appStore.stats && !appStore.error && !viewerStore.error
   ? 'unknown' : cinema.value ? 'cinema' : 'classic');
 const modal = computed(() => props.modal || cinema.value);
 function closeViewer() {
+  postViewer.value?.pause?.();
   if (props.modal) emit('close');
   else if (viewerStore.image) void router.replace({ name: 'folder', params: { slug: viewerStore.image.folderSlug } });
   else void router.replace({ name: 'home' });
@@ -103,6 +104,14 @@ const foldersStore = useFoldersStore();
 const momentsStore = useMomentsStore();
 const route = useRoute();
 const router = useRouter();
+function handleStandaloneEscape(event: KeyboardEvent) {
+  if (props.modal || !cinema.value || event.key !== 'Escape' || event.defaultPrevented) return;
+  if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+  event.preventDefault();
+  closeViewer();
+}
+onMounted(() => window.addEventListener('keydown', handleStandaloneEscape));
+onUnmounted(() => window.removeEventListener('keydown', handleStandaloneEscape));
 const confirmDeleteOpen = ref(false);
 const deleteTarget = ref<Pick<ImageDetail, 'id' | 'mediaType'> | null>(null);
 const deleteOriginalFromDisk = ref(false);
