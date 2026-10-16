@@ -254,6 +254,12 @@ function getLinkRecoverySecret(): Buffer {
   return secret;
 }
 
+// A 96-bit signature makes the compact link unguessable without storing another token.
+function shortShareCode(link: FolderShareLinkRecord): string {
+  const signature = signValue(`short-share:v1:${link.id}:${link.folder_id}:${link.token_hash}`, getLinkRecoverySecret()).slice(0, 16);
+  return `${link.id.toString(36)}-${signature}`;
+}
+
 function mapShareLink(link: FolderShareLinkRecord, now = new Date()): PublicFolderShareLink {
   let canCopy = false;
   if (isLinkUsable(link, now.getTime())) {
@@ -439,7 +445,23 @@ export const folderShareService = {
     if (!folder || !link || link.folder_id !== folder.id || !isLinkUsable(link)) return null;
     const token = recoverLinkToken(link);
     if (hashShareToken(token) !== link.token_hash) return null;
-    return `/share/${encodeURIComponent(slug)}?preview=${encodeURIComponent(this.createPreviewToken(linkId))}#token=${encodeURIComponent(token)}`;
+    return `/s/${shortShareCode(link)}`;
+  },
+
+  resolveShortLink(code: string): string | null {
+    const match = /^([0-9a-z]{1,11})-([A-Za-z0-9_-]{16})$/.exec(code);
+    if (!match) return null;
+    const linkId = Number.parseInt(match[1], 36);
+    if (!Number.isSafeInteger(linkId) || linkId <= 0 || linkId.toString(36) !== match[1]) return null;
+    const link = folderShareLinkRepository.getById(linkId);
+    if (!link || !isLinkUsable(link)) return null;
+    const expected = shortShareCode(link);
+    if (code.length !== expected.length || !timingSafeEqual(Buffer.from(code), Buffer.from(expected))) return null;
+    const folder = folderRepository.getById(link.folder_id);
+    if (!folder || !folderRepository.getNormalBySlug(folder.slug)) return null;
+    const token = recoverLinkToken(link);
+    if (hashShareToken(token) !== link.token_hash) return null;
+    return `/share/${encodeURIComponent(folder.slug)}?preview=${encodeURIComponent(this.createPreviewToken(link.id))}#token=${encodeURIComponent(token)}`;
   },
 
   getPreviewFolder(slug: string, token: unknown): FolderRecord | null {

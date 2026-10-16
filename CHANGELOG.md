@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.2-slippman.1.7.0 — 2026-10-16
+
+### New features
+
+- Album share links use compact URLs with the same preview cards, expiration, and revocation controls.
+
+### Bug fixes
+
+- Album URL names omit apostrophes instead of replacing them with extra dashes.
+- Cinema share copy buttons confirm successful copies with a checkmark and a temporary Copied label.
+
 ## 1.2.2-slippman.1.6.2 — 2026-10-16
 
 ### Bug fixes

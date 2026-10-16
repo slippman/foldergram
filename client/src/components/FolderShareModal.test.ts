@@ -24,7 +24,8 @@ function createFolder(overrides: Partial<FolderSummary> = {}): FolderSummary {
 }
 
 describe('FolderShareModal', () => {
-  it('copies an existing link and exposes it for manual copying without creating another', async () => {
+  it.each([{ cinema: false, succeeds: true }, { cinema: true, succeeds: true }, { cinema: true, succeeds: false }])('confirms successful copies without false success or Classic changes: %j', async ({ cinema, succeeds }) => {
+    vi.useFakeTimers();
     const { useFoldersStore } = await import('../stores/folders');
     const store = useFoldersStore();
     store.loadShareLinks = vi.fn().mockResolvedValue(undefined);
@@ -32,20 +33,30 @@ describe('FolderShareModal', () => {
       createdAt: new Date().toISOString(), lastUsedAt: null, status: 'active', canCopy: true }];
     const shareUrl = '/share/travel-2024?preview=test#token=test';
     const copy = vi.spyOn(galleryApi, 'copyFolderShareLink').mockResolvedValue({ shareUrl });
-    const writeText = vi.fn().mockResolvedValue(undefined);
+    const writeText = succeeds ? vi.fn().mockResolvedValue(undefined) : vi.fn().mockRejectedValue(new Error('Clipboard blocked'));
+    const originalExec = Object.getOwnPropertyDescriptor(document, 'execCommand');
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn().mockReturnValue(false) });
     const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     try {
-      const wrapper = mount(FolderShareModal, { props: { folder: createFolder() } });
+      const wrapper = mount(FolderShareModal, { props: { folder: createFolder(), cinema } });
       const button = wrapper.findAll('button').find(button => button.text().trim() === 'Copy')!;
       await button.trigger('click');
       await flushPromises();
       expect(copy).toHaveBeenCalledWith('travel-2024', 7);
       expect(writeText).toHaveBeenCalledWith(new URL(shareUrl, window.location.origin).href);
       expect(store.lastCreatedShareUrl).toBe(shareUrl);
-      expect(wrapper.text()).toContain('Link copied');
+      expect(wrapper.text()).toContain(succeeds ? 'Link copied' : 'Select the link below to copy it');
+      expect(button.text().trim()).toBe(cinema && succeeds ? 'Copied' : 'Copy');
+      expect(button.find('.i-fluent-checkmark-20-regular').exists()).toBe(cinema && succeeds);
+      await vi.advanceTimersByTimeAsync(2500);
+      expect(button.text().trim()).toBe('Copy');
+      wrapper.unmount();
     } finally {
       copy.mockRestore();
+      if (originalExec) Object.defineProperty(document, 'execCommand', originalExec);
+      else Reflect.deleteProperty(document, 'execCommand');
+      vi.useRealTimers();
       if (original) Object.defineProperty(navigator, 'clipboard', original);
       else Reflect.deleteProperty(navigator, 'clipboard');
     }

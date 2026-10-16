@@ -51,6 +51,16 @@ function previewOrigin(request: express.Request): string | null {
 
 export const sharePreviewRouter = express.Router();
 
+// Redirects carry the original fragment token to the browser; GET never grants a session.
+sharePreviewRouter.get('/s/:code', (request, response) => {
+  response.setHeader('Cache-Control', 'private, no-store');
+  response.setHeader('Referrer-Policy', 'no-referrer');
+  response.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  const target = folderShareService.resolveShortLink(request.params.code);
+  if (!target) { response.status(404).type('text').send('Share link unavailable.'); return; }
+  response.redirect(302, target);
+});
+
 sharePreviewRouter.get(['/share/:slug', '/share/:slug/posts/:id', '/share/:slug/images/:id'], (request, response, next) => {
   let html = albumShellHtml();
   if (!html) return next();

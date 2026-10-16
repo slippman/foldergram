@@ -120,6 +120,7 @@ The Share Folder dialog supports:
 
 - normal public folder URL copying when public viewer mode is enabled
 - read-only links for one folder
+- short `/s/...` share URLs with the same preview cards, expiration, and revocation controls
 - expiration presets for 1 hour, 24 hours, and 7 days
 - custom expiration timestamps
 - unlimited links that remain revocable

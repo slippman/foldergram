@@ -57,6 +57,8 @@ describe('scanner utilities', () => {
 describe('folder slug resolution', () => {
   it('slugifies folder names safely', () => {
     expect(slugifyFolderName('Summer Trips 2026')).toBe('summer-trips-2026');
+    expect(slugifyFolderName("Seth's Birthday")).toBe('seths-birthday');
+    expect(slugifyFolderPath('Birthdays/Sarah’s 50th Birthday')).toBe('birthdays-sarahs-50th-birthday');
     expect(slugifyFolderName('***')).toBe('folder');
   });
 
