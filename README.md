@@ -417,3 +417,4 @@ See [Posts with Multiple Photos or Videos](docs/carousel-posts.md) for the compl
   - Full-resolution downloads and native mobile sharing for photos and videos.
 - Added album-cover previews for shared links.
 - Added configurable photo and video caching behavior.
+- Generate Short URLs when creating album share links

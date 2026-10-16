@@ -114,7 +114,11 @@ describe.sequential('folder share service', () => {
     expect(stored[0].token_hash).not.toContain(created!.rawToken);
     expect(created!.link.canCopy).toBe(true);
     const firstCopy = folderShareService.copyLink('family', created!.link.id);
-    expect(firstCopy).toContain(`#token=${created!.rawToken}`);
+    expect(firstCopy).toMatch(/^\/s\/[0-9a-z]+-[A-Za-z0-9_-]{16}$/);
+    const code = firstCopy!.slice(3);
+    expect(folderShareService.resolveShortLink(code)).toContain(`#token=${created!.rawToken}`);
+    expect(folderShareService.resolveShortLink(code + 'x')).toBeNull();
+    expect(folderShareService.resolveShortLink(code.slice(0, -1) + (code.endsWith('A') ? 'B' : 'A'))).toBeNull();
     expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
     expect(folderShareService.copyLink('other', created!.link.id)).toBeNull();
     const keyPath = path.join(tempRoot, 'data/secrets/share-link-recovery.key');
@@ -127,6 +131,7 @@ describe.sequential('folder share service', () => {
     expect(folderShareService.copyLink('family', created!.link.id)).toBe(firstCopy);
     folderShareService.revokeLink('family', created!.link.id);
     expect(folderShareService.copyLink('family', created!.link.id)).toBeNull();
+    expect(folderShareService.resolveShortLink(code)).toBeNull();
   });
 
   it('does not reserve links when the recovery key is invalid', async () => {

@@ -454,3 +454,16 @@ the delay. Initial album loading remains immediate. Classic presentation is unch
 Cinema fullscreen videos remember their playback position in page memory while
 browsing. Returning resumes at that position; completed videos restart at zero.
 Positions are discarded on a page reload and are never written to persistent storage.
+
+## Album URL names and short shares
+
+Folder URL slugs omit straight and curly apostrophes: `Seth’s Birthday` becomes
+`seths-birthday`. Existing slugs update on the next rescan; source folders and media
+files are not renamed. A numeric suffix still resolves any slug collision.
+
+New and copied album share links use `/s/<signed-code>`. Each code resolves to the
+existing album link and preview; expiration and revocation remain attached to that
+link. The browser redirects to the full album address when opened. Short codes
+remain stable when an album slug changes. They use the existing recovery key and
+need no additional database table or external URL-shortening service. Like the
+original full link, a short link grants album access to anyone who has it.

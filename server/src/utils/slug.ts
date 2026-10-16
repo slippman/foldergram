@@ -3,6 +3,7 @@ import { normalizePath } from './path-utils.js';
 function slugifyValue(value: string): string {
   const normalized = value
     .normalize('NFKD')
+    .replace(/['‘’ʼ]/g, '')
     .replace(/[/\\]+/g, ' ')
     .replace(/[^\w\s-]/g, ' ')
     .trim()

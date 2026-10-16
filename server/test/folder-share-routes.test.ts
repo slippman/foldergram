@@ -227,6 +227,41 @@ describe.sequential('folder share API routes', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('short links preserve previews and grants through slug changes, expiry and revocation', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    const { folderRepository } = await import('../src/db/repositories.js');
+    const link = folderShareService.createLink('folder-a', { expiresAt: null })!;
+    const shortUrl = folderShareService.copyLink('folder-a', link.link.id)!;
+    const response = await requestApp(app, 'GET', shortUrl);
+    expect(response.status).toBe(302);
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(response.headers.get('x-robots-tag')).toContain('noindex');
+    expect(response.headers.get('set-cookie')).toBeNull();
+    const destination = new URL(response.headers.get('location')!, 'http://localhost');
+    const preview = await requestApp(app, 'GET', destination.pathname + destination.search);
+    expect(preview.body).toContain('og:title');
+    expect(preview.body).toContain('/share-preview/folder-a/cover.jpg');
+    expect((await requestApp(app, 'GET', '/api/share/folders/folder-a')).status).toBe(401);
+    const token = new URLSearchParams(destination.hash.slice(1)).get('token');
+    const unlock = await requestApp(app, 'POST', '/api/share/folders/folder-a/unlock-link', { 'X-Foldergram-Intent': '1' }, { token });
+    expect(unlock.status).toBe(200);
+    expect(unlock.headers.get('set-cookie')).toContain('foldergram_share_session');
+    expect((await requestApp(app, 'GET', shortUrl.slice(0, -1) + (shortUrl.endsWith('A') ? 'B' : 'A'))).status).toBe(404);
+    // Identity remains the folder ID, so copying the same link still works after a slug refresh.
+    folderRepository.save({ slug: 'seths-birthday', name: "Seth's Birthday", folderPath: 'folder-a' });
+    const renamed = await requestApp(app, 'GET', shortUrl);
+    expect(renamed.status).toBe(302);
+    expect(renamed.headers.get('location')).toContain('/share/seths-birthday?');
+    expect(folderShareService.copyLink('seths-birthday', link.link.id)).toBe(shortUrl);
+    folderShareService.revokeLink('seths-birthday', link.link.id);
+    expect((await requestApp(app, 'GET', shortUrl)).status).toBe(404);
+    const expiring = folderShareService.createLink('seths-birthday', { expiresAt: new Date(Date.now() + 60_000) })!;
+    const expiresUrl = folderShareService.copyLink('seths-birthday', expiring.link.id)!;
+    const now = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 120_000);
+    try { expect((await requestApp(app, 'GET', expiresUrl)).status).toBe(404); }
+    finally { now.mockRestore(); }
+  });
+
   it('exposes only the cover and escaped title through an active preview credential', async () => {
     const { folderShareService } = await import('../src/services/folder-share-service.js');
     const { folderRepository } = await import('../src/db/repositories.js');
@@ -311,7 +346,12 @@ describe.sequential('folder share API routes', () => {
     const copy = await requestApp(app, 'POST', copyPath, headers);
     expect(copy.status).toBe(200);
     expect(copy.headers.get('cache-control')).toContain('no-store');
-    expect(copy.body.shareUrl).toContain(`#token=${link.rawToken}`);
+    expect(copy.body.shareUrl).toMatch(/^\/s\/[0-9a-z]+-[A-Za-z0-9_-]{16}$/);
+    const shortened = await requestApp(app, 'GET', copy.body.shareUrl);
+    expect(shortened.status).toBe(302);
+    expect(shortened.headers.get('location')).toContain(`#token=${link.rawToken}`);
+    expect(shortened.headers.get('cache-control')).toContain('no-store');
+    expect(shortened.headers.get('set-cookie')).toBeNull();
     expect((await requestApp(app, 'POST', copyPath, headers)).body.shareUrl).toBe(copy.body.shareUrl);
     expect((await requestApp(app, 'POST', copyPath.replace('folder-a', 'folder-b'), headers)).status).toBe(404);
     expect((await requestApp(app, 'POST', copyPath, { ...headers, Origin: 'https://evil.example' })).status).toBe(403);
