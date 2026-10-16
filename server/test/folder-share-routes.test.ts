@@ -590,18 +590,18 @@ describe.sequential('folder share API routes', () => {
     } finally { spies.forEach(spy => spy.mockRestore()); }
   });
 
-  it('boots direct Cinema album HTML with UnReeled branding and preserves Classic', async () => {
+  it.each(['/f/folder-a?view=scroll&photo=1', '/folders/folder-a', '/post/109?media=109', '/image/109?media=109'])('boots direct Cinema HTML with UnReeled branding and preserves Classic: %s', async (url) => {
     const { appSettingsRepository } = await import('../src/db/repositories.js');
     const { FOLDER_DISPLAY_THEME_SETTING_KEY } = await import('../src/constants/app-setting-keys.js');
     appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'cinema');
-    const cinema = await requestApp(app, 'GET', '/f/folder-a?view=scroll&photo=1');
+    const cinema = await requestApp(app, 'GET', url);
     expect(cinema.status).toBe(200);
     expect(cinema.body).toContain('<html class="shared-album-entry"');
     expect(cinema.body).toContain('<title>UnReeled Photos</title>');
     expect(cinema.body).toContain('data-cinema-entry="true"');
     expect(cinema.headers.get('Cache-Control')).toBe('no-store');
     appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'classic');
-    const classic = await requestApp(app, 'GET', '/f/folder-a');
+    const classic = await requestApp(app, 'GET', url);
     expect(classic.body).toContain('<html lang="en">');
     expect(classic.body).toContain('<title>Foldergram</title>');
     expect(classic.body).not.toContain('data-cinema-entry');

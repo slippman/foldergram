@@ -21,7 +21,7 @@
     />
     <title>Foldergram</title>
     <script>
-      if (/^\/(share|f|folders)\//.test(window.location.pathname)) document.documentElement.classList.add('album-entry');
+      if (/^\/(share|f|folders)\//.test(window.location.pathname) || document.documentElement.dataset.cinemaEntry === 'true') document.documentElement.classList.add('album-entry');
     </script>
     <style>
       :root { --ur-logo-filter: none; --ur-logo-blend: multiply; }
@@ -126,6 +126,9 @@
         var stopCurrentRun = null;
         var generation = 0;
         var revealTimer = null;
+        var delayMeta = document.querySelector('meta[name="cinema-viewer-loader-delay-ms"]');
+        var configuredDelay = Number(delayMeta ? delayMeta.content : 1000);
+        var viewerLoaderDelay = Number.isFinite(configuredDelay) && configuredDelay >= 0 && configuredDelay <= 10000 ? configuredDelay : 1000;
         function cancelReveal() { clearTimeout(revealTimer); revealTimer = null; }
         function deferReveal(splash) {
           cancelReveal();
@@ -133,7 +136,7 @@
           revealTimer = setTimeout(function () {
             revealTimer = null;
             if (splash.isConnected) splash.classList.remove('fg-splash--pending');
-          }, 1000);
+          }, viewerLoaderDelay);
         }
         function run() {
           var splash = document.getElementById('fg-splash');

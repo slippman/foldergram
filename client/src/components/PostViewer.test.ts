@@ -33,12 +33,14 @@ class FakeMediaPlayerElement extends HTMLElement {
   muted = true;
   paused = true;
   playCallCount = 0;
+  playedAtTimes: number[] = [];
   pauseCallCount = 0;
   currentTime = 0;
   duration = 0;
 
   async play() {
     this.playCallCount += 1;
+    this.playedAtTimes.push(this.currentTime);
     this.paused = false;
     this.dispatchEvent(new Event('play'));
   }
@@ -456,10 +458,11 @@ describe('PostViewer', () => {
     });
     try {
       await flushPromises();
-      const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+      let player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
       expect(player.paused).toBe(false);
       await wrapper.get('.viewer__next').trigger('click');
       expect(player.paused).toBe(true);
+      expect(wrapper.get('.viewer__card-wrapper').classes()).toContain('viewer__card-wrapper--navigating');
       const plays = player.playCallCount;
       player.dispatchEvent(new Event('can-play'));
       await flushPromises();
@@ -467,13 +470,44 @@ describe('PostViewer', () => {
       expect(player.paused).toBe(true);
       await wrapper.setProps({ image: { ...createVideoDetail(23), previousImageId: 22 } });
       await flushPromises();
+      player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
       expect(player.paused).toBe(false);
+      expect(wrapper.get('.viewer__card-wrapper').classes()).not.toContain('viewer__card-wrapper--navigating');
       await wrapper.get('a[aria-label="Previous post"]').trigger('click');
       expect(player.paused).toBe(true);
     } finally {
       wrapper.unmount();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
     }
+  });
+
+  it.each([false, true])('restores session time before playback without reusing an old frame (finished: %s)', async (finished) => {
+    const id = finished ? 902 : 901;
+    const wrapper = mount(PostViewer, {
+      props: { image: { ...createVideoDetail(id), nextImageId: id + 10 }, cinema: true, isModal: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    const departing = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    departing.duration = 9;
+    departing.currentTime = finished ? 9 : 4.5;
+    if (finished) departing.dispatchEvent(new Event('ended'));
+    await wrapper.get('.viewer__next').trigger('click');
+    await wrapper.setProps({ image: createImageDetail(id + 10, {}) });
+    await flushPromises();
+    await wrapper.setProps({ image: createVideoDetail(id) });
+    await flushPromises();
+    const returning = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    expect(returning).not.toBe(departing);
+    expect(returning.currentTime).toBe(finished ? 0 : 4.5);
+    expect(returning.playedAtTimes[0]).toBe(finished ? 0 : 4.5);
+    expect(returning.paused).toBe(false);
+    expect(departing.paused).toBe(true);
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(true);
+    returning.dispatchEvent(new Event('playing'));
+    await flushPromises();
+    expect(wrapper.find('.cinema-video-poster').exists()).toBe(false);
+    wrapper.unmount();
   });
 
   it('unlocks a retained movie when navigation returns fresh data for the same post', async () => {
@@ -506,7 +540,7 @@ describe('PostViewer', () => {
       global: { stubs: globalStubs }
     });
     await flushPromises();
-    const player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
+    let player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
     mockRouterPush.mockImplementation(() => {
       expect(player.paused).toBe(true);
       return Promise.resolve();
@@ -517,6 +551,7 @@ describe('PostViewer', () => {
     expect(player.paused).toBe(true);
     await wrapper.setProps({ image: createVideoDetail(23) });
     await flushPromises();
+    player = wrapper.get('media-player').element as unknown as FakeMediaPlayerElement;
     expect(player.paused).toBe(false);
     await wrapper.get('.viewer__modal-close').trigger('click');
     expect(player.paused).toBe(true);

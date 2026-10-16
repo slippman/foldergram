@@ -2,6 +2,7 @@
   <section
     v-if="image"
     ref="viewerElement"
+    :style="cinema ? { '--viewer-navigation-aspect': activeMediaWidth / (activeMediaHeight || 1) } : undefined"
     @play.capture="handleViewerPlay"
     :class="['viewer relative', { 'viewer--modal': isModal, 'viewer--cinema': cinema }]"
     @wheel="handleWheel"
@@ -32,6 +33,7 @@
 
     <!-- Previous nav -->
     <RouterLink
+      class="viewer__previous"
       v-if="previousNavigationImageId"
       :class="[
         'inline-flex items-center justify-center w-[2.2rem] h-[2.2rem] rounded-full text-[#111] bg-white/88 shadow-[0_8px_20px_rgba(0,0,0,0.18)]',
@@ -126,6 +128,7 @@
           'viewer__card-wrapper--modal': isModal,
           'viewer__card-wrapper--compact': isModalSidebarCollapsible,
           'viewer__card-wrapper--carousel': isCarousel,
+          'viewer__card-wrapper--navigating': cinema && mediaNavigationPending,
         },
       ]"
     >
@@ -175,6 +178,7 @@
             @keydown="handleVideoSurfaceKeydown"
           >
             <media-player
+              :key="cinema ? image.id : undefined"
               ref="playerElement"
               class="viewer__player"
               :data-album-poster="image.thumbnailUrl"
@@ -650,6 +654,7 @@
   import PostCaptionModal from "./PostCaptionModal.vue"
   import ResilientImage from "./ResilientImage.vue"
   import VideoProgressFooter from "./VideoProgressFooter.vue"
+  import { rememberVideoPosition, videoSessionPosition } from '../utils/video-session'
   import CinemaVideoStatus from "./CinemaVideoStatus.vue"
   import { formatMediaDuration, formatVideoTimestamp, videoPreviewWouldDownscale } from "../utils/media"
 
@@ -678,8 +683,30 @@
   const playerElement = ref<MediaPlayerElement | null>(null)
   const viewerElement = ref<HTMLElement | null>(null)
   const mediaNavigationPending = ref(false)
+  let boundVideoKey: string | null = null
+  const restoredPlayers = new WeakSet<MediaPlayerElement>()
+  function rememberCurrentVideo() {
+    const player = playerElement.value
+    if (boundVideoKey && player && !mediaNavigationPending.value) {
+      rememberVideoPosition(boundVideoKey, player.currentTime, player.duration, player.state?.ended === true)
+    }
+  }
+  function restoreSessionPosition(player: MediaPlayerElement) {
+    if (!props.cinema || restoredPlayers.has(player) || !boundVideoKey) return
+    const position = videoSessionPosition(boundVideoKey)
+    player.currentTime = position
+    // Apply after metadata as well: a reused provider can retain a native frame
+    // even while its new Vidstack state still reports time zero.
+    const native = player.querySelector('video')
+    if (native && native.readyState >= 1 && native.currentTime !== position) {
+      native.currentTime = position
+    }
+    if (playerReady) restoredPlayers.add(player)
+    syncVideoTimelineState(player)
+  }
 
   function pauseViewerMedia() {
+    rememberCurrentVideo()
     mediaNavigationPending.value = true
     isVideoPaused.value = true
     pendingVideoRestore = null
@@ -713,8 +740,8 @@
   const sidebarToggleElement = ref<HTMLButtonElement | null>(null)
   const wheelDeltaAccumulator = ref(0)
   const navigationLockedUntil = ref(0)
-  const isSidebarCollapsible = ref(false)
-  const isSidebarExpanded = ref(true)
+  const isSidebarCollapsible = ref(props.isModal === true && props.cinema === true)
+  const isSidebarExpanded = ref(!(props.isModal === true && props.cinema === true))
   const isSidebarSheetDragging = ref(false)
   const isPlayingHd = ref(false)
   const isVideoPaused = ref(false)
@@ -1355,6 +1382,7 @@
       return
     }
 
+    restoreSessionPosition(player)
     syncVideoMuted(player, appStore.videoMuted)
 
     try {
@@ -1453,6 +1481,7 @@
     removePlayerEventListeners?.()
     removePlayerEventListeners = null
 
+    boundVideoKey = props.cinema && props.image ? `fullscreen:${props.image.id}` : null
     if (!player) {
       return
     }
@@ -1467,6 +1496,7 @@
       syncVideoTimelineState(player)
     }
     const handlePause = () => {
+      rememberCurrentVideo()
       isVideoPaused.value = props.image?.mediaType === "video"
       syncVideoTimelineState(player)
     }
@@ -1495,6 +1525,7 @@
       syncVideoTimelineState(player)
     }
     const handleEnded = () => {
+      if (boundVideoKey) rememberVideoPosition(boundVideoKey, player.currentTime, player.duration, true)
       videoCurrentTimeMs.value = videoDurationMs.value
     }
 
@@ -1736,9 +1767,40 @@
 </script>
 
 <style scoped>
+.viewer--cinema .viewer__card-wrapper--navigating {
+  visibility: hidden;
+  pointer-events: none;
+}
 .viewer--cinema .cinema-admin-filename { grid-column: 1 / -1; }
 @media (min-width: 769px) {
   .viewer--cinema .viewer__sidebar--drawer { right: 4.5rem; }
 }
-.viewer--cinema.viewer--modal > .viewer__next { right: 4.1rem; }
+.viewer--cinema.viewer--modal > .viewer__next { right: max(0.5rem, env(safe-area-inset-right)); }
+.viewer--cinema.viewer--modal > .viewer__previous { left: max(0.5rem, env(safe-area-inset-left)); }
+@media (min-width: 769px) {
+  /* Follow the contained photo edges, while reserving a separate action column. */
+  .viewer--cinema.viewer--modal > .viewer__next {
+    right: max(4.5rem, calc((100vw - min(100vw, 100dvh * var(--viewer-navigation-aspect, 1))) / 2 + 0.5rem));
+  }
+  .viewer--cinema.viewer--modal > .viewer__previous {
+    left: max(4.5rem, calc((100vw - min(100vw, 100dvh * var(--viewer-navigation-aspect, 1))) / 2 + 0.5rem));
+  }
+}
+.viewer--cinema > :is(.viewer__previous, .viewer__next) {
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.04)), rgba(16,20,25,0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 3px 14px rgba(0,0,0,0.18);
+}
+.viewer--cinema > :is(.viewer__previous, .viewer__next):hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.28), rgba(255,255,255,0.08)), rgba(16,20,25,0.48);
+}
+.viewer--cinema > :is(.viewer__previous, .viewer__next):focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
 </style>

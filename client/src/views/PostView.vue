@@ -1,5 +1,5 @@
 <template>
-  <div :data-album-theme="cinema ? 'cinema' : 'classic'" :data-album-state="viewerStore.error ? 'settled' : activeImage && !viewerStore.loading ? 'ready' : 'loading'" :class="modal ? 'image-view image-view--modal' : 'image-view image-view--page'" @click.stop>
+  <div :data-album-theme="viewerTheme" :data-album-state="viewerStore.error ? 'settled' : activeImage && !viewerStore.loading ? 'ready' : 'loading'" :class="['image-view', modal ? 'image-view--modal' : 'image-view--page', { 'image-view--standalone-cinema': cinema && !props.modal }]" @click.stop>
     <ErrorState v-if="viewerStore.error" title="Could not load post" :message="viewerStore.error" />
     <PostViewer
       ref="postViewer"
@@ -10,7 +10,7 @@
       :cinema="cinema"
       :deleting="viewerStore.deleting"
       :loading="viewerStore.loading"
-      @close="emit('close')"
+      @close="closeViewer"
       @delete="openDeleteDialog"
     />
     <div v-else-if="viewerStore.loading && !cinema" class="card p-8 text-center">
@@ -72,17 +72,30 @@ import { useViewerStore } from '../stores/viewer';
 
 const postViewer = ref<InstanceType<typeof PostViewer> | null>(null);
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   id: string;
   modal?: boolean;
   cinema?: boolean;
-}>();
+}>(), { cinema: undefined });
 
 const emit = defineEmits<{
   close: [];
 }>();
 
 const appStore = useAppStore();
+// Until preferences arrive, retain the server's explicit Cinema selection.
+const cinema = computed(() => props.cinema ?? (appStore.stats
+  ? appStore.folderDisplayTheme === 'cinema'
+  : document.documentElement.dataset.cinemaEntry === 'true'));
+const viewerTheme = computed(() => props.cinema === undefined && !appStore.stats && !viewerStore.error
+  ? 'unknown' : cinema.value ? 'cinema' : 'classic');
+const modal = computed(() => props.modal || cinema.value);
+function closeViewer() {
+  if (props.modal) emit('close');
+  else if (viewerStore.image) void router.replace({ name: 'folder', params: { slug: viewerStore.image.folderSlug } });
+  else void router.replace({ name: 'home' });
+}
+
 const feedStore = useFeedStore();
 const likesStore = useLikesStore();
 const viewerStore = useViewerStore();
@@ -104,7 +117,7 @@ watch(() => viewerStore.image, (image) => {
 const activeImage = computed(() =>
   viewerStore.image?.id === imageId.value
     ? viewerStore.image
-    : props.cinema && viewerStore.loading ? lastDisplayedImage.value : null
+    : cinema.value && viewerStore.loading ? lastDisplayedImage.value : null
 );
 const folder = computed(() =>
   activeImage.value ? foldersStore.items.find((entry) => entry.slug === activeImage.value?.folderSlug) ?? null : null
@@ -124,7 +137,7 @@ async function loadImage() {
 }
 
 watch(() => [imageId.value, activeMediaType.value] as const, loadImage, { immediate: true });
-watch(() => [props.cinema, imageId.value] as const, ([cinema]) => {
+watch(() => [cinema.value, imageId.value] as const, ([cinema]) => {
   if (cinema) window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
 }, { immediate: true, flush: 'post' });
 
@@ -175,6 +188,14 @@ async function handleDelete() {
 </script>
 
 <style scoped>
+.image-view.image-view--standalone-cinema {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100%;
+  background: #000;
+}
+
 .image-view {
   width: min(100%, 72rem);
 }

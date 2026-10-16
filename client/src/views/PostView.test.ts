@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ImageDetail } from '../types/api';
 import { useViewerStore } from '../stores/viewer';
+import { useAppStore } from '../stores/app';
 import PostView from './PostView.vue';
 
 vi.mock('vue-router', async () => {
@@ -28,6 +29,8 @@ vi.mock('../components/PostViewer.vue', async () => {
     default: defineComponent({
       name: 'PostViewer',
       props: {
+        cinema: Boolean,
+        isModal: Boolean,
         image: {
           type: Object,
           required: true
@@ -141,6 +144,41 @@ describe('PostView', () => {
 
     expect(wrapper.get('[data-test="post-viewer"]').text()).toBe('2');
   });
+  it('keeps server-selected Cinema while preferences are still loading', async () => {
+    document.documentElement.dataset.cinemaEntry = 'true';
+    const viewerStore = useViewerStore();
+    vi.spyOn(viewerStore, 'loadImage').mockImplementation(async () => { viewerStore.loading = true; });
+    const wrapper = mount(PostView, { props: { id: '109' } });
+    try {
+      await flushPromises();
+      expect(wrapper.attributes('data-album-theme')).toBe('unknown');
+      expect(wrapper.classes('image-view--standalone-cinema')).toBe(true);
+      expect(wrapper.text()).not.toContain('Loading post...');
+      useAppStore().stats = { preferences: { folderDisplayTheme: 'cinema' } } as any;
+      await flushPromises();
+      expect(wrapper.attributes('data-album-theme')).toBe('cinema');
+    } finally {
+      wrapper.unmount();
+      delete document.documentElement.dataset.cinemaEntry;
+    }
+  });
+
+  it.each(['cinema', 'classic'] as const)('restores the %s layout on a direct post reload', async (theme) => {
+    vi.spyOn(useAppStore(), 'folderDisplayTheme', 'get').mockReturnValue(theme);
+    useAppStore().stats = { preferences: { folderDisplayTheme: theme } } as any;
+    const viewerStore = useViewerStore();
+    vi.spyOn(viewerStore, 'loadImage').mockImplementation(async (id) => {
+      viewerStore.image = createImageDetail(id);
+    });
+    const wrapper = mount(PostView, { props: { id: '109' } });
+    await flushPromises();
+    const viewer = wrapper.findComponent({ name: 'PostViewer' });
+    expect(viewer.props('cinema')).toBe(theme === 'cinema');
+    expect(viewer.props('isModal')).toBe(theme === 'cinema');
+    expect(wrapper.classes('image-view--standalone-cinema')).toBe(theme === 'cinema');
+    wrapper.unmount();
+  });
+
   it('keeps the current Cinema photo visible while the next post loads', async () => {
     const viewerStore = useViewerStore();
     vi.spyOn(viewerStore, 'loadImage').mockImplementation(async (id: number) => {

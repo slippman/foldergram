@@ -24,6 +24,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1; });
   document.documentElement.classList.add('album-entry', 'shared-album-entry');
+  document.querySelector('meta[name="cinema-viewer-loader-delay-ms"]')?.remove();
   document.body.innerHTML = '<div id="fg-splash"><div class="fg-splash__album"><p>Loading album…</p><span class="fg-splash__indicator"></span><button class="fg-splash__retry" hidden>Retry</button></div></div><div id="app"></div>';
 });
 afterEach(() => {
@@ -35,6 +36,45 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('album startup splash', () => {
+  it('keeps the initial UR splash through unknown preferences and post loading', async () => {
+    document.documentElement.classList.add('shared-album-entry');
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-theme="unknown" data-album-state="loading"></main>';
+    start(); await flush();
+    const splash = document.querySelector('#fg-splash');
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(true);
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    const state = app.querySelector('main')!;
+    state.setAttribute('data-album-theme', 'cinema');
+    await flush();
+    expect(document.querySelector('#fg-splash')).toBe(splash);
+    state.setAttribute('data-album-state', 'ready');
+    await flush();
+    expect(document.documentElement.classList.contains('shared-album-entry')).toBe(true);
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+
+  it('uses the configured viewer delay', async () => {
+    const meta = document.createElement('meta');
+    meta.name = 'cinema-viewer-loader-delay-ms';
+    meta.content = '500';
+    document.head.append(meta);
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-state="settled"></main>';
+    start(); await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="loading"></main>';
+    window.dispatchEvent(new CustomEvent('foldergram:album-view-loading', { detail: { defer: true } }));
+    await flush();
+    await vi.advanceTimersByTimeAsync(499);
+    expect(document.querySelector('.fg-splash--pending')).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(document.querySelector('.fg-splash--pending')).toBeNull();
+    expect(document.querySelector('#fg-splash')).not.toBeNull();
+  });
+
   it('never reveals the deferred viewer loader when the next image is ready before 1 second', async () => {
     const app = document.getElementById('app')!;
     app.innerHTML = '<main data-album-state="settled"></main>';
