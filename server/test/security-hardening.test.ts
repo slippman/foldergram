@@ -82,6 +82,16 @@ describe.sequential('public hosting security', () => {
     await assertClosed();
   });
 
+  it('keeps a partial restore containing only viewer access mode locked in optional mode', async () => {
+    vi.stubEnv('AUTH_REQUIRED', 'false');
+    await start(false);
+    const { appSettingsRepository } = await import('../src/db/repositories.js');
+    const { AUTH_VIEWER_ACCESS_MODE_SETTING_KEY } = await import('../src/constants/app-setting-keys.js');
+    appSettingsRepository.set(AUTH_VIEWER_ACCESS_MODE_SETTING_KEY, 'public');
+    auth.refresh();
+    await assertClosed();
+  });
+
   it('recovers only after authentication data is restored and cannot disable required protection', async () => {
     await start(false);
     expect((await request(app, 'GET', '/api/auth/status')).status).toBe(503);

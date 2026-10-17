@@ -169,7 +169,8 @@ function loadAuthConfig(): AuthConfigSnapshot {
   const enabled = adminPasswordHash?.length === PASSWORD_HASH_LENGTH && adminPasswordSalt?.length === 16 && sessionSecret?.length === 32 && sessionVersion > 0;
   const hasAuthSettings = [AUTH_PASSWORD_HASH_SETTING_KEY, AUTH_PASSWORD_SALT_SETTING_KEY,
     AUTH_SESSION_SECRET_SETTING_KEY, AUTH_SESSION_VERSION_SETTING_KEY,
-    AUTH_VIEWER_PASSWORD_HASH_SETTING_KEY, AUTH_VIEWER_PASSWORD_SALT_SETTING_KEY]
+    AUTH_VIEWER_PASSWORD_HASH_SETTING_KEY, AUTH_VIEWER_PASSWORD_SALT_SETTING_KEY,
+    AUTH_VIEWER_ACCESS_MODE_SETTING_KEY]
     .some(key => appSettingsRepository.get(key) !== null);
   const rawViewerAccessMode = parseViewerAccessMode(appSettingsRepository.get(AUTH_VIEWER_ACCESS_MODE_SETTING_KEY));
   const viewerAccessMode =
