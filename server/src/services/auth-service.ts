@@ -13,6 +13,8 @@ import {
   AUTH_VIEWER_PASSWORD_SALT_SETTING_KEY
 } from '../constants/app-setting-keys.js';
 import { appSettingsRepository } from '../db/repositories.js';
+import { appConfig } from '../config/env.js';
+import { storageService } from './storage-service.js';
 
 export type AuthRole = 'admin' | 'viewer' | 'anonymous';
 export type SessionRole = Exclude<AuthRole, 'anonymous'>;
@@ -32,6 +34,7 @@ export interface AuthCapabilities {
 
 interface AuthConfigSnapshot {
   enabled: boolean;
+  incomplete: boolean;
   adminPasswordHash: Buffer | null;
   adminPasswordSalt: Buffer | null;
   viewerPasswordHash: Buffer | null;
@@ -163,7 +166,11 @@ function loadAuthConfig(): AuthConfigSnapshot {
   const viewerPasswordSalt = decodeBase64Url(appSettingsRepository.get(AUTH_VIEWER_PASSWORD_SALT_SETTING_KEY));
   const sessionSecret = decodeBase64Url(appSettingsRepository.get(AUTH_SESSION_SECRET_SETTING_KEY));
   const sessionVersion = parseSessionVersion(appSettingsRepository.get(AUTH_SESSION_VERSION_SETTING_KEY));
-  const enabled = adminPasswordHash !== null && adminPasswordSalt !== null && sessionSecret !== null && sessionVersion > 0;
+  const enabled = adminPasswordHash?.length === PASSWORD_HASH_LENGTH && adminPasswordSalt?.length === 16 && sessionSecret?.length === 32 && sessionVersion > 0;
+  const hasAuthSettings = [AUTH_PASSWORD_HASH_SETTING_KEY, AUTH_PASSWORD_SALT_SETTING_KEY,
+    AUTH_SESSION_SECRET_SETTING_KEY, AUTH_SESSION_VERSION_SETTING_KEY,
+    AUTH_VIEWER_PASSWORD_HASH_SETTING_KEY, AUTH_VIEWER_PASSWORD_SALT_SETTING_KEY]
+    .some(key => appSettingsRepository.get(key) !== null);
   const rawViewerAccessMode = parseViewerAccessMode(appSettingsRepository.get(AUTH_VIEWER_ACCESS_MODE_SETTING_KEY));
   const viewerAccessMode =
     enabled && rawViewerAccessMode === 'password' && viewerPasswordHash !== null && viewerPasswordSalt !== null
@@ -174,6 +181,7 @@ function loadAuthConfig(): AuthConfigSnapshot {
 
   return {
     enabled,
+    incomplete: !enabled && hasAuthSettings,
     adminPasswordHash: enabled ? adminPasswordHash : null,
     adminPasswordSalt: enabled ? adminPasswordSalt : null,
     viewerPasswordHash: viewerAccessMode === 'password' ? viewerPasswordHash : null,
@@ -231,7 +239,7 @@ function parseSessionToken(token: string, secret: Buffer): SessionPayload | null
   const expectedSignature = signValue(encodedPayload, secret);
 
   if (
-    signature.length !== expectedSignature.length ||
+    !/^[A-Za-z0-9_-]{43}$/.test(signature) ||
     !timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
   ) {
     return null;
@@ -295,6 +303,7 @@ function storeSessionConfig(nextSessionVersion: number): void {
 }
 
 function getRequestSessionRole(request: express.Request): SessionRole | null {
+  if (authService.isUnavailable()) return null;
   if (!authConfig.enabled || !authConfig.sessionSecret) {
     return 'admin';
   }
@@ -318,6 +327,11 @@ function getRequestSessionRole(request: express.Request): SessionRole | null {
 }
 
 export const authService = {
+  isUnavailable(): boolean {
+    return storageService.prepareStartup().usingInMemoryDatabase || authConfig.incomplete ||
+      (appConfig.authRequired && !authConfig.enabled);
+  },
+
   refresh(): void {
     authConfig = loadAuthConfig();
   },
@@ -327,22 +341,19 @@ export const authService = {
   },
 
   isEnabled(): boolean {
-    return authConfig.enabled;
+    return authConfig.enabled || this.isUnavailable();
   },
 
   isPublicViewerAccessEnabled(): boolean {
-    return authConfig.enabled && authConfig.viewerAccessMode === 'public';
+    return !this.isUnavailable() && authConfig.enabled && authConfig.viewerAccessMode === 'public';
   },
 
   getStatus(request: express.Request): AuthStatus {
-    if (!authConfig.enabled) {
-      return createStatus('admin', true, false, 'off');
-    }
-
     return this.getRequestAuthContext(request);
   },
 
   getLoggedOutStatus(): AuthStatus {
+    if (this.isUnavailable()) return createStatus('anonymous', false, true, 'off');
     return authConfig.enabled ? getAnonymousStatus() : createStatus('admin', true, false, 'off');
   },
 
@@ -351,6 +362,7 @@ export const authService = {
   },
 
   getRequestAuthContext(request: express.Request): AuthStatus {
+    if (this.isUnavailable()) return createStatus('anonymous', false, true, 'off');
     if (!authConfig.enabled) {
       return createStatus('admin', true, false, 'off');
     }
@@ -462,6 +474,7 @@ export const authService = {
   },
 
   disable(): AuthStatus {
+    if (appConfig.authRequired) throw new Error('Password protection is required by server configuration.');
     appSettingsRepository.remove(AUTH_PASSWORD_HASH_SETTING_KEY);
     appSettingsRepository.remove(AUTH_PASSWORD_SALT_SETTING_KEY);
     appSettingsRepository.remove(AUTH_SESSION_SECRET_SETTING_KEY);

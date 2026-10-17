@@ -109,6 +109,17 @@ describe.sequential('derivative mode env config', () => {
     await expect(import('../src/config/env.js')).rejects.toThrow();
   });
 
+  it('requires initialized authentication by default in production, with an explicit local opt-out', async () => {
+    await stubBaseEnv();
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('AUTH_REQUIRED', undefined);
+    const { appConfig } = await import('../src/config/env.js');
+    expect(appConfig.authRequired).toBe(true);
+    vi.resetModules();
+    vi.stubEnv('AUTH_REQUIRED', 'false');
+    expect((await import('../src/config/env.js')).appConfig.authRequired).toBe(false);
+  });
+
   it('rejects invalid excluded folder env rules', async () => {
     await stubBaseEnv();
     vi.stubEnv('GALLERY_EXCLUDED_FOLDERS', '../outside,*/cache');

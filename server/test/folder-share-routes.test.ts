@@ -227,6 +227,44 @@ describe.sequential('folder share API routes', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('does not confirm album existence or password configuration to unauthorized visitors', async () => {
+    const { folderShareService } = await import('../src/services/folder-share-service.js');
+    folderShareService.setPassword('folder-b', 'test-folder-password');
+    for (const slug of ['folder-a', 'folder-b', 'nonexistent-folder']) {
+      const response = await requestApp(app, 'GET', `/api/share/folders/${slug}/access`);
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ exists: true, granted: false, hasPassword: true, publicAccess: false });
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+    }
+    const unlock = await requestApp(app, 'POST', '/api/share/folders/folder-b/unlock-password',
+      { 'X-Foldergram-Intent': '1' }, { password: 'test-folder-password' });
+    expect(unlock.status).toBe(200);
+    const cookie = unlock.headers.get('set-cookie')!.split(';')[0];
+    const allowed = await requestApp(app, 'GET', '/api/share/folders/folder-b/access', { Cookie: cookie });
+    expect(allowed.body.granted).toBe(true);
+    expect((await requestApp(app, 'GET', '/api/share/folders/folder-b/images', { Cookie: cookie })).status).toBe(200);
+    expect((await requestApp(app, 'GET', '/api/share/folders/folder-a/images', { Cookie: cookie })).status).toBe(401);
+  });
+
+  it('returns identical unauthorized responses for existing and missing share resources', async () => {
+    for (const template of ['/api/share/images/ID', '/api/share/posts/ID',
+      '/api/share/images/ID/thumbnail', '/api/share/images/ID/preview', '/api/share/images/ID/original',
+      '/api/share/folders/SLUG', '/api/share/folders/SLUG/images']) {
+      const existing = template.replace('ID', '1').replace('SLUG', 'folder-a');
+      const missing = template.replace('ID', '9999999').replace('SLUG', 'nonexistent-folder');
+      for (const method of ['GET', 'HEAD']) {
+        const first = await requestApp(app, method, existing);
+        const second = await requestApp(app, method, missing);
+        expect(first.status, `${method} ${existing}`).toBe(401);
+        expect(second.status, `${method} ${missing}`).toBe(first.status);
+        expect(second.body).toEqual(first.body);
+        for (const header of ['cache-control', 'vary', 'etag', 'content-type', 'content-length']) {
+          expect(second.headers.get(header), `${method} ${missing} ${header}`).toBe(first.headers.get(header));
+        }
+      }
+    }
+  });
+
   it('short links preserve previews and grants through slug changes, expiry and revocation', async () => {
     const { folderShareService } = await import('../src/services/folder-share-service.js');
     const { folderRepository } = await import('../src/db/repositories.js');

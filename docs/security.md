@@ -42,14 +42,40 @@ When enabled:
 
 Changing either stored password or the viewer-access mode rotates the session
 version, which invalidates older sessions. Disabling password protection clears
-the stored auth settings.
+the stored auth settings, unless the server requires authentication.
+
+### Required authentication for public hosting
+
+Production defaults to `AUTH_REQUIRED=true`. This requirement lives in server
+configuration, independently of SQLite. A missing, empty, or partially restored
+authentication database returns HTTP 503 for every application, API, media, and
+share route. Unavailable database directories that fall back to transient
+storage are also blocked, including when authentication is optional. Health
+checks return 503 rather than reporting a healthy passwordless server. Failure
+responses do not expose storage paths or administrator capabilities.
+
+These are origin protections: signed media already cached by a browser or CDN
+can remain accessible for its previously configured lifetime, as with revocation.
+
+Restore the complete original database and restart after a storage failure.
+Do not disable required authentication as a recovery workaround. The server
+rejects attempts to disable password protection while `AUTH_REQUIRED=true`.
+
+For a **new installation only**, keep the service on loopback or an otherwise
+private network, explicitly set `AUTH_REQUIRED=false`, configure an admin password
+through Settings, then restart with `AUTH_REQUIRED=true` before public exposure.
+Development/test defaults remain optional; intentionally passwordless production
+installations must explicitly choose `AUTH_REQUIRED=false`. Missing authentication
+in that opt-out mode cannot be distinguished from an intentional passwordless
+installation. Keep the requirement enabled on public hosts.
 
 ## Folder shares
 
 Folder shares are narrower than viewer sessions. They grant read-only access to
 one folder through `/share/:slug` and do not unlock Home, feed search, Reels,
 Places, Likes, Collections, Trash, Settings, scans, rebuilds, captions, cover
-editing, delete actions, or original-file downloads.
+editing, or delete actions. Album-scoped original downloads also require an
+active grant for that album.
 
 Admins can create:
 
@@ -85,6 +111,28 @@ Shared media does not use raw `/thumbnails/...` or `/previews/...` URLs in API
 payloads. Shared folder payloads point to `/api/share/images/:id/thumbnail` and
 `/api/share/images/:id/preview`, and those routes check that the request has a
 grant for the image's folder before serving or lazily generating the derivative.
+
+Unauthorized share resource requests use the same status and message whether
+the album/media exists or not. The password-entry bootstrap also returns the
+same locked state for unknown, link-only, and password-protected albums; its
+`hasPassword` field means that password entry should be offered, not confirmation
+that a guessed album has a password. Valid link and password grants retain their
+existing album scope. This reduces response-based enumeration; it is not a
+constant-time lookup guarantee.
+
+## Browser response protections
+
+Application responses deny framing with CSP `frame-ancestors 'none'` and
+`X-Frame-Options: DENY`, reject MIME sniffing, and use `Referrer-Policy: no-referrer`.
+The CSP also restricts base URLs and forms to the same origin and disables object
+embeds. It deliberately does not restrict script/style/media sources, preserving
+the existing inline startup scripts, Google Fonts, and video/blob playback; it
+should not be described as a complete XSS defense.
+
+Production sends one-year HSTS without `includeSubDomains` or preload. Browsers
+honor it only on HTTPS responses. Terminate HTTPS at the proxy and preserve these
+headers; the policy does not affect other subdomains. Development does not send
+HSTS. Express version branding is disabled.
 
 ## Mutation protection
 
@@ -174,11 +222,10 @@ On startup, Foldergram checks:
 - previews directory
 - database directory
 
-If the database directory is unavailable, it falls back to an in-memory
-database. If the gallery or derivative directories are unavailable, the library
-is marked unavailable and the UI receives explicit storage-state information.
-
-This is a resilience measure, not a security feature.
+If the database directory is unavailable, internal services may initialize an
+in-memory database, but HTTP access remains blocked with 503. An empty replacement
+database is also blocked when authentication is required. If the gallery or
+derivative directories are unavailable, the library is marked unavailable.
 
 ## Rate limiting
 
@@ -190,6 +237,12 @@ Foldergram includes small in-memory rate limiters for:
 
 These limiters are process-local and intentionally simple. They are useful for
 basic abuse reduction, not for hardened distributed deployments.
+
+The existing limiters use the directly connecting address. Behind a reverse
+proxy or Docker address translation, visitors can share a login-limit bucket.
+Forwarded visitor-address headers are not trusted automatically. Recovering
+visitor identity requires verifying the actual deployment's ingress path;
+adding an edge limit alone does not remove the application's shared limit.
 
 ## Important limitations
 

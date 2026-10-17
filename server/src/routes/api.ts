@@ -287,6 +287,15 @@ function sendShareAccessDenied(response: express.Response, status = 401): void {
   response.status(status).json({ message: 'This folder share is expired, revoked, or locked.' });
 }
 
+function sendMissingShareResource(request: express.Request, response: express.Response, message: string): void {
+  if (authService.isAuthenticatedRequest(request) || authService.isPublicViewerAccessEnabled()) {
+    setShareResponseHeaders(response);
+    response.status(404).json({ message });
+  } else {
+    sendShareAccessDenied(response);
+  }
+}
+
 function ensureShareFolderAccess(request: express.Request, response: express.Response, folderId: number): boolean {
   if (!folderShareService.getFolderGrant(request, folderId)) {
     sendShareAccessDenied(response);
@@ -418,6 +427,11 @@ router.put('/auth/password', authRateLimiter, (request, response) => {
 
 router.delete('/auth/password', authRateLimiter, (request, response) => {
   authService.setNoStoreHeaders(response);
+
+  if (appConfig.authRequired) {
+    response.status(409).json({ message: 'Password protection is required by server configuration.' });
+    return;
+  }
 
   if (!authService.isEnabled()) {
     response.status(400).json({ message: 'Password protection is already disabled.' });
@@ -850,7 +864,7 @@ router.get('/share/folders/:slug', (request, response) => {
   const folder = galleryService.getSharedFolderBySlug(params.slug);
 
   if (!folder) {
-    response.status(404).json({ message: 'Folder share not found' });
+    sendMissingShareResource(request, response, 'Folder share not found');
     return;
   }
 
@@ -867,7 +881,7 @@ router.get('/share/folders/:slug/images', (request, response) => {
   const payload = galleryService.getSharedFolderImages(params.slug, query.page, query.limit, query.mediaType);
 
   if (!payload) {
-    response.status(404).json({ message: 'Folder share not found' });
+    sendMissingShareResource(request, response, 'Folder share not found');
     return;
   }
 
@@ -884,7 +898,7 @@ router.get('/share/images/:id', (request, response) => {
   const image = galleryService.getSharedImageDetail(params.id, query.mediaType, { isLegacyImageAlias: true });
 
   if (!image) {
-    response.status(404).json({ message: 'Post not found' });
+    sendMissingShareResource(request, response, 'Post not found');
     return;
   }
 
@@ -901,7 +915,7 @@ router.get('/share/posts/:id', (request, response) => {
   const image = galleryService.getSharedImageDetail(params.id, query.mediaType);
 
   if (!image) {
-    response.status(404).json({ message: 'Post not found' });
+    sendMissingShareResource(request, response, 'Post not found');
     return;
   }
 
@@ -917,7 +931,7 @@ router.get('/share/images/:id/thumbnail', async (request, response) => {
   const image = galleryService.getShareDerivativeImage(params.id);
 
   if (!image) {
-    response.status(404).json({ message: 'Thumbnail not found' });
+    sendMissingShareResource(request, response, 'Thumbnail not found');
     return;
   }
 
@@ -933,7 +947,7 @@ router.get('/share/images/:id/preview', async (request, response) => {
   const image = galleryService.getShareDerivativeImage(params.id);
 
   if (!image) {
-    response.status(404).json({ message: 'Preview not found' });
+    sendMissingShareResource(request, response, 'Preview not found');
     return;
   }
 
@@ -982,7 +996,7 @@ router.get('/share/images/:id/original', (request, response) => {
   const params = imageIdSchema.parse(request.params);
   const image = galleryService.getShareDerivativeImage(params.id);
   if (!image) {
-    response.status(404).json({ message: 'Original media not found' });
+    sendMissingShareResource(request, response, 'Original media not found');
     return;
   }
   // Resolve carousel members through their owning album, just like previews.

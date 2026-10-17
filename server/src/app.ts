@@ -14,6 +14,7 @@ import { authService } from './services/auth-service.js';
 import { lazyThumbnailsRouter, lazyPreviewsRouter } from './routes/lazy-derivatives.js';
 import { createProtectedStaticOptions } from './utils/media-response.js';
 import { cacheLibraryMediaUrls } from './services/shared-media-cache.js';
+import { applySecurityHeaders } from './middleware/security-headers.js';
 
 export function applyApiNoStoreHeaders(response: Pick<express.Response, 'setHeader'>) {
   authService.setNoStoreHeaders(response as express.Response);
@@ -24,6 +25,16 @@ export function applyApiNoStoreHeaders(response: Pick<express.Response, 'setHead
 
 export function createApp() {
   const app = express();
+  app.disable('x-powered-by');
+  app.use(applySecurityHeaders);
+  // Run before every public/static/share route as well as API authentication.
+  // An empty replacement database must never become a passwordless production library.
+  app.use((_request, response, next) => {
+    if (!authService.isUnavailable()) { next(); return; }
+    response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('Retry-After', '60');
+    response.status(503).json({ message: 'Authentication storage is unavailable. Restore the configured authentication database.' });
+  });
 
   // Public, versioned branding only; library media retains its own access/cache policy.
   app.use('/branding', express.static(path.join(repositoryRoot, 'client', appConfig.nodeEnv === 'production' ? 'dist' : 'public', 'branding'), {
