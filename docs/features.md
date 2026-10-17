@@ -292,13 +292,16 @@ when later media-processing work has a known total.
 
 ### Access protection
 
-Settings can optionally enable role-based local access for the app.
+Production requires initialized authentication by default. Configure the first
+admin password privately using [Quick Start](/quick-start), then manage
+role-based access in Settings. Development and explicitly passwordless installs
+retain optional protection.
 
 That flow supports:
 
 - turning the admin password on
 - changing the admin password
-- disabling protection again
+- disabling protection when the server explicitly allows optional authentication
 - enabling or disabling a separate viewer password
 - enabling anonymous public browse mode
 - rotating the viewer password without knowing the current one

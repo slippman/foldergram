@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2-slippman.2.0.0 — 2026-10-17
+
+### Bug fixes
+
+- Production requires an initialized admin password by default and stays locked when authentication data is missing or damaged. Existing passwordless installations must explicitly select AUTH_REQUIRED=false; new installations must configure a password privately before public exposure.
+- Locked share requests no longer confirm whether guessed albums or media exist.
+- Browser responses prevent framing, reduce information leakage, and enforce HTTPS reuse in production.
+
 ## 1.2.2-slippman.1.7.0 — 2026-10-16
 
 ### New features

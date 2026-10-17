@@ -141,7 +141,7 @@ function parseSessionToken(token: string, secret: Buffer): ShareSessionPayload |
   const expectedSignature = signValue(encodedPayload, secret);
 
   if (
-    signature.length !== expectedSignature.length ||
+    !/^[A-Za-z0-9_-]{43}$/.test(signature) ||
     !timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
   ) {
     return null;
@@ -580,6 +580,13 @@ export const folderShareService = {
     publicAccess: boolean;
   } {
     const folder = folderRepository.getNormalBySlug(slug);
+    const publicAccess = !authService.isEnabled() || authService.isPublicViewerAccessEnabled();
+    const granted = folder ? Boolean(this.getFolderGrant(request, folder.id)) : false;
+    // Password entry must remain available without confirming a guessed album's
+    // existence or whether its owner configured a reusable password.
+    if (!publicAccess && !authService.isAuthenticatedRequest(request) && !granted) {
+      return { exists: true, granted: false, hasPassword: true, publicAccess: false };
+    }
     if (!folder) {
       return {
         exists: false,
@@ -589,11 +596,9 @@ export const folderShareService = {
       };
     }
 
-    const publicAccess = !authService.isEnabled() || authService.isPublicViewerAccessEnabled();
-
     return {
       exists: true,
-      granted: Boolean(this.getFolderGrant(request, folder.id)),
+      granted,
       hasPassword: Boolean(getPasswordRecord(folder.id)),
       publicAccess
     };

@@ -65,7 +65,10 @@ At boot, the server process:
 4. asks the scanner whether startup should scan, stay idle, or block for rebuild
 
 If `DB_DIR` is unavailable, Foldergram keeps the existing fallback behavior:
-it skips Dbmate for that run and uses an in-memory SQLite database instead.
+it skips Dbmate for that run and uses an in-memory SQLite database internally,
+but HTTP requests return 503. Production also blocks missing or partial
+authentication; new production databases require the private bootstrap in
+[Installation](/installation).
 
 If the scanner decides startup should be blocked because the gallery root
 changed and relocation validation failed, Foldergram defers scanning until the

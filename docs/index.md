@@ -42,8 +42,8 @@ features:
       src: /icons/access-control.svg
       width: "36"
       height: "36"
-    title: Optional access control
-    details: Runs open by default. Enable an admin password, a viewer password, or anonymous public mode from Settings. Non-admin sessions can browse but cannot scan, delete, or rebuild.
+    title: Access control
+    details: Production requires an initialized admin password by default. Set it up privately, then configure a viewer password or public browse mode from Settings. Non-admin sessions cannot scan, delete, or rebuild.
 ---
 
 ## Foldergram at a Glance
@@ -79,7 +79,7 @@ features:
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
 </div>
 <h3>Access modes</h3>
-<p>No password gate by default. Settings can enable admin-only access, a separate viewer password, or anonymous public mode. Admin sessions can run scans, rebuild indexes, delete posts, and manage access credentials.</p>
+<p>Production requires initialized authentication by default. Complete the private setup in Quick Start, then use Settings for admin-only access, a separate viewer password, or anonymous public mode. Admin sessions can run scans, rebuild indexes, delete posts, and manage access credentials.</p>
 </div>
 
 </div>

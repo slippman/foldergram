@@ -101,7 +101,10 @@ scans continue.
 
 ## Does Foldergram have authentication?
 
-It has optional role-based password protection for the app instance.
+It has role-based password protection for the app instance. Production requires
+an initialized admin password by default; new installations must complete the
+private bootstrap in [Quick Start](/quick-start). Development and explicit
+`AUTH_REQUIRED=false` installations retain optional authentication.
 
 The current implementation supports:
 
@@ -125,7 +128,7 @@ that folder.
 No. A folder share is not an admin session, viewer session, or public-library
 mode. It does not grant Home, feed search, Reels, Places, Likes, Collections,
 Trash, Settings, scans, rebuild actions, captions, cover editing, delete
-actions, or original-file downloads.
+actions. Original downloads remain scoped to the shared album's active grant.
 
 ## Why does the API call posts "images" in some fields?
 

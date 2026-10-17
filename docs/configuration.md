@@ -36,6 +36,7 @@ yourself.
 | `SCAN_DERIVATIVE_CONCURRENCY` | `4` | Derivative concurrency, validated from `1` to `32`. |
 | `PUBLIC_DEMO_MODE` | `0` | When enabled, mutating API routes return `403` for read-only demo deployments. |
 | `CSRF_TRUSTED_ORIGINS` | unset | Comma-separated extra browser origins allowed for mutating API requests. Useful behind reverse proxies or HTTPS terminators. |
+| `AUTH_REQUIRED` | `true` in production; `false` in development/test | Require initialized authentication independently of SQLite. Missing/incomplete auth or transient database storage blocks HTTP access with 503. Compose defaults to `true`. |
 
 ## Database migrations
 
@@ -64,13 +65,20 @@ migrations without starting the rest of the app.
 
 ## Access protection configuration
 
-Shared-password protection is **not** configured in `.env`.
+Admin and viewer passwords are configured in Settings rather than `.env`.
 
 Instead:
 
 - enable it from the Settings page
 - Foldergram stores the password hash and session metadata in SQLite `app_settings`
-- deleting or replacing the SQLite database resets the configured password protection state
+- production requires initialized authentication by default, so deleting or replacing the database leaves HTTP access locked with 503
+
+For a new installation, privately configure an admin password with
+`AUTH_REQUIRED=false`, then restart with `AUTH_REQUIRED=true` before public
+exposure. Restore the original database after storage failures rather than
+turning off required authentication. Intentional passwordless production use
+requires an explicit `AUTH_REQUIRED=false`; development/test defaults remain
+optional. In-memory database fallback always blocks HTTP access.
 
 The built-in auth model is a small role-based password gate for one app
 instance, not a multi-user account system.
@@ -210,6 +218,8 @@ The Settings sidebar is split into:
 
 When `DB_DIR` cannot be created or written, Foldergram logs the reason, skips
 Dbmate for that process, and falls back to an in-memory SQLite database.
+HTTP access is blocked with 503 in this fallback rather than opening a
+passwordless library.
 
 Foldergram normalizes path separators so the same rules work with POSIX-style and
 Windows-style paths.

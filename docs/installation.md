@@ -5,6 +5,14 @@ description: Installation details, runtime expectations, and production build co
 
 # Installation
 
+This fork's security changes require an image built from
+[`slippman/foldergram`](https://github.com/slippman/foldergram). The default
+upstream GHCR image and upstream Compose download below do not install this
+fork's changes; setting `AUTH_REQUIRED` alone does not add them to that image.
+For this fork, clone its repository and use the [local-build instructions](#if-you-already-cloned-this-repository)
+with the private bootstrap in steps 5–6. The upstream-image instructions remain
+available for upstream installations.
+
 ## Recommended: Docker Compose
 
 For most people, Docker Compose is the best way to install Foldergram.
@@ -69,7 +77,20 @@ data/
 
 ### 5. Start Foldergram
 
-Run:
+This fork's production builds require an initialized admin password by default.
+For a **new database**, first complete a private bootstrap. Keep the service
+disconnected from any public reverse proxy during setup. In the existing
+`foldergram` service, temporarily replace the published port and set:
+
+```yaml
+ports:
+  - "127.0.0.1:4141:4141"
+environment:
+  AUTH_REQUIRED: "false"
+```
+
+Merge these entries into the existing service; preserve its image, media/data
+mounts, and other environment settings. Then run:
 
 ```bash
 docker compose up -d
@@ -87,6 +108,24 @@ Open:
 For a quick backend check, you can also open:
 
 - `http://localhost:4141/api/health`
+
+Set a strong admin password in Settings. Then change the service environment to
+`AUTH_REQUIRED: "true"` and recreate only Foldergram:
+
+```bash
+docker compose up -d --force-recreate foldergram
+```
+
+Confirm the signed-out app asks for a password before connecting a public HTTPS
+reverse proxy. Keep the loopback port binding unless you deliberately need
+another private binding. For a remote host, reach the loopback service through
+an SSH tunnel rather than publishing the unprotected setup port.
+
+Existing installations with initialized authentication can start normally with
+the default requirement enabled. HTTP 503 on a fresh install means private
+initialization is still required; on an existing install, restore the original
+authentication database instead of bypassing the requirement. See
+[Authentication recovery](/troubleshooting#the-app-returns-503-for-authentication-storage).
 
 The default Compose file uses the GHCR image and exposes `4141:4141`. If you
 need a different host port, edit the left side of that mapping in
@@ -114,8 +153,7 @@ under the Compose `environment:` block. If the browser-visible origin differs
 from the upstream Node host, also set `CSRF_TRUSTED_ORIGINS` to that public
 origin.
 
-If the app will be reachable from other devices on your network, enable the
-admin password from the Settings page after first startup. You can then keep
+After private password initialization, you can keep
 the app admin-only, add a separate viewer password, or switch to public browse
 mode with admin unlock.
 
@@ -132,6 +170,16 @@ This repository includes:
 - `docker-compose.yml` for the GHCR image
 - `docker-compose.local.yml` as a local-build override
 
+To obtain this fork's source if needed:
+
+```bash
+git clone https://github.com/slippman/foldergram.git
+cd foldergram
+```
+
+For a new database, first edit the service for private bootstrap as described
+in steps 5–6; do not connect a public reverse proxy during initialization.
+
 From the repo root, run:
 
 ```bash
@@ -139,7 +187,9 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
 This command uses the normal runtime settings, but builds the image locally
-from the repository `Dockerfile`.
+from the repository `Dockerfile`. For a new database, perform the private
+bootstrap above first using these same `-f` options for both startup and
+recreation; the default protected startup cannot initialize its own password.
 
 ## Source install for development
 
@@ -230,6 +280,13 @@ pnpm build
 pnpm start
 ```
 
+A fresh production database needs private initialization before this normal
+startup can serve requests. On a host isolated from public traffic, temporarily
+run `AUTH_REQUIRED=false pnpm start`, set an admin password through Settings,
+stop the process, and restart with `AUTH_REQUIRED=true pnpm start`. Never expose
+the temporary unprotected process. Existing initialized databases need no
+bootstrap. Development keeps its optional-authentication default.
+
 `pnpm build` builds:
 
 - `server`
@@ -279,7 +336,8 @@ rebuild step.
 When a full library task runs, the UI reports discovery separately from later
 media-processing phases so long-running maintenance work stays understandable.
 
-If the configured database directory is unavailable, Foldergram falls back to an
-in-memory SQLite database. If the gallery, thumbnails, or previews directories
+If the configured database directory is unavailable, internal services may use
+an in-memory SQLite database, but HTTP access is blocked with 503. Missing or
+partial authentication also blocks production requests. If the gallery, thumbnails, or previews directories
 are unavailable, the library is reported as unavailable instead of serving stale
 filesystem assumptions.
