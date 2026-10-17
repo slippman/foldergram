@@ -218,6 +218,8 @@ The Settings sidebar is split into:
 
 When `DB_DIR` cannot be created or written, Foldergram logs the reason, skips
 Dbmate for that process, and falls back to an in-memory SQLite database.
+HTTP access is blocked with 503 in this fallback rather than opening a
+passwordless library.
 
 Foldergram normalizes path separators so the same rules work with POSIX-style and
 Windows-style paths.

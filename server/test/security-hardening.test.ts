@@ -113,6 +113,27 @@ describe.sequential('public hosting security', () => {
     expect((await request(app, 'GET', '/thumbnails/canary.webp')).status).toBe(200);
   });
 
+  it('initializes a password privately through the API and preserves protection after a required-auth restart', async () => {
+    vi.stubEnv('AUTH_REQUIRED', 'false');
+    await start(false);
+    const setup = await request(app, 'PUT', '/api/auth/password',
+      { 'x-foldergram-intent': '1' }, { password: 'private-bootstrap-password' });
+    expect(setup.status).toBe(200);
+    (await import('../src/db/database.js')).databaseManager.close();
+    vi.resetModules();
+    vi.stubEnv('AUTH_REQUIRED', 'true');
+    await start(false);
+    const status = await request(app, 'GET', '/api/auth/status');
+    expect(status.status).toBe(200);
+    expect(status.body).toMatchObject({ enabled: true, authenticated: false, role: 'anonymous' });
+    expect((await request(app, 'GET', '/thumbnails/canary.webp')).status).toBe(401);
+    const login = await request(app, 'POST', '/api/auth/login',
+      { 'x-foldergram-intent': '1' }, { password: 'private-bootstrap-password' });
+    expect(login.status).toBe(200);
+    expect((await request(app, 'GET', '/thumbnails/canary.webp',
+      { Cookie: login.headers.get('set-cookie')!.split(';')[0] })).status).toBe(200);
+  });
+
   it('sets browser protections on HTML, media, API, errors, and unavailable responses', async () => {
     await start();
     for (const url of ['/', '/share/family', '/api/health', '/thumbnails/canary.webp', '/branding/missing']) {

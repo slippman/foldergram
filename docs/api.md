@@ -22,7 +22,10 @@ Cinema hides those dates rather than presenting them as capture times.
 
 ## Authentication and protected routes
 
-Foldergram can optionally require a role-bearing password session.
+Production requires initialized authentication by default. When authentication
+storage is missing, incomplete, or transient, all routes return 503 before the
+normal authorization rules below. Private first-password setup requires the
+explicit `AUTH_REQUIRED=false` bootstrap described in [Installation](/installation).
 
 When password protection is enabled:
 
@@ -70,6 +73,7 @@ The shipped frontend adds `x-foldergram-intent: 1` automatically for `POST`,
 | `403` | Missing intent header, failed local-origin check, or a viewer session hitting an admin-only route. |
 | `404` | Missing folder, post, moment, or original media. |
 | `409` | A scan or thumbnail rebuild was requested while the library requires a library-index rebuild after a gallery-root change. |
+| `503` | Authentication storage is unavailable or required authentication has not been initialized. |
 
 ## Read endpoints
 
@@ -353,8 +357,10 @@ viewer sessions and do not unlock normal library routes.
 
 ### `GET /api/share/folders/:slug/access`
 
-Returns whether a shared folder exists, whether the current request already has
-a valid grant, and whether a folder password is available.
+Returns the current access state. Unauthorized visitors receive the same locked
+state for existing and nonexistent folders. In that state `exists: true` and
+`hasPassword: true` offer password entry without confirming existence or whether
+a password is actually configured. Authorized callers receive actual state.
 
 Response shape:
 
@@ -1014,6 +1020,7 @@ Notes:
 - password minimum length is `8`
 - `viewer` sessions receive `403`
 - changing the password invalidates older sessions
+- initial setup is available only in the explicit private optional-auth bootstrap; required but uninitialized authentication returns 503
 
 ### `DELETE /api/auth/password`
 
@@ -1032,6 +1039,7 @@ Errors:
 - `400` if protection is already disabled
 - `401` if the password is incorrect
 - `403` if the current session is not `admin`
+- `409` if `AUTH_REQUIRED=true`; required password protection cannot be disabled through this endpoint
 
 ### `PUT /api/auth/viewer-access`
 

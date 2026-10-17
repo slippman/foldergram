@@ -29,9 +29,25 @@ use delete actions that remove originals from the gallery.
 ## The database keeps resetting
 
 If `DB_DIR` is unavailable, Foldergram falls back to an in-memory SQLite
-database. That means indexed state disappears when the process stops.
+database internally, but HTTP requests return 503. Transient indexed state
+disappears when the process stops.
 
 Fix the configured database directory first.
+
+## The app returns 503 for authentication storage
+
+Production requires initialized authentication independently of SQLite. If the
+database is missing, empty, partially restored, or transient, all HTTP paths
+return 503 rather than opening a passwordless library.
+
+For a **new installation only**, follow the private, loopback-only bootstrap in
+[Installation](/installation), configure an admin password,
+then recreate the service with `AUTH_REQUIRED=true` before public exposure.
+
+For an **existing installation**, check the database mount and restore the
+complete original database, then restart. Do not delete the database or turn
+off the requirement as a recovery workaround. Already-cached signed media may
+remain accessible for its configured cache lifetime.
 
 ## Startup stops after an upgrade
 

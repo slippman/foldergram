@@ -11,6 +11,13 @@ It gives you the quickest path to a working install and includes the media
 tooling needed for video support and animated AVIF processing, so you do not
 need to set up Node.js, `pnpm`, or `ffmpeg` on the host first.
 
+To run this fork's security changes, clone
+[`slippman/foldergram`](https://github.com/slippman/foldergram) and use the
+local-build override shown in step 3 for both startup and recreation. The
+default upstream GHCR image does not contain these fork changes; an
+`AUTH_REQUIRED` setting alone does not install them. See
+[Installation](/installation) for the fork source and private bootstrap steps.
+
 ## Preferred: Docker Compose
 
 ## 1. Create your local data layout
@@ -73,6 +80,20 @@ normal app folders`, then run a rescan from `Settings -> Scan & Library`.
 
 ## 3. Start the container
 
+This fork's production builds require an initialized admin password. For a
+**new database**, keep Foldergram disconnected from public reverse proxies.
+Temporarily replace the published port and add the following environment entry
+to the existing `foldergram` service, preserving its other settings and mounts:
+
+```yaml
+ports:
+  - "127.0.0.1:4141:4141"
+environment:
+  AUTH_REQUIRED: "false"
+```
+
+Then start the private setup instance:
+
 ```bash
 docker compose up -d
 ```
@@ -119,6 +140,24 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 - `http://localhost:4141` for the app
 - `http://localhost:4141/api/health` for a quick backend check
 
+Set a strong admin password in Settings. Change the Compose environment entry
+to `AUTH_REQUIRED: "true"`, then recreate only Foldergram:
+
+```bash
+docker compose up -d --force-recreate foldergram
+```
+
+If using the local-build override, use the same `-f docker-compose.yml -f
+docker-compose.local.yml` options for this command. Confirm a signed-out browser
+gets the password gate before exposing the HTTPS reverse proxy. Keep the port
+on loopback; for a remote host, use an SSH tunnel during setup.
+
+Existing installations with initialized passwords can start normally. A new
+production database with the default requirement returns 503 until it is
+initialized privately. For an existing database failure, restore the original
+database; do not disable authentication to recover. See
+[Installation](/installation) for the complete setup sequence.
+
 On first run, the server performs a startup scan because there is no existing
 index. Existing libraries keep using the current index on startup; run
 `Scan Library` from Settings whenever you want to refresh the library after
@@ -138,8 +177,7 @@ DERIVATIVE_MODE=lazy
 That combination keeps image detail pages on originals and generates missing
 thumbnails or previews only when they are first requested.
 
-If you plan to expose Foldergram on a homelab or LAN, open Settings after the
-first load and enable the admin password. From there, you can keep admin-only
+After private password initialization, you can keep admin-only
 access, add a separate viewer password, or switch to public browse mode.
 
 Admins can also share one folder at a time from a folder page. Open a folder,
@@ -215,9 +253,9 @@ pnpm build:docs
 - Feed, folder pages, likes, explore, and moments read from SQLite, not directly from disk.
 - Thumbnails are generated under `data/thumbnails`.
 - Previews are generated under `data/previews`.
-- In the default unprotected state, Settings is available immediately.
+- Settings is available during the private bootstrap or with an explicit healthy passwordless opt-out. Production requires initialized authentication by default.
 - After access protection is enabled, only admin sessions can open Settings or run scan and rebuild actions. Viewer and public sessions stay browse-only.
-- Folder share links and folder passwords are read-only and scoped to one folder; they do not grant Settings, Home feed, Reels, Places, Likes, Collections, Trash, or original-file downloads.
+- Folder share links and folder passwords are read-only and scoped to one folder, including its original downloads; they do not grant Settings, Home feed, Reels, Places, Likes, Collections, or Trash.
 
 If nothing appears, start with [Troubleshooting](/troubleshooting).
 
