@@ -10,6 +10,9 @@
       <p class="m-0 text-muted">{{ t('app.authLoading.description') }}</p>
     </div>
   </section>
+  <div v-else-if="sharedAlbumRedirectPending" class="min-h-screen grid place-items-center bg-bg text-muted" role="status" data-album-state="loading">
+    {{ t('share.loadingAlbum') }}
+  </div>
   <template v-else-if="isPublicShareRoute">
     <RouterView :route="displayRoute" />
     <div v-if="showImageModal" class="app__image-modal-layer app__image-modal-layer--cinema" @click.self="closeImageModal">
@@ -36,6 +39,7 @@ import { RouterView, useRoute, useRouter, type RouteLocationNormalizedLoaded } f
 import AppShell from './components/AppShell.vue';
 import AdminUnlockDialog from './components/AdminUnlockDialog.vue';
 import EmailSignIn from './components/EmailSignIn.vue';
+import { useSharedAlbumRedirect } from './composables/useSharedAlbumRedirect';
 import AuthGate from './components/AuthGate.vue';
 import { canAccessRoute, routeAllowsPublicShareAccess } from './router';
 import SharedPostView from './views/SharedPostView.vue';
@@ -67,6 +71,7 @@ const momentsStore = useMomentsStore();
 const reelsStore = useReelsStore();
 const route = useRoute();
 const router = useRouter();
+const sharedAlbumRedirectPending = useSharedAlbumRedirect();
 const trashStore = useTrashStore();
 const viewerStore = useViewerStore();
 const shareStore = useShareStore();

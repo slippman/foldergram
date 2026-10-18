@@ -42,7 +42,11 @@ browser-local. Comments and per-album library visibility are separate features;
 this first email-access implementation grants the existing full-library view.
 
 Album share links and album passwords continue to grant their existing scoped
-access without email sign-in. Email accounts do not grant administration rights.
+access without email sign-in. Already signed-in accounts opening a shared album
+automatically move to its regular album page, with normal navigation, after the
+protected album API confirms access. Scroll view and selected-photo position are
+preserved. Guests and accounts denied regular album access keep the scoped share
+flow; a share password alone never triggers the jump. Email accounts do not grant administration rights.
 The owner's existing admin password remains available on the dedicated administrator sign-in page.
 
 ## Resend setup

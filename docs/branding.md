@@ -74,7 +74,7 @@ may need different CSS; review these rules as well as changing the image.
 
 For a full rename, also review:
 
-- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: visible Cinema name in album and feed headers, beside the account control.
+- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: small, muted Cinema name beneath the album/feed title on the left; account controls remain on the right. The local static preview uses the same header CSS.
 - `client/src/utils/document-title.ts`: browser title wording.
 - `client/src/locales/en.json`, `es.json`, `zh.json`: email sign-in name and copy.
 - `server/src/routes/share-preview.ts`: initial and shared-album browser titles.
