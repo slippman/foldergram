@@ -30,7 +30,10 @@ Signing out invalidates only that browser's session. There is no Ban/Unban contr
 in this interface. Existing legacy blocked records remain blocked until deleted.
 
 Account likes persist on the server and are separate for each person. Existing
-admin/shared likes are retained separately. Cinema feed and album headers have an
+admin/shared likes are retained separately. Permanently deleting a post removes
+its personal likes. Rebuilding the library index clears personal and shared likes
+before reusing post IDs; account identities and sessions remain intact.
+Cinema feed and album headers have an
 account avatar that opens the current user name and sign-out action. The More
 menu also identifies the current account. Email-mode guests on shared Cinema
 albums see a Sign in button. Avatars use local initials; no email address is sent

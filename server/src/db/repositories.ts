@@ -784,6 +784,7 @@ export const folderRepository = {
   },
 
   delete(id: number): void {
+    database.prepare('DELETE FROM user_likes WHERE post_id IN (SELECT id FROM posts WHERE folder_id = ?)').run(id);
     database.prepare('DELETE FROM folders WHERE id = ?').run(id);
   },
 
@@ -1356,6 +1357,7 @@ export const postRepository = {
       }
 
       database.prepare('DELETE FROM likes WHERE post_id = ?').run(post.id);
+      database.prepare('DELETE FROM user_likes WHERE post_id = ?').run(post.id);
       database.prepare('DELETE FROM collection_items WHERE post_id = ?').run(post.id);
       database.prepare('DELETE FROM post_items WHERE post_id = ?').run(post.id);
       database.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
@@ -2111,6 +2113,7 @@ export const postRepository = {
     }
 
     const folder = folderRepository.getById(post.folder_id);
+    database.prepare('DELETE FROM user_likes WHERE post_id = ?').run(post.id);
     database.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
     return {
       id: post.id,
@@ -3813,6 +3816,7 @@ export const maintenanceRepository = {
       BEGIN;
       UPDATE folders SET avatar_image_id = NULL;
       DELETE FROM likes;
+      DELETE FROM user_likes;
       DELETE FROM collection_items;
       DELETE FROM collections WHERE is_default = 0;
       DELETE FROM folder_share_passwords;

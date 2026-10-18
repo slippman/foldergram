@@ -7,10 +7,61 @@ import { createEmailSignInService } from '../src/services/email-sign-in-service.
 const state = vi.hoisted(() => ({ db: null as DatabaseSync | null }));
 vi.mock('../src/db/database.js', () => ({ databaseManager: { get connection() { return state.db!; } } }));
 import { emailAccountRepository as accounts } from '../src/db/email-account-repository.js';
+import { folderRepository, postRepository, maintenanceRepository, likeRepository } from '../src/db/repositories.js';
+import { withRequestUser } from '../src/services/request-user.js';
 
 describe('email account persistence', () => {
   beforeEach(() => { state.db = new DatabaseSync(':memory:'); state.db.exec(schemaSql); });
   afterEach(() => state.db?.close());
+
+  function postIn(folderName: string, filename: string) {
+    const folder = folderRepository.upsert({ slug: folderName, name: folderName, folderPath: folderName });
+    return postRepository.upsertPost({ folderId: folder.id, sourcePath: `${folderName}/${filename}`, postType: 'single', sortTimestamp: 1 });
+  }
+
+  it.each(['deletePost', 'deletePostAndImages'] as const)('cleans every account’s personal likes through %s without FK cascades', method => {
+    state.db!.exec('PRAGMA foreign_keys = OFF');
+    const first = accounts.approve('first@example.com', 'First');
+    const second = accounts.approve('second@example.com', 'Second');
+    const removed = postIn('album', 'removed.jpg');
+    const kept = postIn('other', 'kept.jpg');
+    for (const user of [first, second]) withRequestUser(user.id, () => {
+      likeRepository.upsert(removed.id); likeRepository.upsert(kept.id);
+    });
+    expect(postRepository[method](removed.id)?.id).toBe(removed.id);
+    for (const user of [first, second]) withRequestUser(user.id, () => {
+      expect(likeRepository.getByPostId(removed.id)).toBeUndefined();
+      expect(likeRepository.getByPostId(kept.id)).toBeDefined();
+    });
+  });
+
+  it('cleans personal likes for a deleted folder without touching other albums when FK cascades are off', () => {
+    state.db!.exec('PRAGMA foreign_keys = OFF');
+    const user = accounts.approve('family@example.com', 'Family');
+    const removed = postIn('removed', 'photo.jpg');
+    const kept = postIn('kept', 'photo.jpg');
+    withRequestUser(user.id, () => {
+      likeRepository.upsert(removed.id); likeRepository.upsert(kept.id);
+      folderRepository.delete(removed.folder_id);
+      expect(likeRepository.getByPostId(removed.id)).toBeUndefined();
+      expect(likeRepository.getByPostId(kept.id)).toBeDefined();
+    });
+  });
+
+  it('does not attach personal likes to reused post IDs after an index reset with FK cascades off', () => {
+    state.db!.exec('PRAGMA foreign_keys = OFF');
+    const user = accounts.approve('family@example.com', 'Family');
+    accounts.createSignInToken(user.id, 'link', Date.now() + 60_000);
+    accounts.redeem('link', 'session', 1, Date.now() + 60_000);
+    const oldPost = postIn('old', 'old.jpg');
+    withRequestUser(user.id, () => likeRepository.upsert(oldPost.id));
+    maintenanceRepository.resetLibraryIndex();
+    const newPost = postIn('new', 'unrelated.jpg');
+    expect(newPost.id).toBe(oldPost.id);
+    withRequestUser(user.id, () => expect(likeRepository.getByPostId(newPost.id)).toBeUndefined());
+    expect(accounts.getSessionUser('session', 1)?.id).toBe(user.id);
+    expect(accounts.getById(user.id)?.email).toBe(user.email);
+  });
 
   it('migrates existing approvals and revoked identities without losing their data', () => {
     const legacy = new DatabaseSync(':memory:');

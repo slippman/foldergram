@@ -10,6 +10,7 @@
 
 ### Bug fixes
 
+- Deleted photos and library index resets clear personal likes so they cannot attach to unrelated photos.
 - Sign-in links last 24 hours, and accounts show the part of the email address before @ while screen names are disabled.
 - Email sign-in shows how long to wait when a request is rate-limited instead of suggesting an email was sent. Link request limits apply only in production.
 
