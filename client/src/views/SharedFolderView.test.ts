@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import SharedFolderView from './SharedFolderView.vue';
+import { useAuthStore } from '../stores/auth';
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
@@ -22,6 +23,7 @@ describe('SharedFolderView', () => {
     setActivePinia(createPinia());
   });
   it('preserves the original Classic shared album layout', async () => {
+    const auth = useAuthStore(); auth.enabled = true; auth.authenticated = false; auth.accessMode = 'email';
     const { useShareStore } = await import('../stores/share');
     const store = useShareStore();
     vi.spyOn(store, 'loadAccess').mockImplementation(async () => {
@@ -42,6 +44,7 @@ describe('SharedFolderView', () => {
     });
     await flushPromises();
     expect(wrapper.find('.album-header').exists()).toBe(false);
+    expect(wrapper.find('.cinema-account').exists()).toBe(false);
     expect(wrapper.find('.album-attribution').exists()).toBe(false);
     expect(wrapper.get('header').text()).toBe('Foldergram');
     expect(wrapper.get('main').classes()).toContain('px-5');
@@ -51,6 +54,7 @@ describe('SharedFolderView', () => {
   });
 
   it('uses the shared album theme without loading global settings', async () => {
+    const auth = useAuthStore(); auth.enabled = true; auth.authenticated = false; auth.accessMode = 'email';
     const { useShareStore } = await import('../stores/share');
     const store = useShareStore();
     vi.spyOn(store, 'loadAccess').mockImplementation(async () => {
@@ -72,6 +76,7 @@ describe('SharedFolderView', () => {
     expect(wrapper.findComponent({ name: 'FolderGrid' }).props('sharedSlug')).toBe('travel-2024');
     expect(wrapper.findComponent({ name: 'InfiniteLoader' }).props('showComplete')).toBe(false);
     expect(wrapper.find('.album-header').exists()).toBe(true);
+    expect(wrapper.find('.cinema-account').exists()).toBe(true);
     expect(wrapper.text()).toContain('UnReeled Photos');
     expect(wrapper.find('.shared-album-brand__logo').exists()).toBe(false);
   });

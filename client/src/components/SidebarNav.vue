@@ -323,6 +323,7 @@
           v-if="moreMenuOpen"
           class="absolute bottom-[calc(100%+0.35rem)] left-0 w-[18rem] overflow-hidden rounded-[1.55rem] border border-border bg-[color-mix(in_srgb,var(--surface)_96%,var(--bg)_4%)] shadow-[0_28px_70px_rgba(0,0,0,0.24)]"
         >
+          <AccountIdentity v-if="cinema && authStore.enabled && authStore.authenticated" />
           <RouterLink
             v-if="authStore.canDeleteMedia"
             class="flex items-center gap-[0.95rem] px-[1.2rem] py-[1rem] text-[0.98rem] text-text transition-colors duration-150 hover:bg-surface-hover"
@@ -439,8 +440,9 @@
   import { selectSidebarFolders } from "../utils/sidebar-folders"
   import Avatar from "./Avatar.vue"
   import BrandMark from "./BrandMark.vue"
+  import AccountIdentity from "./AccountIdentity.vue"
 
-  defineProps<{ expanded: boolean }>()
+  defineProps<{ expanded: boolean; cinema?: boolean }>()
   const emit = defineEmits<{ 'update:expanded': [value: boolean] }>()
 
   const { t } = useI18n()

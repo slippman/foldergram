@@ -243,6 +243,7 @@
         
         <!-- CATEGORY: ACCESS -->
         <template v-if="currentCategory === 'access'">
+          <EmailAccessSettings v-if="authStore.accessMode === 'email'" />
           <section class="card grid gap-[1.15rem] p-8">
             <div class="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-start">
               <div>
@@ -362,7 +363,7 @@
               </div>
               
               <!-- Viewer Access -->
-              <div class="grid gap-[0.9rem] rounded-[1.05rem] border border-border p-5">
+              <div v-if="authStore.accessMode !== 'email'" class="grid gap-[0.9rem] rounded-[1.05rem] border border-border p-5">
                 <div class="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-start">
                   <div>
                     <h3 class="m-0 text-[1rem]">{{ t('settings.access.viewer.title') }}</h3>
@@ -1497,6 +1498,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
+import EmailAccessSettings from '../components/EmailAccessSettings.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import {
   fetchAdminStats,

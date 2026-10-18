@@ -8,14 +8,14 @@
       'app-shell--sidebar-expanded': sidebarExpanded,
       'app-shell--explore': isExploreShell,
       'app-shell--reels': isReelsShell,
-      'app-shell--cinema': (route.name === 'folder' && appStore.folderDisplayTheme === 'cinema') || (route.name === 'home' && appStore.feedDisplayTheme === 'cinema')
+      'app-shell--cinema': isCinemaShell
     }"
   >
     <!-- Sidebar: fixed on desktop, hidden on mobile -->
-    <SidebarNav v-model:expanded="sidebarExpanded" class="hidden md:flex fixed top-0 left-0 h-screen z-30" />
+    <SidebarNav v-model:expanded="sidebarExpanded" :cinema="isCinemaShell" class="hidden md:flex fixed top-0 left-0 h-screen z-30" />
     <!-- Content: margin-left matches sidebar width on desktop -->
     <div class="app-shell__content flex flex-1 min-h-screen min-w-0 flex-col">
-      <TopNav />
+      <TopNav :cinema="isCinemaShell" />
       <main
         class="app-shell__main flex-1 min-h-0"
         :class="[
@@ -102,6 +102,7 @@ const appStore = useAppStore();
 const sidebarExpanded = ref(false);
 const route = useRoute();
 const isStandaloneDisplay = ref(false);
+const isCinemaShell = computed(() => (route.name === 'folder' && appStore.folderDisplayTheme === 'cinema') || (route.name === 'home' && appStore.feedDisplayTheme === 'cinema'));
 const isExploreShell = computed(() => route.meta.shell === 'explore');
 const isReelsShell = computed(() => route.meta.shell === 'reels');
 const isImmersiveShell = computed(() => isExploreShell.value || isReelsShell.value);

@@ -17,6 +17,7 @@ const productItems = [
   { text: 'Features', link: '/features' },
   { text: 'Carousel Posts', link: '/carousel-posts' },
   { text: 'Media Processing', link: '/media-processing' },
+  { text: 'Email sign-in', link: '/email-access' },
   { text: 'Security', link: '/security' }
 ];
 

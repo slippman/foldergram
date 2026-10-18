@@ -109,6 +109,7 @@
           </button>
 
           <div v-if="moreMenuOpen" class="mobile-nav__menu">
+            <AccountIdentity v-if="cinema && authStore.enabled && authStore.authenticated" />
             <RouterLink v-if="authStore.canUseSavedItems" custom :to="{ name: 'likes' }" v-slot="{ href, navigate, isActive }">
               <a
                 :href="href"
@@ -224,6 +225,8 @@ import { useCollectionsStore } from '../stores/collections';
 import { useLikesStore } from '../stores/likes';
 import { usePlacesStore } from '../stores/places';
 import BrandMark from './BrandMark.vue';
+import AccountIdentity from './AccountIdentity.vue';
+defineProps<{ cinema?: boolean }>();
 
 const { t } = useI18n();
 const appStore = useAppStore();

@@ -28,7 +28,7 @@
       :root[data-theme="dark"] { --ur-logo-filter: invert(1) contrast(1.05); --ur-logo-blend: screen; }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) { --ur-logo-filter: invert(1) contrast(1.05); --ur-logo-blend: screen; }
-        :root:not([data-theme="light"]).shared-album-entry #fg-splash { background: #0c1014; color: #8a96a9; }
+        :root:not([data-theme="light"]):is(.shared-album-entry, .email-auth-entry) #fg-splash { background: #0c1014; color: #8a96a9; }
       }
       /* ── Splash screen — shown before Vue boots ──────────────────── */
       #fg-splash {
@@ -68,9 +68,9 @@
       }
 
       .fg-splash__album { display: none; }
-      .shared-album-entry #fg-splash { background: var(--bg, #fafafa); color: var(--muted, #666); }
-      .shared-album-entry .fg-splash__ring, .shared-album-entry .fg-splash__logo { display: none; }
-      .shared-album-entry .fg-splash__album { display: flex; flex-direction: column; align-items: center; gap: 1rem; font: 0.95rem Inter, sans-serif; }
+      :is(.shared-album-entry, .email-auth-entry) #fg-splash { background: var(--bg, #fafafa); color: var(--muted, #666); }
+      :is(.shared-album-entry, .email-auth-entry) .fg-splash__ring, :is(.shared-album-entry, .email-auth-entry) .fg-splash__logo { display: none; }
+      :is(.shared-album-entry, .email-auth-entry) .fg-splash__album { display: flex; flex-direction: column; align-items: center; gap: 1rem; font: 0.95rem Inter, sans-serif; }
       .fg-splash__album img { mix-blend-mode: var(--ur-logo-blend, multiply); filter: var(--ur-logo-filter, none); width: 144px; height: 144px; object-fit: contain; background: white; border-radius: 1rem; }
       .fg-splash__album p { margin: 0; }
       .fg-splash__indicator { width: 5rem; height: 3px; border-radius: 2px; background: var(--border, #ddd); overflow: hidden; }

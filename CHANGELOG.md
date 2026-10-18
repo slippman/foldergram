@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### New features
+
+- Invite-only email sign-in through Resend, with 90-day sessions and an access-request inbox with approval, rejection, and account deletion controls, and optional approval or denial from owner notification emails.
+- Email invitations sent directly to recipients and a sign-in/sign-up entry on shared albums. Optional screen names are available for a later rollout and disabled by default.
+- Personal likes saved to each email account across devices.
+
+### Bug fixes
+
+- Sign-in links last 24 hours, and accounts show the part of the email address before @ while screen names are disabled.
+- Email sign-in shows how long to wait when a request is rate-limited instead of suggesting an email was sent. Link request limits apply only in production.
+
 ## 1.2.2-slippman.2.0.0 — 2026-10-17
 
 ### Bug fixes

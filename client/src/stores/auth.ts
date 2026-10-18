@@ -13,6 +13,7 @@ import {
 import type { AuthCapabilities, AuthRole, AuthStatus, LikesMode, ViewerAccessMode } from '../types/api';
 
 interface AuthState {
+  user: AuthStatus['user'] | null;
   ready: boolean;
   loading: boolean;
   unlockDialogOpen: boolean;
@@ -89,6 +90,7 @@ async function clearAppCaches(): Promise<void> {
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
+    user: null,
     ready: false,
     loading: false,
     unlockDialogOpen: false,
@@ -118,10 +120,11 @@ export const useAuthStore = defineStore('auth', {
       state.capabilities.canUseLocalFavorites ||
       state.capabilities.canUseSharedCollections === true ||
       state.capabilities.canUseLocalCollections === true,
-    canUnlockAdmin: (state) => state.enabled && !state.capabilities.canAccessSettings
+    canUnlockAdmin: (state) => state.enabled && state.accessMode !== 'email' && !state.capabilities.canAccessSettings
   },
   actions: {
     applyStatus(status: AuthStatus) {
+      this.user = status.user ?? null;
       this.enabled = status.enabled;
       this.authenticated = status.authenticated;
       this.role = status.role;

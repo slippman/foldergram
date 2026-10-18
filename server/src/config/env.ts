@@ -28,6 +28,12 @@ const envSchema = z.object({
   SCAN_DERIVATIVE_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(4),
   PUBLIC_DEMO_MODE: z.string().optional(),
   CSRF_TRUSTED_ORIGINS: z.string().optional(),
+  EMAIL_SCREEN_NAMES_ENABLED: z.enum(['true', 'false', '1', '0']).default('false'),
+  EMAIL_SIGN_IN_ENABLED: z.enum(['true', 'false', '1', '0']).default('false'),
+  EMAIL_SIGN_IN_ORIGIN: z.preprocess(value => value === '' ? undefined : value, z.string().url().optional()),
+  EMAIL_FROM: z.preprocess(value => value === '' ? undefined : value, z.string().email().optional()),
+  EMAIL_ACCESS_REVIEW_TO: z.preprocess(value => value === '' ? undefined : value, z.string().email().optional()),
+  RESEND_API_KEY: z.preprocess(value => value === '' ? undefined : value, z.string().min(1).optional()),
   AUTH_REQUIRED: z.enum(['true', 'false', '1', '0']).optional(),
   GALLERY_EXCLUDED_FOLDERS: z.string().optional(),
   IMAGE_DETAIL_SOURCE: z.enum(['preview', 'original']).default('preview'),
@@ -39,6 +45,14 @@ const envSchema = z.object({
 
 const parsed = envSchema.parse(process.env);
 const isProduction = parsed.NODE_ENV === 'production';
+if (parsed.EMAIL_SIGN_IN_ORIGIN) {
+  const origin = new URL(parsed.EMAIL_SIGN_IN_ORIGIN);
+  if (origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash ||
+      !['http:', 'https:'].includes(origin.protocol) || (isProduction && origin.protocol !== 'https:')) {
+    throw new Error('EMAIL_SIGN_IN_ORIGIN must be a site origin (HTTPS required in production).');
+  }
+}
+
 const devClientPort = parsed.DEV_CLIENT_PORT ?? 4141;
 const serverPort = isProduction
   ? parsed.SERVER_PORT ?? 4141
@@ -160,6 +174,12 @@ export const appConfig = {
   mediaCacheEnabled: parseBooleanFlag(parsed.MEDIA_CACHE_ENABLED),
   mediaCacheTtlSeconds: parsed.MEDIA_CACHE_TTL_SECONDS,
   csrfTrustedOrigins,
+  emailSignInEnabled: parseBooleanFlag(parsed.EMAIL_SIGN_IN_ENABLED),
+  emailScreenNamesEnabled: parseBooleanFlag(parsed.EMAIL_SCREEN_NAMES_ENABLED),
+  emailSignInOrigin: parsed.EMAIL_SIGN_IN_ORIGIN,
+  emailFrom: parsed.EMAIL_FROM,
+  emailAccessReviewTo: parsed.EMAIL_ACCESS_REVIEW_TO,
+  resendApiKey: parsed.RESEND_API_KEY,
   authRequired: parsed.AUTH_REQUIRED === undefined ? isProduction : parseBooleanFlag(parsed.AUTH_REQUIRED),
   scanDiscoveryConcurrency: parsed.SCAN_DISCOVERY_CONCURRENCY,
   scanDerivativeConcurrency: parsed.SCAN_DERIVATIVE_CONCURRENCY,

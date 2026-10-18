@@ -8,6 +8,12 @@ services:
       DERIVATIVE_MODE: eager
       MEDIA_CACHE_ENABLED: ${MEDIA_CACHE_ENABLED:-false}
       MEDIA_CACHE_TTL_SECONDS: ${MEDIA_CACHE_TTL_SECONDS:-86400}
+      EMAIL_SIGN_IN_ENABLED: ${EMAIL_SIGN_IN_ENABLED:-false}
+      EMAIL_SCREEN_NAMES_ENABLED: ${EMAIL_SCREEN_NAMES_ENABLED:-false}
+      EMAIL_SIGN_IN_ORIGIN: ${EMAIL_SIGN_IN_ORIGIN:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_ACCESS_REVIEW_TO: ${EMAIL_ACCESS_REVIEW_TO:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
       # Optional: skip specific source folders by name or by exact relative path.
       # GALLERY_EXCLUDED_FOLDERS: "@eaDir,thumbnails,Archive/cache"

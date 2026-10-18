@@ -161,3 +161,9 @@ static files from their configured directories.
 ## Carousel verification
 
 Focused coverage lives in `server/test/carousel-posts-feature.test.ts` and `server/test/migration-bootstrap.test.ts`. Fixtures should cover reserved and legacy discovery, natural ordering, mixed media, warnings, the 20-item cap, stable post identity, post-wide mutations, and migration metadata preservation. Run server/client tests plus app and documentation builds before shipping carousel changes.
+
+## Branding reference
+
+The [branding map](./branding.md) lists every UR logo and favicon usage, email
+attachment references, theme styling, and the replacement checklist. Update it
+whenever branding references change.

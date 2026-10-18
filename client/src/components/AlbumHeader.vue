@@ -6,9 +6,9 @@
       </RouterLink>
     </template>
     <template #trailing>
-      <span v-if="$slots.actions" class="album-header__actions"><slot name="actions" /></span>
       <span v-if="showHint" class="album-header__hint">{{ t('share.browseHint') }}</span>
       <span class="album-header__brand">UnReeled Photos</span>
+      <span class="album-header__actions"><slot name="actions" /><CinemaAccountMenu /></span>
     </template>
   </CinemaHeader>
 </template>
@@ -17,6 +17,7 @@
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import CinemaHeader from './CinemaHeader.vue';
+import CinemaAccountMenu from './CinemaAccountMenu.vue';
 defineProps<{ title: string; showHint?: boolean; backTo?: RouteLocationRaw; backLabel?: string; backClass?: string }>();
 const { t } = useI18n();
 </script>

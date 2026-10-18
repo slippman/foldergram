@@ -285,3 +285,26 @@ Foldergram is not attempting to be:
 - a zero-trust network service
 
 The implementation is much closer to a private local gallery with a browser UI.
+
+## Optional email accounts
+
+[Owner-approved email sign-in](./email-access.md) verifies approved visitors through
+24-hour single-use links, with fixed 90-day server-validated sessions and
+immediate account revocation. Unapproved submissions create pending requests without
+sending email. Only the owner can approve or reject them; approval sends a verification
+link and never creates a session directly. Deleting an account removes its sessions,
+unused credentials and personal likes. The address can request access again as a
+new account; old sessions and credentials never revive. Legacy blocked records
+remain blocked until deleted.
+Accounts have no admin permissions. Personal likes
+are isolated by authenticated account identity. The existing admin password and
+scoped album links remain available. Email mode must be explicitly enabled and
+configured; it suppresses legacy public/viewer-password library access.
+
+Optional owner notification emails contain 24-hour, single-use review credentials
+scoped to a single pending request. Opening a link only inspects the request;
+confirming approval or denial requires a CSRF-checked POST. Tokens stay in URL
+fragments until the client removes them, are stored only as hashes, and confer no
+admin session. Changing the owner inbox, origin or admin password invalidates them.
+The intended owner must keep these links private. Denial clears the pending
+request; Delete user removes an existing account and its personal likes.

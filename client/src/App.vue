@@ -16,6 +16,8 @@
       <SharedPostView :slug="String(route.params.slug ?? '')" :id="String(route.params.id ?? '')" modal @close="closeImageModal" />
     </div>
   </template>
+  <RouterView v-else-if="route.meta.publicAuth === true" />
+  <EmailSignIn v-else-if="authStore.requiresLogin && authStore.accessMode === 'email'" data-album-state="settled" data-album-theme="classic" />
   <AuthGate v-else-if="authStore.requiresLogin" data-album-state="settled" data-album-theme="classic" />
   <AppShell v-else>
     <RouterView :route="displayRoute" />
@@ -33,6 +35,7 @@ import { RouterView, useRoute, useRouter, type RouteLocationNormalizedLoaded } f
 
 import AppShell from './components/AppShell.vue';
 import AdminUnlockDialog from './components/AdminUnlockDialog.vue';
+import EmailSignIn from './components/EmailSignIn.vue';
 import AuthGate from './components/AuthGate.vue';
 import { canAccessRoute, routeAllowsPublicShareAccess } from './router';
 import SharedPostView from './views/SharedPostView.vue';
@@ -121,6 +124,8 @@ const isCinemaPage = computed(() => {
       : shareStore.image?.folderSlug === route.params.slug ? shareStore.image.displayTheme : folderTheme;
     return theme ? theme === 'cinema' : null;
   }
+  // The email front door explicitly uses UR branding, independent of library theme.
+  if (route.meta.publicAuth === true || (authStore.requiresLogin && authStore.accessMode === 'email')) return true;
   if (authStore.requiresLogin) return false;
   if (route.name === 'image') return showImageModal.value ? isCinemaImageModal.value
     : appStore.stats ? appStore.folderDisplayTheme === 'cinema' : null;
@@ -252,8 +257,8 @@ watch(
 );
 
 watch(
-  () => [authStore.accessGranted, authStore.likesMode] as const,
-  async ([accessGranted, likesMode], previous) => {
+  () => [authStore.accessGranted, authStore.likesMode, authStore.user?.id ?? null] as const,
+  async ([accessGranted, likesMode, userId], previous) => {
     const hadAccess = previous?.[0] ?? false;
     const previousLikesMode = previous?.[1] ?? null;
 
@@ -262,7 +267,9 @@ watch(
       return;
     }
 
-    if (!hadAccess || !appStore.stats || likesMode !== previousLikesMode) {
+    const changedIdentity = userId !== (previous?.[2] ?? null);
+    if (changedIdentity) resetProtectedState();
+    if (!hadAccess || !appStore.stats || likesMode !== previousLikesMode || changedIdentity) {
       await loadProtectedState(Boolean(hadAccess));
     }
   },

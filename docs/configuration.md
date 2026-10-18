@@ -38,6 +38,16 @@ yourself.
 | `CSRF_TRUSTED_ORIGINS` | unset | Comma-separated extra browser origins allowed for mutating API requests. Useful behind reverse proxies or HTTPS terminators. |
 | `AUTH_REQUIRED` | `true` in production; `false` in development/test | Require initialized authentication independently of SQLite. Missing/incomplete auth or transient database storage blocks HTTP access with 503. Compose defaults to `true`. |
 
+Email access is opt-in; see [Email sign-in](./email-access.md) for setup and access behavior.
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `EMAIL_SIGN_IN_ENABLED` | `false` | Use approved email accounts instead of legacy viewer-password/public access. Requires initialized admin authentication. |
+| `EMAIL_SIGN_IN_ORIGIN` | unset | Trusted site origin used in emailed links. HTTPS required in production; no path/query/credentials. |
+| `EMAIL_ACCESS_REVIEW_TO` | unset | Optional owner inbox for private, one-use access-request approval/denial links. No admin login needed to confirm a decision. |
+| `EMAIL_FROM` | unset | Sender email address on a domain verified in Resend. |
+| `RESEND_API_KEY` | unset | Private sending-only Resend API key. Never expose to the client or commit it. |
+
 ## Database migrations
 
 Foldergram stores the app database at `<DB_DIR>/gallery.sqlite`.
@@ -477,3 +487,9 @@ link. The browser redirects to the full album address when opened. Short codes
 remain stable when an album slug changes. They use the existing recovery key and
 need no additional database table or external URL-shortening service. Like the
 original full link, a short link grants album access to anyone who has it.
+
+
+`EMAIL_SCREEN_NAMES_ENABLED` defaults to `false` for the initial email-access
+rollout. Set it to `true` in a later phase to offer optional screen names on first
+sign-in. Existing chosen names remain stored when disabled. See
+[Email sign-in](./email-access.md) for rollout behavior.
