@@ -68,6 +68,19 @@ describe.sequential('invite-only email sign-in', () => {
     return { cookie: cookieFrom(response.headers, 'foldergram_email_session'), token, response };
   }
 
+  it('rejects password disabling explicitly in email mode even when AUTH_REQUIRED is false', async () => {
+    const { appConfig } = await import('../src/config/env.js');
+    const previous = appConfig.authRequired;
+    appConfig.authRequired = false;
+    try {
+      const response = await request(app, 'DELETE', '/api/auth/password', { ...intent, cookie: adminCookie }, { currentPassword: 'admin-password-123' });
+      expect(response.status).toBe(409);
+      expect(response.body.message).toBe('Password protection is required by server configuration.');
+      expect(auth.isEnabled()).toBe(true);
+      expect(auth.verifyAdminPassword('admin-password-123')).toBe(true);
+    } finally { appConfig.authRequired = previous; }
+  });
+
   it('sends a verification email directly from an admin invitation without an intermediate acceptance link', async () => {
     const endpoint = '/api/admin/users/invitations/send';
     expect((await request(app, 'POST', endpoint, intent, { email: 'direct@example.com' })).status).toBe(401);

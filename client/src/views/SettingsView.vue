@@ -450,7 +450,7 @@
           </section>
 
           <!-- Danger Zone -->
-          <div v-if="authStore.enabled" class="border border-[rgba(214,48,49,0.3)] rounded-[1.05rem] overflow-hidden">
+          <div v-if="authStore.enabled && authStore.accessMode !== 'email'" class="border border-[rgba(214,48,49,0.3)] rounded-[1.05rem] overflow-hidden">
             <div class="bg-[rgba(214,48,49,0.04)] px-6 py-4 border-b border-[rgba(214,48,49,0.1)]">
               <h3 class="m-0 text-[1rem] text-[#c0392b] font-bold">{{ t('settings.access.danger.title') }}</h3>
             </div>
