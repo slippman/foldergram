@@ -185,6 +185,12 @@ export function updateFolderProfile(slug: string, name: string, description: str
   });
 }
 
+export function updateFolderShareMode(slug: string, shareMode: 'library' | 'link-only') {
+  return requestJson<FolderSummary>(`/api/admin/folders/${encodeURIComponent(slug)}/share-mode`, {
+    method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ shareMode })
+  });
+}
+
 export function setFolderCover(slug: string, imageId: number) {
   return requestJson<{ ok: boolean }>(`/api/folders/${encodeURIComponent(slug)}/cover`, {
     method: 'POST',

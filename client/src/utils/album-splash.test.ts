@@ -36,6 +36,33 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('album startup splash', () => {
+  it('keeps the email splash until token inspection settles', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<section data-album-theme="cinema" data-album-state="loading">Checking link</section>';
+    start(); await flush();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    app.querySelector('section')!.setAttribute('data-album-state', 'settled');
+    await flush();
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.querySelector('#fg-splash')).toBeNull();
+  });
+
+  it('applies the saved email theme before application CSS and marks sign-in as a readiness-gated entry', () => {
+    const initial = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)][0][1];
+    window.history.replaceState({}, '', '/signin#token=test');
+    window.localStorage.setItem('foldergram-theme', 'dark');
+    document.documentElement.classList.remove('album-entry', 'shared-album-entry');
+    new Function(initial)();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.classList.contains('album-entry')).toBe(true);
+    expect(document.documentElement.classList.contains('email-auth-entry')).toBe(true);
+    document.documentElement.classList.remove('email-auth-entry');
+    delete document.documentElement.dataset.theme;
+    window.localStorage.removeItem('foldergram-theme');
+    window.history.replaceState({}, '', '/');
+  });
+
   it('keeps the initial UR splash through unknown preferences and post loading', async () => {
     document.documentElement.classList.add('shared-album-entry');
     const app = document.getElementById('app')!;

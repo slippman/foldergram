@@ -1,3 +1,4 @@
+import { canReadLinkOnlyAlbums } from '../services/album-access-context.js';
 import { getRequestUserId } from '../services/request-user.js';
 import { databaseManager } from './database.js';
 import { SHARE_SESSION_SECRET_SETTING_KEY } from '../constants/app-setting-keys.js';
@@ -58,13 +59,15 @@ const DEFAULT_COLLECTION_SLUG = 'saved';
 const DEFAULT_COLLECTION_NAME = 'Saved';
 const COVER_FILENAMES = ['cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp', 'cover.avif', 'cover.gif'] as const;
 const COVER_FILENAME_SQL = COVER_FILENAMES.map((name) => `'${name}'`).join(', ');
-const NORMAL_FOLDER_ROLE_SQL = "folders.role = 'normal'";
-const NORMAL_FOLDER_ID_SUBQUERY_SQL = "SELECT id FROM folders WHERE role = 'normal'";
+function normalFolderRoleSql(): string {
+  return "folders.role = 'normal'" + (canReadLinkOnlyAlbums() ? '' : " AND folders.share_mode = 'library'");
+}
+function normalFolderIdsSql(): string {
+  return "SELECT id FROM folders WHERE role = 'normal'" + (canReadLinkOnlyAlbums() ? '' : " AND share_mode = 'library'");
+}
 
-const VISIBLE_IMAGE_WHERE_SQL =
-  `images.is_deleted = 0 AND images.is_trashed = 0 AND LOWER(images.filename) NOT IN (${COVER_FILENAME_SQL}) AND ${NORMAL_FOLDER_ROLE_SQL}`;
-const VISIBLE_IMAGE_WHERE_UNSCOPED_SQL =
-  `is_deleted = 0 AND is_trashed = 0 AND LOWER(filename) NOT IN (${COVER_FILENAME_SQL}) AND folder_id IN (${NORMAL_FOLDER_ID_SUBQUERY_SQL})`;
+function visibleImageWhereSql(): string { return `images.is_deleted = 0 AND images.is_trashed = 0 AND LOWER(images.filename) NOT IN (${COVER_FILENAME_SQL}) AND ${normalFolderRoleSql()}`; }
+function visibleImageWhereUnscopedSql(): string { return `is_deleted = 0 AND is_trashed = 0 AND LOWER(filename) NOT IN (${COVER_FILENAME_SQL}) AND folder_id IN (${normalFolderIdsSql()})`; }
 
 const NOT_EXPLICIT_FOLDER_COVER_SQL =
   `NOT EXISTS (` +
@@ -76,10 +79,8 @@ const NOT_EXPLICIT_FOLDER_COVER_SQL =
   `AND LOWER(cover_images.filename) IN (${COVER_FILENAME_SQL})` +
   `)`;
 
-const VISIBLE_POST_WHERE_SQL =
-  `posts.is_deleted = 0 AND posts.is_trashed = 0 AND ${NORMAL_FOLDER_ROLE_SQL} AND ${NOT_EXPLICIT_FOLDER_COVER_SQL}`;
-const VISIBLE_POST_WHERE_UNSCOPED_SQL =
-  `is_deleted = 0 AND is_trashed = 0 AND folder_id IN (${NORMAL_FOLDER_ID_SUBQUERY_SQL}) AND ${NOT_EXPLICIT_FOLDER_COVER_SQL}`;
+function visiblePostWhereSql(): string { return `posts.is_deleted = 0 AND posts.is_trashed = 0 AND ${normalFolderRoleSql()} AND ${NOT_EXPLICIT_FOLDER_COVER_SQL}`; }
+function visiblePostWhereUnscopedSql(): string { return `is_deleted = 0 AND is_trashed = 0 AND folder_id IN (${normalFolderIdsSql()}) AND ${NOT_EXPLICIT_FOLDER_COVER_SQL}`; }
 
 const STORY_IMAGE_WHERE_SQL = 'images.is_deleted = 0 AND images.is_trashed = 0';
 const STORY_IMAGE_WHERE_UNSCOPED_SQL = 'is_deleted = 0 AND is_trashed = 0';
@@ -627,7 +628,7 @@ export const folderRepository = {
   },
 
   getNormalBySlug(slug: string): FolderRecord | undefined {
-    return database.prepare("SELECT * FROM folders WHERE slug = ? AND role = 'normal'").get(slug) as FolderRecord | undefined;
+    return database.prepare(`SELECT * FROM folders WHERE slug = ? AND ${normalFolderRoleSql()}`).get(slug) as FolderRecord | undefined;
   },
 
   getAllSummaries(): FolderSummaryRecord[] {
@@ -636,7 +637,7 @@ export const folderRepository = {
         `
         SELECT * FROM (
           ${FOLDER_SUMMARY_SELECT_SQL}
-          WHERE folders.role = 'normal'
+          WHERE ${normalFolderRoleSql()}
         ) AS summaries
         WHERE post_count > 0 OR summary_avatar_image_id IS NOT NULL
         ORDER BY latest_image_mtime_ms DESC, name COLLATE NOCASE ASC, folder_path COLLATE NOCASE ASC
@@ -664,7 +665,7 @@ export const folderRepository = {
       .prepare(
         `
         ${FOLDER_SUMMARY_SELECT_SQL}
-        WHERE folders.slug = ? AND folders.role = 'normal'
+        WHERE folders.slug = ? AND ${normalFolderRoleSql()}
         `
       )
       .get(slug) as FolderSummaryRecord | undefined;
@@ -740,7 +741,7 @@ export const folderRepository = {
             `
             SELECT COUNT(*) AS count
             FROM folders
-            WHERE folders.role = 'normal'
+            WHERE ${normalFolderRoleSql()}
               AND (
                 EXISTS (
                   SELECT 1
@@ -750,7 +751,7 @@ export const folderRepository = {
                 OR EXISTS (
                   SELECT 1
                   FROM images
-                  WHERE images.folder_id = folders.id AND ${VISIBLE_IMAGE_WHERE_UNSCOPED_SQL}
+                  WHERE images.folder_id = folders.id AND ${visibleImageWhereUnscopedSql()}
                 )
               )
             `
@@ -771,6 +772,10 @@ export const folderRepository = {
       imageId,
       source
     );
+  },
+
+  setShareMode(slug: string, mode: 'library' | 'link-only'): void {
+    database.prepare("UPDATE folders SET share_mode = ?, updated_at = ? WHERE slug = ? AND role = 'normal'").run(mode, nowIso(), slug);
   },
 
   updateMetadata(slug: string, name: string, description: string | null): FolderRecord | undefined {
@@ -919,7 +924,7 @@ export const placeRepository = {
         FROM places
         INNER JOIN posts ON posts.place_id = places.id
         INNER JOIN folders ON folders.id = posts.folder_id
-        WHERE ${VISIBLE_POST_WHERE_SQL}
+        WHERE ${visiblePostWhereSql()}
         GROUP BY places.id
         ORDER BY post_count DESC, places.display_name COLLATE NOCASE ASC
         `
@@ -1020,7 +1025,7 @@ export const placeRepository = {
               INNER JOIN folders ON folders.id = posts.folder_id
               INNER JOIN post_items pi ON pi.post_id = posts.id
               INNER JOIN images ON images.id = pi.image_id
-              WHERE posts.place_id = ? AND ${VISIBLE_POST_WHERE_SQL} AND images.media_type = ?
+              WHERE posts.place_id = ? AND ${visiblePostWhereSql()} AND images.media_type = ?
               `
             )
             .get(placeId, mediaType) as { count: number }
@@ -1035,7 +1040,7 @@ export const placeRepository = {
             SELECT COUNT(*) AS count
             FROM posts
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE posts.place_id = ? AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE posts.place_id = ? AND ${visiblePostWhereSql()}
             `
           )
           .get(placeId) as { count: number }
@@ -1482,7 +1487,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
       ORDER BY posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
       `
@@ -1493,7 +1498,7 @@ export const postRepository = {
 
   countFeed(): number {
     return Number(
-      (database.prepare(`SELECT COUNT(*) AS count FROM posts WHERE ${VISIBLE_POST_WHERE_UNSCOPED_SQL}`).get() as { count: number }).count
+      (database.prepare(`SELECT COUNT(*) AS count FROM posts WHERE ${visiblePostWhereUnscopedSql()}`).get() as { count: number }).count
     );
   },
 
@@ -1504,13 +1509,13 @@ export const postRepository = {
        INNER JOIN posts ON posts.id = post_items.post_id
        WHERE posts.is_deleted = 0
          AND posts.is_trashed = 0
-         AND posts.folder_id IN (${NORMAL_FOLDER_ID_SUBQUERY_SQL})`
+         AND posts.folder_id IN (${normalFolderIdsSql()})`
     ).get() as { count: number }).count);
   },
 
   countVisibleCarousels(): number {
     return Number((database.prepare(
-      `SELECT COUNT(*) AS count FROM posts WHERE ${VISIBLE_POST_WHERE_UNSCOPED_SQL} AND post_type = 'carousel'`
+      `SELECT COUNT(*) AS count FROM posts WHERE ${visiblePostWhereUnscopedSql()} AND post_type = 'carousel'`
     ).get() as { count: number }).count);
   },
 
@@ -1522,7 +1527,7 @@ export const postRepository = {
        INNER JOIN images ON images.id = post_items.image_id
        WHERE posts.is_deleted = 0
          AND posts.is_trashed = 0
-         AND posts.folder_id IN (${NORMAL_FOLDER_ID_SUBQUERY_SQL})
+         AND posts.folder_id IN (${normalFolderIdsSql()})
          AND posts.post_type = 'single'
          AND images.media_type = 'video'`
     ).get() as { count: number }).count);
@@ -1541,7 +1546,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE posts.folder_id = ? AND ${VISIBLE_POST_WHERE_SQL}${mediaTypeClause}
+      WHERE posts.folder_id = ? AND ${visiblePostWhereSql()}${mediaTypeClause}
       ORDER BY ${orderBySql}
       LIMIT ? OFFSET ?
       `
@@ -1562,7 +1567,7 @@ export const postRepository = {
             INNER JOIN folders ON folders.id = posts.folder_id
             JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
             JOIN images ON images.id = post_items.image_id
-            WHERE posts.folder_id = ? AND ${VISIBLE_POST_WHERE_SQL}${mediaTypeClause}
+            WHERE posts.folder_id = ? AND ${visiblePostWhereSql()}${mediaTypeClause}
             `
           )
           .get(...(mediaType ? [folderId, mediaType] : [folderId])) as { count: number }
@@ -1574,7 +1579,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
       ORDER BY ${EFFECTIVE_FEED_TIME_SQL} DESC, posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
       `
@@ -1587,7 +1592,7 @@ export const postRepository = {
     return Number(
       (
         database
-          .prepare(`SELECT COUNT(*) AS count FROM posts WHERE ${VISIBLE_POST_WHERE_UNSCOPED_SQL} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?`)
+          .prepare(`SELECT COUNT(*) AS count FROM posts WHERE ${visiblePostWhereUnscopedSql()} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?`)
           .get(cutoffTimestamp) as { count: number }
       ).count
     );
@@ -1598,7 +1603,7 @@ export const postRepository = {
       `
       ${basePostSelectSql()}
       LEFT JOIN ${likesReadSql()} AS likes ON likes.post_id = posts.id
-      WHERE ${VISIBLE_POST_WHERE_SQL} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
+      WHERE ${visiblePostWhereSql()} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
       ORDER BY
         CASE WHEN likes.post_id IS NULL THEN 0 ELSE 1 END DESC,
         ${EFFECTIVE_FEED_TIME_SQL} DESC,
@@ -1616,7 +1621,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
       ORDER BY ABS(((posts.id * 1103515245) + (? * 1013904223)) % 2147483647), posts.id DESC
       LIMIT ? OFFSET ?
       `
@@ -1662,7 +1667,7 @@ export const postRepository = {
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
       LEFT JOIN ${likesReadSql()} AS likes ON likes.post_id = posts.id
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
         AND posts.post_type = 'single'
         AND images.media_type = 'video'
         AND LOWER(images.filename) NOT IN (${COVER_FILENAME_SQL})
@@ -1692,7 +1697,7 @@ export const postRepository = {
         INNER JOIN folders ON folders.id = posts.folder_id
         JOIN post_items ON post_items.post_id = posts.id
         JOIN images ON images.id = post_items.image_id
-        WHERE ${VISIBLE_POST_WHERE_SQL} AND ${mediaSearch.whereSql}
+        WHERE ${visiblePostWhereSql()} AND ${mediaSearch.whereSql}
         GROUP BY posts.id
       ) AS search_matches
       JOIN (
@@ -1722,7 +1727,7 @@ export const postRepository = {
             INNER JOIN folders ON folders.id = posts.folder_id
             JOIN post_items ON post_items.post_id = posts.id
             JOIN images ON images.id = post_items.image_id
-            WHERE ${VISIBLE_POST_WHERE_SQL} AND ${mediaSearch.whereSql}
+            WHERE ${visiblePostWhereSql()} AND ${mediaSearch.whereSql}
             `
           )
           .get(...mediaSearch.whereParams) as { count: number }
@@ -1743,7 +1748,7 @@ export const postRepository = {
             `
             SELECT COUNT(*) AS count
             FROM posts
-            WHERE ${VISIBLE_POST_WHERE_UNSCOPED_SQL}
+            WHERE ${visiblePostWhereUnscopedSql()}
               AND strftime('%m-%d', ${EFFECTIVE_FEED_TIME_SQL} / 1000, 'unixepoch', 'localtime') IN (${placeholders})
               AND CAST(strftime('%Y', ${EFFECTIVE_FEED_TIME_SQL} / 1000, 'unixepoch', 'localtime') AS INTEGER) < ?
             `
@@ -1764,7 +1769,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
         AND strftime('%m-%d', ${EFFECTIVE_FEED_TIME_SQL} / 1000, 'unixepoch', 'localtime') IN (${placeholders})
         AND CAST(strftime('%Y', ${EFFECTIVE_FEED_TIME_SQL} / 1000, 'unixepoch', 'localtime') AS INTEGER) < ?
       ORDER BY ${EFFECTIVE_FEED_TIME_SQL} DESC, posts.sort_timestamp DESC, posts.id DESC
@@ -1783,7 +1788,7 @@ export const postRepository = {
             `
             SELECT COUNT(*) AS count
             FROM posts
-            WHERE ${VISIBLE_POST_WHERE_UNSCOPED_SQL}
+            WHERE ${visiblePostWhereUnscopedSql()}
               AND ${EFFECTIVE_FEED_TIME_SQL} BETWEEN ? AND ?
             `
           )
@@ -1798,7 +1803,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
         AND ${EFFECTIVE_FEED_TIME_SQL} BETWEEN ? AND ?
       ORDER BY ${EFFECTIVE_FEED_TIME_SQL} DESC, posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
@@ -1813,7 +1818,7 @@ export const postRepository = {
     const posts = database.prepare(
       `
       ${basePostSelectSql()}
-      WHERE posts.place_id = ? AND ${VISIBLE_POST_WHERE_SQL}
+      WHERE posts.place_id = ? AND ${visiblePostWhereSql()}
       ORDER BY posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
       `
@@ -1928,7 +1933,7 @@ export const postRepository = {
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
-      WHERE posts.id = ? AND posts.is_deleted = 0 AND posts.is_trashed = 0 AND ${NORMAL_FOLDER_ROLE_SQL}
+      WHERE posts.id = ? AND posts.is_deleted = 0 AND posts.is_trashed = 0 AND ${normalFolderRoleSql()}
       `
     ).get(resolvedId) as (Omit<PostDetail, 'nextPostId' | 'previousPostId' | 'nextImageId' | 'previousImageId' | 'exif' | 'mediaItems' | 'itemCount'> & { originalUrl: string; exifJson: string | null }) | undefined;
 
@@ -1943,7 +1948,7 @@ export const postRepository = {
       `
       SELECT id
       FROM posts
-      WHERE folder_id = ? AND ${VISIBLE_POST_WHERE_UNSCOPED_SQL}
+      WHERE folder_id = ? AND ${visiblePostWhereUnscopedSql()}
         AND ${nextComparisonSql}
       ORDER BY ${nextOrderSql}
       LIMIT 1
@@ -1954,7 +1959,7 @@ export const postRepository = {
       `
       SELECT id
       FROM posts
-      WHERE folder_id = ? AND ${VISIBLE_POST_WHERE_UNSCOPED_SQL}
+      WHERE folder_id = ? AND ${visiblePostWhereUnscopedSql()}
         AND ${previousComparisonSql}
       ORDER BY ${previousOrderSql}
       LIMIT 1
@@ -2376,7 +2381,7 @@ export const imageRepository = {
       return Number(
         (
           database
-            .prepare(`SELECT COUNT(*) AS count FROM images WHERE ${VISIBLE_IMAGE_WHERE_UNSCOPED_SQL} AND media_type = ?`)
+            .prepare(`SELECT COUNT(*) AS count FROM images WHERE ${visibleImageWhereUnscopedSql()} AND media_type = ?`)
             .get(mediaType) as { count: number }
         ).count
       );
@@ -2384,7 +2389,7 @@ export const imageRepository = {
     return Number(
       (
         database
-          .prepare(`SELECT COUNT(*) AS count FROM images WHERE ${VISIBLE_IMAGE_WHERE_UNSCOPED_SQL}`)
+          .prepare(`SELECT COUNT(*) AS count FROM images WHERE ${visibleImageWhereUnscopedSql()}`)
           .get() as { count: number }
       ).count
     );
@@ -2868,7 +2873,7 @@ export const imageRepository = {
     return Number(
       (
         database
-          .prepare(`SELECT COUNT(*) AS count FROM images WHERE ${VISIBLE_IMAGE_WHERE_UNSCOPED_SQL} AND taken_at_source = ?`)
+          .prepare(`SELECT COUNT(*) AS count FROM images WHERE ${visibleImageWhereUnscopedSql()} AND taken_at_source = ?`)
           .get(source) as { count: number }
       ).count
     );
@@ -2885,7 +2890,7 @@ export const imageRepository = {
     if (row) return row.image_id;
 
     const imgRow = database.prepare(
-      `SELECT id FROM images WHERE folder_id = ? AND ${VISIBLE_IMAGE_WHERE_UNSCOPED_SQL} ORDER BY sort_timestamp DESC, id DESC LIMIT 1`
+      `SELECT id FROM images WHERE folder_id = ? AND ${visibleImageWhereUnscopedSql()} ORDER BY sort_timestamp DESC, id DESC LIMIT 1`
     ).get(folderId) as { id: number } | undefined;
     return imgRow?.id ?? null;
   },
@@ -2975,7 +2980,7 @@ export const imageRepository = {
 
 export const likeRepository = {
   listAll(): LikeRecord[] {
-    return database.prepare(`SELECT post_id, post_id AS image_id, created_at FROM ${likesReadSql()} AS likes ORDER BY created_at DESC, post_id DESC`).all() as unknown as LikeRecord[];
+    return database.prepare(`SELECT likes.post_id, likes.post_id AS image_id, likes.created_at FROM ${likesReadSql()} AS likes INNER JOIN posts ON posts.id = likes.post_id INNER JOIN folders ON folders.id = posts.folder_id WHERE ${visiblePostWhereSql()} ORDER BY likes.created_at DESC, likes.post_id DESC`).all() as unknown as LikeRecord[];
   },
 
   listAllLikes(): LikeRecord[] {
@@ -3002,7 +3007,7 @@ export const likeRepository = {
             FROM ${likesReadSql()} AS likes
             INNER JOIN posts ON posts.id = likes.post_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE ${VISIBLE_POST_WHERE_SQL}
+            WHERE ${visiblePostWhereSql()}
             `
           )
           .get() as { count: number }
@@ -3047,7 +3052,7 @@ export const likeRepository = {
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
-      WHERE ${VISIBLE_POST_WHERE_SQL}
+      WHERE ${visiblePostWhereSql()}
       ORDER BY likes.created_at DESC, likes.post_id DESC
       LIMIT ? OFFSET ?
       `
@@ -3093,7 +3098,7 @@ export const likeRepository = {
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
-      WHERE ${VISIBLE_POST_WHERE_SQL} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
+      WHERE ${visiblePostWhereSql()} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
       ORDER BY likes.created_at DESC, likes.post_id DESC
       LIMIT ? OFFSET ?
       `
@@ -3138,7 +3143,7 @@ export const likeRepository = {
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
-      WHERE ${VISIBLE_POST_WHERE_SQL} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
+      WHERE ${visiblePostWhereSql()} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
       ORDER BY likes.created_at DESC, likes.post_id DESC
       LIMIT ? OFFSET ?
       `
@@ -3318,7 +3323,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
           ) AS item_count,
           (
             SELECT pi.image_id
@@ -3327,7 +3332,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
             ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
             LIMIT 1
           ) AS cover_image_id,
@@ -3338,7 +3343,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
             ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
             LIMIT 1
           ) AS cover_thumbnail_path,
@@ -3351,7 +3356,7 @@ export const collectionRepository = {
               JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
               JOIN images ON images.id = pi.image_id
               INNER JOIN folders ON folders.id = posts.folder_id
-              WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+              WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
               ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
               LIMIT 4
             ) AS preview_images
@@ -3363,7 +3368,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
             ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
             LIMIT 1
           ) AS cover_post_id
@@ -3388,7 +3393,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
           ) AS item_count,
           (
             SELECT pi.image_id
@@ -3397,7 +3402,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
             ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
             LIMIT 1
           ) AS cover_image_id,
@@ -3408,7 +3413,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
             ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
             LIMIT 1
           ) AS cover_thumbnail_path,
@@ -3421,7 +3426,7 @@ export const collectionRepository = {
               JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
               JOIN images ON images.id = pi.image_id
               INNER JOIN folders ON folders.id = posts.folder_id
-              WHERE collection_items.collection_id = collections.id AND ${VISIBLE_POST_WHERE_SQL}
+              WHERE collection_items.collection_id = collections.id AND ${visiblePostWhereSql()}
               ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
               LIMIT 4
             ) AS preview_images
@@ -3469,7 +3474,7 @@ export const collectionRepository = {
             JOIN post_items pi ON pi.post_id = posts.id AND pi.position = 1
             JOIN images ON images.id = pi.image_id
             INNER JOIN folders ON folders.id = posts.folder_id
-            WHERE collection_items.collection_id = ? AND ${VISIBLE_POST_WHERE_SQL}
+            WHERE collection_items.collection_id = ? AND ${visiblePostWhereSql()}
             `
           )
           .get(collection.id) as { count: number }
@@ -3519,7 +3524,7 @@ export const collectionRepository = {
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
-      WHERE collection_items.collection_id = ? AND ${VISIBLE_POST_WHERE_SQL}
+      WHERE collection_items.collection_id = ? AND ${visiblePostWhereSql()}
       ORDER BY collection_items.created_at DESC, collection_items.post_id DESC
       LIMIT ? OFFSET ?
       `

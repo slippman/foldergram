@@ -5,6 +5,7 @@ export type TakenAtSource = 'exif' | 'mtime' | 'first_seen' | 'sort_timestamp';
 export type PlaybackStrategy = 'preview' | 'original';
 export type FolderAvatarSource = 'auto' | 'manual' | 'cover';
 export type FolderRole = 'normal' | 'story_root' | 'story_capsule' | 'carousel_source';
+export type AlbumShareMode = 'library' | 'link-only';
 export type PlaceKind = 'city' | 'approximate_spot' | 'manual';
 export type PostType = 'single' | 'carousel';
 
@@ -28,6 +29,7 @@ export interface FolderRecord {
   name: string;
   folder_path: string;
   role: FolderRole;
+  share_mode: AlbumShareMode;
   story_owner_folder_id: number | null;
   carousel_owner_folder_id: number | null;
   description: string | null;

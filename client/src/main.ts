@@ -75,6 +75,8 @@ async function bootstrap() {
     // Keep the shell mountable so the auth gate can surface the error state.
   }
 
+  await router.isReady();
+
   if (!canAccessRoute(router.currentRoute.value)) {
     await router.replace({ name: 'home' });
   }

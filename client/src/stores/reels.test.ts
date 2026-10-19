@@ -154,3 +154,17 @@ describe('reels store', () => {
     expect(reelsStore.loadedMode).toBe('random');
   });
 });
+
+it('discards a reel response started before visibility invalidation', async () => {
+  setActivePinia(createPinia());
+  let finish!: (value: any) => void;
+  const fetch = vi.spyOn(galleryApi, 'fetchReels').mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const store = useReelsStore();
+  const pending = store.loadMore();
+  store.reset();
+  finish({ items: [createFeedItem(999)], hasMore: false });
+  await pending;
+  expect(store.items).toEqual([]);
+  expect(store.initialized).toBe(false);
+  fetch.mockRestore();
+});

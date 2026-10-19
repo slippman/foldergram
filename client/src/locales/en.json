@@ -770,6 +770,15 @@
       }
     },
     "shareModal": {
+      "copied": "Copied!",
+      "createdAndCopied": "Link created and copied!",
+      "visibilityTitle": "Album visibility",
+      "visibilityLibrary": "All signed-in users",
+      "visibilityLinkOnly": "Share link only",
+      "visibilityLibraryDescription": "Visible in the feed and album list for signed-in users.",
+      "visibilityLinkOnlyDescription": "Hidden from every feed and from non-admin album lists. Admins can still open it; everyone else needs a valid album share link.",
+      "visibilitySaved": "Album visibility saved.",
+      "visibilityFailed": "Could not save album visibility.",
       "title": "Share Folder",
       "publicUrl": "Public folder URL",
       "accessSummaryTitle": "Current access",

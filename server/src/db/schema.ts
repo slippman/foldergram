@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS folders (
   name TEXT NOT NULL,
   folder_path TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'normal',
+  share_mode TEXT NOT NULL DEFAULT 'library' CHECK (share_mode IN ('library', 'link-only')),
   story_owner_folder_id INTEGER NULL,
   carousel_owner_folder_id INTEGER NULL,
   description TEXT NULL,

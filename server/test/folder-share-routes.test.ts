@@ -664,7 +664,8 @@ describe.sequential('folder share API routes', () => {
       })));
       expect(result[0].originalUrl).toMatch(/\/source\.jpg$/);
       expect(result.every(image => image.previewUrl.includes('/api/share/media/'))).toBe(true);
-      expect(spies.map(spy => spy.mock.calls.length)).toEqual([0, 60, 0, 1, 1, 1]);
+      // One ownership lookup and one visibility/grant lookup per album, not per media variant.
+      expect(spies.map(spy => spy.mock.calls.length)).toEqual([0, 60, 0, 2, 1, 1]);
     } finally { spies.forEach(spy => spy.mockRestore()); }
   });
 

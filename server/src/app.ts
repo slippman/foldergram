@@ -16,6 +16,8 @@ import { lazyThumbnailsRouter, lazyPreviewsRouter } from './routes/lazy-derivati
 import { createProtectedStaticOptions } from './utils/media-response.js';
 import { cacheLibraryMediaUrls } from './services/shared-media-cache.js';
 import { withRequestUser } from './services/request-user.js';
+import { withAlbumAccess } from './services/album-access-context.js';
+import { requireAlbumVisibility, requireDerivativeAlbumVisibility } from './middleware/album-visibility.js';
 import { applySecurityHeaders } from './middleware/security-headers.js';
 
 export function applyApiNoStoreHeaders(response: Pick<express.Response, 'setHeader'>) {
@@ -50,11 +52,11 @@ export function createApp() {
   app.use(sharePreviewRouter);
 
   if (appConfig.derivativeMode === 'lazy') {
-    app.use('/thumbnails', requireMediaAuthentication, lazyThumbnailsRouter);
-    app.use('/previews', requireMediaAuthentication, lazyPreviewsRouter);
+    app.use('/thumbnails', requireMediaAuthentication, requireDerivativeAlbumVisibility('thumbnail'), lazyThumbnailsRouter);
+    app.use('/previews', requireMediaAuthentication, requireDerivativeAlbumVisibility('preview'), lazyPreviewsRouter);
   } else {
-    app.use('/thumbnails', requireMediaAuthentication, express.static(appConfig.thumbnailsDir, createProtectedStaticOptions()));
-    app.use('/previews', requireMediaAuthentication, express.static(appConfig.previewsDir, createProtectedStaticOptions()));
+    app.use('/thumbnails', requireMediaAuthentication, requireDerivativeAlbumVisibility('thumbnail'), express.static(appConfig.thumbnailsDir, createProtectedStaticOptions()));
+    app.use('/previews', requireMediaAuthentication, requireDerivativeAlbumVisibility('preview'), express.static(appConfig.previewsDir, createProtectedStaticOptions()));
   }
 
   app.use('/api', (_request, response, next) => {
@@ -63,8 +65,13 @@ export function createApp() {
   });
   app.use('/api', blockPublicDemoMutations, requireTrustedMutationRequest, requireApiAuthentication);
   app.use('/api', (request, _response, next) => {
-    withRequestUser(request.path.startsWith('/share/') ? null : authService.getRequestAuthContext(request).user?.id ?? null, next);
+    const context = authService.getRequestAuthContext(request);
+    const shared = /^\/share\//i.test(request.path);
+    const discovery = /^\/(feed|reels|places|likes|collections)(\/|$)/i.test(request.path);
+    withRequestUser(shared ? null : context.user?.id ?? null, () =>
+      withAlbumAccess(shared || (!discovery && context.authenticated && context.role === 'admin'), next));
   });
+  app.use('/api', requireAlbumVisibility);
   app.use('/api', (request, response, next) => {
     if (appConfig.mediaCacheEnabled && request.method === 'GET' && !/^\/(share|auth|admin)(\/|$)/.test(request.path)) {
       const json = response.json.bind(response);

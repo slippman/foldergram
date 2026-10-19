@@ -33,7 +33,7 @@ current file bytes, so do not assume they can be regenerated from that alone.
 
 | Location | Where the logo appears | Size / behavior |
 | --- | --- | --- |
-| `client/index.html` | Startup splash before Vue loads, for Cinema album entry and the email front door. | 144px; hidden in the Classic splash. |
+| `client/index.html` | Startup splash before Vue loads, for Cinema album entry and the email front door. Email sign-in applies its saved theme before painting and keeps the splash through link inspection. | 144px; hidden in the Classic splash. |
 | `client/src/views/SharedFolderView.vue` | Shared Cinema album loading screen. | 144px; Cinema branch only. |
 | `client/src/components/AlbumAttribution.vue` | Cinema attribution footer. | 144px desktop, 112px mobile; links to `https://slip.unreeled.com`. |
 | `client/src/components/EmailSignIn.vue` | Public email sign-in card and post-request waiting page. | 112px; same component and logo. |

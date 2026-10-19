@@ -1,4 +1,6 @@
 import { publicCameraMetadata } from '../utils/public-media-metadata.js';
+import { canReadAlbum } from './album-access-service.js';
+import { withAlbumAccess } from './album-access-context.js';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
 import path from 'node:path';
@@ -353,7 +355,7 @@ function resolveOriginalMediaFile(id: number): { path: string; filename: string 
   }
 
   const detail = imageRepository.getById(id);
-  if (!detail || detail.is_deleted || detail.is_trashed) {
+  if (!detail || detail.is_deleted || detail.is_trashed || !canReadAlbum(detail.folder_id)) {
     return null;
   }
 
@@ -564,10 +566,8 @@ function mapFeedImage(image: IndexedFeedImage, derivativeVersion = getDerivative
 }
 
 function resolvePostRecord(id: number, isLegacyImageAlias = false): PostRecord | undefined {
-  if (isLegacyImageAlias) {
-    return postRepository.findByImageId(id);
-  }
-  return postRepository.findById(id);
+  const post = isLegacyImageAlias ? postRepository.findByImageId(id) : postRepository.findById(id);
+  return post && canReadAlbum(post.folder_id) ? post : undefined;
 }
 
 function isCoverPost(postId: number): boolean {
@@ -720,6 +720,7 @@ function buildFolderSummary(folder: FolderSummaryRecord) {
       slug: folder.slug,
       name: folder.name,
       description: folder.description,
+    shareMode: folder.share_mode,
       parentFolderName: getParentFolderDisplayName(folder.folder_path),
       folderPath: folder.folder_path,
       breadcrumb: getPathBreadcrumb(folder.folder_path),
@@ -750,6 +751,7 @@ function buildFolderSummary(folder: FolderSummaryRecord) {
     slug: folder.slug,
     name: folder.name,
     description: folder.description,
+    shareMode: folder.share_mode,
     parentFolderName: getParentFolderDisplayName(folder.folder_path),
     folderPath: folder.folder_path,
     breadcrumb: getPathBreadcrumb(folder.folder_path),
@@ -1325,7 +1327,7 @@ function createShareDerivativeResolver() {
     if (images.has(id)) return images.get(id)!;
     const image = knownImage?.id === id ? knownImage : imageRepository.getById(id);
     let scoped: ImageRecord | null = null;
-    if (image && !image.is_deleted && !image.is_trashed) {
+    if (image && !image.is_deleted && !image.is_trashed && canReadAlbum(image.folder_id)) {
       if (!folders.has(image.folder_id)) folders.set(image.folder_id, folderRepository.getById(image.folder_id));
       const folder = folders.get(image.folder_id);
       if (folder?.role === 'normal') scoped = image;
@@ -1342,179 +1344,192 @@ export const galleryService = {
   createShareDerivativeResolver,
   getAlbumDisplayTheme: getFolderDisplayTheme,
   getFeed(page: number, limit: number, mode: FeedMode = 'random', randomSeed?: number) {
-    if (!storageService.getState().libraryAvailable) {
-      return {
-        mode,
-        items: [],
-        page,
-        limit,
-        total: 0,
-        hasMore: false
-      };
-    }
+    return withAlbumAccess(false, () => {
+      if (!storageService.getState().libraryAvailable) {
+        return {
+          mode,
+          items: [],
+          page,
+          limit,
+          total: 0,
+          hasMore: false
+        };
+      }
 
-    if (mode === 'random') {
+      if (mode === 'random') {
+        const total = imageRepository.countFeed();
+        const seed = Number.isFinite(randomSeed)
+          ? Number(randomSeed)
+          : Number(new Date().toISOString().slice(0, 10).replaceAll('-', ''));
+
+        return {
+          mode,
+          ...buildPaginatedPayload(mapFeedItems(imageRepository.listRandom(page, limit, seed)), page, limit, total)
+        };
+      }
+
+      if (mode === 'rediscover') {
+        const cutoffTimestamp = Date.now() - REDISCOVER_MIN_AGE_MS;
+        const total = imageRepository.countRediscover(cutoffTimestamp);
+        const items = listDiversifiedModeItems(total, page, limit, (offset, batchLimit) =>
+          imageRepository.listRediscoverCandidates(offset, batchLimit, cutoffTimestamp)
+        );
+
+        return {
+          mode,
+          ...buildPaginatedPayload(mapFeedItems(items), page, limit, total)
+        };
+      }
+
       const total = imageRepository.countFeed();
-      const seed = Number.isFinite(randomSeed)
-        ? Number(randomSeed)
-        : Number(new Date().toISOString().slice(0, 10).replaceAll('-', ''));
-
-      return {
-        mode,
-        ...buildPaginatedPayload(mapFeedItems(imageRepository.listRandom(page, limit, seed)), page, limit, total)
-      };
-    }
-
-    if (mode === 'rediscover') {
-      const cutoffTimestamp = Date.now() - REDISCOVER_MIN_AGE_MS;
-      const total = imageRepository.countRediscover(cutoffTimestamp);
-      const items = listDiversifiedModeItems(total, page, limit, (offset, batchLimit) =>
-        imageRepository.listRediscoverCandidates(offset, batchLimit, cutoffTimestamp)
-      );
+      const offset = (page - 1) * limit;
+      const items = imageRepository.listRecentCandidates(offset, limit);
 
       return {
         mode,
         ...buildPaginatedPayload(mapFeedItems(items), page, limit, total)
       };
-    }
 
-    const total = imageRepository.countFeed();
-    const offset = (page - 1) * limit;
-    const items = imageRepository.listRecentCandidates(offset, limit);
-
-    return {
-      mode,
-      ...buildPaginatedPayload(mapFeedItems(items), page, limit, total)
-    };
+    });
   },
 
   getReels(page: number, limit: number, mode: ReelsFeedMode = 'recommended', seed?: number, signals: ReelAffinitySignals = {}) {
-    if (!storageService.getState().libraryAvailable) {
+    return withAlbumAccess(false, () => {
+      if (!storageService.getState().libraryAvailable) {
+        return {
+          mode,
+          items: [],
+          page,
+          limit,
+          total: 0,
+          hasMore: false
+        };
+      }
+
+      const candidates = imageRepository.listVisibleVideoCandidates();
+      const total = candidates.length;
+      if (total === 0) {
+        return {
+          mode,
+          items: [],
+          page,
+          limit,
+          total: 0,
+          hasMore: false
+        };
+      }
+
+      const orderedCandidates =
+        mode === 'recent'
+          ? candidates
+          : (() => {
+              const sessionSeed = Number.isFinite(seed)
+                ? Number(seed)
+                : Number(new Date().toISOString().slice(0, 10).replaceAll('-', ''));
+
+              return mode === 'random' ? shuffleReelCandidates(candidates, sessionSeed) : buildReelQueue(candidates, sessionSeed, signals);
+            })();
+      const offset = (page - 1) * limit;
+
       return {
         mode,
-        items: [],
-        page,
-        limit,
-        total: 0,
-        hasMore: false
+        ...buildPaginatedPayload(
+          mapFeedItems(orderedCandidates.slice(offset, offset + limit)),
+          page,
+          limit,
+          total
+        )
       };
-    }
 
-    const candidates = imageRepository.listVisibleVideoCandidates();
-    const total = candidates.length;
-    if (total === 0) {
-      return {
-        mode,
-        items: [],
-        page,
-        limit,
-        total: 0,
-        hasMore: false
-      };
-    }
-
-    const orderedCandidates =
-      mode === 'recent'
-        ? candidates
-        : (() => {
-            const sessionSeed = Number.isFinite(seed)
-              ? Number(seed)
-              : Number(new Date().toISOString().slice(0, 10).replaceAll('-', ''));
-
-            return mode === 'random' ? shuffleReelCandidates(candidates, sessionSeed) : buildReelQueue(candidates, sessionSeed, signals);
-          })();
-    const offset = (page - 1) * limit;
-
-    return {
-      mode,
-      ...buildPaginatedPayload(
-        mapFeedItems(orderedCandidates.slice(offset, offset + limit)),
-        page,
-        limit,
-        total
-      )
-    };
+    });
   },
 
   searchMedia(query: string, page: number, limit: number) {
-    if (!storageService.getState().libraryAvailable) {
-      return {
-        items: [],
-        page,
-        limit,
-        total: 0,
-        hasMore: false
-      };
-    }
+    return withAlbumAccess(false, () => {
+      if (!storageService.getState().libraryAvailable) {
+        return {
+          items: [],
+          page,
+          limit,
+          total: 0,
+          hasMore: false
+        };
+      }
 
-    const normalizedQuery = query.trim();
-    if (normalizedQuery.length === 0) {
-      return {
-        items: [],
-        page,
-        limit,
-        total: 0,
-        hasMore: false
-      };
-    }
+      const normalizedQuery = query.trim();
+      if (normalizedQuery.length === 0) {
+        return {
+          items: [],
+          page,
+          limit,
+          total: 0,
+          hasMore: false
+        };
+      }
 
-    const total = imageRepository.countVisibleSearch(normalizedQuery);
-    const items = total > 0 ? imageRepository.listVisibleSearch(normalizedQuery, page, limit) : [];
+      const total = imageRepository.countVisibleSearch(normalizedQuery);
+      const items = total > 0 ? imageRepository.listVisibleSearch(normalizedQuery, page, limit) : [];
 
-    return buildPaginatedPayload(mapFeedItems(items), page, limit, total);
+      return buildPaginatedPayload(mapFeedItems(items), page, limit, total);
+    });
   },
 
   listMoments() {
-    if (!storageService.getState().libraryAvailable) {
-      return {
-        railKind: 'moments' as FeedRailKind,
-        railTitle: 'Moments',
-        railDescription: 'Memory capsules shaped by real capture dates from your library.',
-        railSingularLabel: 'Moment',
-        items: []
-      };
-    }
+    return withAlbumAccess(false, () => {
+      if (!storageService.getState().libraryAvailable) {
+        return {
+          railKind: 'moments' as FeedRailKind,
+          railTitle: 'Moments',
+          railDescription: 'Memory capsules shaped by real capture dates from your library.',
+          railSingularLabel: 'Moment',
+          items: []
+        };
+      }
 
-    const rail = getSelectedFeedRail(new Date());
-    return {
-      railKind: rail.kind,
-      railTitle: rail.title,
-      railDescription: rail.description,
-      railSingularLabel: rail.singularLabel,
-      items: rail.capsules
-    };
+      const rail = getSelectedFeedRail(new Date());
+      return {
+        railKind: rail.kind,
+        railTitle: rail.title,
+        railDescription: rail.description,
+        railSingularLabel: rail.singularLabel,
+        items: rail.capsules
+      };
+
+    });
   },
 
   getMomentFeed(id: string, page: number, limit: number) {
-    if (!storageService.getState().libraryAvailable) {
-      return null;
-    }
+    return withAlbumAccess(false, () => {
+      if (!storageService.getState().libraryAvailable) {
+        return null;
+      }
 
-    const now = new Date();
-    const rail = getSelectedFeedRail(now);
-    const capsule = rail.capsules.find((entry) => entry.id === id);
+      const now = new Date();
+      const rail = getSelectedFeedRail(now);
+      const capsule = rail.capsules.find((entry) => entry.id === id);
 
-    if (!capsule) {
-      return null;
-    }
+      if (!capsule) {
+        return null;
+      }
 
-    const definition = (rail.kind === 'moments' ? buildMomentRailDefinition(now) : buildHighlightRailDefinition(now)).capsules.find(
-      (entry) => entry.id === id
-    );
-    if (!definition) {
-      return null;
-    }
+      const definition = (rail.kind === 'moments' ? buildMomentRailDefinition(now) : buildHighlightRailDefinition(now)).capsules.find(
+        (entry) => entry.id === id
+      );
+      if (!definition) {
+        return null;
+      }
 
-    const total = definition.count();
+      const total = definition.count();
 
-    return {
-      railKind: rail.kind,
-      railTitle: rail.title,
-      railDescription: rail.description,
-      railSingularLabel: rail.singularLabel,
-      moment: capsule,
-      ...buildPaginatedPayload(mapFeedItems(definition.list(page, limit)), page, limit, total)
-    };
+      return {
+        railKind: rail.kind,
+        railTitle: rail.title,
+        railDescription: rail.description,
+        railSingularLabel: rail.singularLabel,
+        moment: capsule,
+        ...buildPaginatedPayload(mapFeedItems(definition.list(page, limit)), page, limit, total)
+      };
+    });
   },
 
   listFolders() {
@@ -1545,7 +1560,8 @@ export const galleryService = {
       return null;
     }
 
-    return placeResolutionService.placeDetail(place, placeRepository.countVisibleImages(place.id));
+    const count = placeRepository.countVisibleImages(place.id);
+    return count > 0 ? placeResolutionService.placeDetail(place, count) : null;
   },
 
   getPlaceImages(slug: string, page: number, limit: number, mediaType?: MediaType) {
@@ -1558,6 +1574,7 @@ export const galleryService = {
       return null;
     }
 
+    if (placeRepository.countVisibleImages(place.id) === 0) return null;
     const total = placeRepository.countVisibleImages(place.id, mediaType);
     const derivativeVersion = getDerivativeAssetVersion();
 
@@ -1595,6 +1612,13 @@ export const galleryService = {
     }
 
     return buildSharedFolderSummary(folder);
+  },
+
+  updateFolderShareMode(slug: string, mode: 'library' | 'link-only') {
+    if (!storageService.getState().libraryAvailable || !folderRepository.getNormalBySlug(slug)) return null;
+    folderRepository.setShareMode(slug, mode);
+    const folder = folderRepository.getSummaryBySlug(slug);
+    return folder ? buildFolderSummary(folder) : null;
   },
 
   updateFolderMetadata(slug: string, name: string, description: string | null) {

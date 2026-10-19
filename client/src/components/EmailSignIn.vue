@@ -1,5 +1,5 @@
 <template>
-  <section class="email-sign-in min-h-screen px-6 py-10 flex items-center justify-center">
+  <section class="email-sign-in min-h-screen px-6 py-10 flex items-center justify-center" :data-album-state="inspecting ? 'loading' : 'settled'" data-album-theme="cinema">
     <div class="card w-full max-w-[27rem] p-8 grid gap-5" :inert="!!notice" :class="{ 'text-center': !!identity || awaitingEmail }">
       <header class="grid justify-items-center gap-3 text-center">
         <img class="email-sign-in__logo" src="/branding/ur-logo-4e4dc1180945.png" alt="UnReeled" width="112" height="112" />
@@ -60,7 +60,9 @@ const route = useRoute();
 const auth = useAuthStore();
 const email = ref('');
 const busy = ref(false);
-const inspecting = ref(false);
+const initialFragment = new URLSearchParams(window.location.hash.slice(1));
+const inspecting = ref(window.location.pathname === '/signin'
+  && Boolean(initialFragment.get(initialFragment.has('invite') ? 'invite' : 'token')));
 const notice = ref('');
 const requestAccepted = ref(false);
 const awaitingEmail = computed(() => requestAccepted.value || route.query?.sent === '1');

@@ -37,6 +37,17 @@
           {{ localNotice }}
         </p>
 
+        <section v-if="cinema" class="grid gap-2 rounded-[1rem] border border-border bg-surface-alt p-4">
+          <label class="grid gap-2 text-[0.84rem] font-semibold">
+            {{ t('folder.shareModal.visibilityTitle') }}
+            <select v-model="shareMode" class="min-h-11 rounded-[0.75rem] border border-border bg-surface px-3 text-text" :disabled="savingShareMode" @change="saveShareMode">
+              <option value="library">{{ t('folder.shareModal.visibilityLibrary') }}</option>
+              <option value="link-only">{{ t('folder.shareModal.visibilityLinkOnly') }}</option>
+            </select>
+          </label>
+          <p class="m-0 text-[0.8rem] leading-relaxed text-muted">{{ t(shareMode === 'link-only' ? 'folder.shareModal.visibilityLinkOnlyDescription' : 'folder.shareModal.visibilityLibraryDescription') }}</p>
+        </section>
+
         <section class="grid gap-1 rounded-[1rem] border border-accent/25 bg-accent-soft/50 p-4 sm:p-4.5">
           <div class="flex items-center gap-2 text-text">
             <span class="i-fluent-shield-keyhole-20-regular h-5 w-5 text-accent-strong" aria-hidden="true" />
@@ -88,8 +99,8 @@
                 :disabled="foldersStore.loadingShare"
                 @click="createLink"
               >
-                <span class="i-fluent-link-add-20-regular h-4.5 w-4.5" aria-hidden="true" />
-                {{ foldersStore.loadingShare ? t('folder.shareModal.creating') : t('folder.shareModal.createLink') }}
+                <span class="h-4.5 w-4.5" :class="isCopied('new') ? 'i-fluent-checkmark-20-regular' : 'i-fluent-link-add-20-regular'" aria-hidden="true" />
+                <span aria-live="polite">{{ foldersStore.loadingShare ? t('folder.shareModal.creating') : isCopied('new') ? t('folder.shareModal.createdAndCopied') : t('folder.shareModal.createLink') }}</span>
               </button>
             </div>
 
@@ -99,14 +110,14 @@
             </label>
           </div>
 
-          <div v-if="createdShareUrl" class="grid gap-[0.55rem] rounded-[0.85rem] border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/15 p-3.5">
+          <div v-if="createdShareUrl" class="grid gap-[0.55rem] rounded-[0.85rem] p-3.5" :class="cinema ? 'border border-border bg-surface' : 'border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/15'">
             <div class="flex items-center justify-between gap-3">
-              <strong class="text-[0.84rem] text-emerald-800 dark:text-emerald-300 font-semibold">{{ t('folder.shareModal.createdLink') }}</strong>
-              <button class="share-icon-button share-icon-button--emerald cursor-pointer" type="button" :title="copyLabel('created')" :aria-label="copyLabel('created')" @click="copyText(createdShareUrl, 'created')">
+              <strong class="text-[0.84rem] font-semibold" :class="cinema ? 'text-text' : 'text-emerald-800 dark:text-emerald-300'">{{ t(cinema ? 'folder.shareModal.notices.copyManually' : 'folder.shareModal.createdLink') }}</strong>
+              <button class="share-icon-button cursor-pointer" :class="{ 'share-icon-button--emerald': !cinema }" type="button" :title="copyLabel('created')" :aria-label="copyLabel('created')" @click="copyText(createdShareUrl, 'created')">
                 <span class="h-4.5 w-4.5" :class="isCopied('created') ? 'i-fluent-checkmark-20-regular' : 'i-fluent-copy-20-regular'" aria-hidden="true" />
               </button>
             </div>
-            <input class="share-url-input share-url-input--emerald" type="text" :value="createdShareUrl" readonly />
+            <input class="share-url-input" :class="{ 'share-url-input--emerald': !cinema }" type="text" :value="createdShareUrl" readonly />
           </div>
 
           <div class="grid gap-[0.55rem]">
@@ -130,7 +141,7 @@
               <div class="flex gap-2">
                 <button v-if="link.canCopy" class="cursor-pointer" :class="cinema ? 'share-link-copy' : 'share-icon-button'" type="button" :title="copyLabel(`link:${link.id}`)" :aria-label="copyLabel(`link:${link.id}`)" @click="copyExistingLink(link.id)">
                   <span class="h-4.5 w-4.5" :class="isCopied(`link:${link.id}`) ? 'i-fluent-checkmark-20-regular' : 'i-fluent-copy-20-regular'" aria-hidden="true" />
-                  {{ copyLabel(`link:${link.id}`) }}
+                  <span aria-live="polite">{{ copyLabel(`link:${link.id}`) }}</span>
                 </button>
                 <button
                   class="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[0.7rem] border border-rose-500/25 bg-surface px-3 text-[0.82rem] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:bg-rose-500/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 cursor-pointer"
@@ -241,11 +252,30 @@ const customExpiresAtLocal = ref('');
 const password = ref('');
 const localError = ref<string | null>(null);
 const localNotice = ref<string | null>(null);
+const shareMode = ref(props.folder.shareMode ?? 'library');
+const savedShareMode = ref(shareMode.value);
+const savingShareMode = ref(false);
+watch(() => props.folder, folder => { shareMode.value = savedShareMode.value = folder.shareMode ?? 'library'; });
+async function saveShareMode() {
+  if (savingShareMode.value) return;
+  savingShareMode.value = true;
+  localError.value = null;
+  localNotice.value = null;
+  try {
+    const updated = await foldersStore.updateShareMode(props.folder.slug, shareMode.value);
+    savedShareMode.value = shareMode.value = updated.shareMode ?? 'library';
+    localNotice.value = t('folder.shareModal.visibilitySaved');
+  } catch (error) {
+    shareMode.value = savedShareMode.value;
+    localError.value = error instanceof Error ? error.message : t('folder.shareModal.visibilityFailed');
+  } finally { savingShareMode.value = false; }
+}
 const copiedButton = ref<string | null>(null);
+const manualCopyUrl = ref<string | null>(null);
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 let mounted = true;
 function isCopied(key: string) { return props.cinema === true && copiedButton.value === key; }
-function copyLabel(key: string) { return t(isCopied(key) ? 'common.copied' : 'common.copy'); }
+function copyLabel(key: string) { return t(isCopied(key) ? 'folder.shareModal.copied' : 'common.copy'); }
 function clearCopyFeedback() {
   clearTimeout(copyFeedbackTimer);
   copiedButton.value = null;
@@ -253,8 +283,9 @@ function clearCopyFeedback() {
 function confirmCopy(key?: string) {
   if (!mounted || !props.cinema || !key) return;
   clearCopyFeedback();
+  manualCopyUrl.value = null;
   copiedButton.value = key;
-  copyFeedbackTimer = setTimeout(clearCopyFeedback, 2500);
+  copyFeedbackTimer = setTimeout(clearCopyFeedback, 2000);
 }
 onBeforeUnmount(() => { mounted = false; clearCopyFeedback(); });
 
@@ -287,7 +318,7 @@ const accessSummary = computed(() => {
 
   return t('folder.shareModal.accessSummaryNone');
 });
-const createdShareUrl = computed(() => (foldersStore.lastCreatedShareUrl ? toAbsoluteUrl(foldersStore.lastCreatedShareUrl) : null));
+const createdShareUrl = computed(() => props.cinema ? manualCopyUrl.value : foldersStore.lastCreatedShareUrl ? toAbsoluteUrl(foldersStore.lastCreatedShareUrl) : null);
 const publicFolderUrl = computed(() => toAbsoluteUrl(foldersStore.sharePublicFolderUrl ?? `/folders/${props.folder.slug}`));
 const passwordShareUrl = computed(() => toAbsoluteUrl(`/share/${encodeURIComponent(props.folder.slug)}`));
 
@@ -347,6 +378,8 @@ async function copyText(value: string | null, feedbackKey?: string) {
       const copied = document.execCommand('copy');
       if (copied) confirmCopy(feedbackKey);
       return copied;
+    } catch {
+      return false;
     } finally {
       textArea.remove();
     }
@@ -354,28 +387,41 @@ async function copyText(value: string | null, feedbackKey?: string) {
 }
 
 async function copyExistingLink(linkId: number) {
+  manualCopyUrl.value = null;
+  if (props.cinema) localNotice.value = null;
   try {
     const { shareUrl } = await copyFolderShareLink(props.folder.slug, linkId);
-    foldersStore.lastCreatedShareUrl = shareUrl;
+    if (!props.cinema) foldersStore.lastCreatedShareUrl = shareUrl;
     const copied = await copyText(toAbsoluteUrl(shareUrl), `link:${linkId}`);
     localError.value = null;
-    localNotice.value = t(copied ? 'folder.shareModal.notices.linkCopied' : 'folder.shareModal.notices.copyManually');
+    if (props.cinema) {
+      manualCopyUrl.value = copied ? null : toAbsoluteUrl(shareUrl);
+    } else {
+      localNotice.value = t(copied ? 'folder.shareModal.notices.linkCopied' : 'folder.shareModal.notices.copyManually');
+    }
   } catch (error) {
     localError.value = error instanceof Error ? error.message : t('folder.shareModal.copyLinkError');
   }
 }
 
 async function createLink() {
+  manualCopyUrl.value = null;
+  clearCopyFeedback();
   localError.value = null;
   localNotice.value = null;
 
   try {
-    await foldersStore.createShareLink(props.folder.slug, {
+    const result = await foldersStore.createShareLink(props.folder.slug, {
       expiresIn: selectedPreset.value,
       unlimited: selectedPreset.value === 'unlimited',
       customExpiresAt: selectedPreset.value === 'custom' ? new Date(customExpiresAtLocal.value).toISOString() : null
     });
-    localNotice.value = t('folder.shareModal.notices.linkCreated');
+    if (props.cinema) {
+      const url = toAbsoluteUrl(result.shareUrl);
+      if (!await copyText(url, 'new')) manualCopyUrl.value = url;
+    } else {
+      localNotice.value = t('folder.shareModal.notices.linkCreated');
+    }
   } catch (error) {
     localError.value = error instanceof Error ? error.message : t('folder.shareModal.errors.createLink');
   }
@@ -444,6 +490,7 @@ watch(
   () => props.folder.slug,
   async () => {
     clearCopyFeedback();
+    manualCopyUrl.value = null;
     password.value = '';
     localError.value = null;
     localNotice.value = null;

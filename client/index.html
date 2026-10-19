@@ -22,6 +22,14 @@
     <title>Foldergram</title>
     <script>
       if (/^\/(share|f|folders)\//.test(window.location.pathname) || document.documentElement.dataset.cinemaEntry === 'true') document.documentElement.classList.add('album-entry');
+      // Email confirmation must keep one themed splash until its link is inspected.
+      if (window.location.pathname === '/signin') document.documentElement.classList.add('email-auth-entry', 'album-entry');
+      if (document.documentElement.classList.contains('email-auth-entry')) {
+        var emailTheme;
+        try { emailTheme = window.localStorage.getItem('foldergram-theme'); } catch (_) {}
+        if (emailTheme !== 'light' && emailTheme !== 'dark') emailTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = emailTheme;
+      }
     </script>
     <style>
       :root { --ur-logo-filter: none; --ur-logo-blend: multiply; }
@@ -30,6 +38,8 @@
         :root:not([data-theme="light"]) { --ur-logo-filter: invert(1) contrast(1.05); --ur-logo-blend: screen; }
         :root:not([data-theme="light"]):is(.shared-album-entry, .email-auth-entry) #fg-splash { background: #0c1014; color: #8a96a9; }
       }
+      :root.email-auth-entry[data-theme="light"] { background: #f4f5f7; --bg: #f4f5f7; }
+      :root.email-auth-entry[data-theme="dark"] { background: #0c1014; --bg: #0c1014; }
       /* ── Splash screen — shown before Vue boots ──────────────────── */
       #fg-splash {
         position: fixed;

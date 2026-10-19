@@ -133,6 +133,7 @@ export interface FolderSummary {
   slug: string;
   name: string;
   description: string | null;
+  shareMode?: 'library' | 'link-only';
   parentFolderName?: string | null;
   folderPath: string;
   breadcrumb: string | null;

@@ -6,6 +6,7 @@ import type { CalendarDateParts, FeedItem, FeedRailKind, MomentCapsule } from '.
 import { updateCaptionInItems } from '../utils/caption';
 
 interface MomentsState {
+  requestGeneration: number;
   railKind: FeedRailKind;
   railTitle: string;
   railDescription: string;
@@ -224,6 +225,7 @@ function localizeCapsule(capsule: MomentCapsule, railKind: FeedRailKind): Moment
 
 export const useMomentsStore = defineStore('moments', {
   state: (): MomentsState => ({
+    requestGeneration: 0,
     railKind: 'moments',
     railTitle: 'Moments',
     railDescription: 'Memory capsules from your library.',
@@ -262,6 +264,7 @@ export const useMomentsStore = defineStore('moments', {
     },
 
     resetForRebuild() {
+      this.requestGeneration += 1;
       this.railKind = 'moments';
       this.railTitle = 'Moments';
       this.railDescription = 'Memory capsules from your library.';
@@ -286,20 +289,23 @@ export const useMomentsStore = defineStore('moments', {
         return;
       }
 
+      const generation = this.requestGeneration;
       this.loadingList = true;
       this.listError = null;
 
       try {
         const payload = await fetchMoments();
+        if (generation !== this.requestGeneration) return;
         this.railKind = payload.railKind;
         this.railTitle = payload.railTitle;
         this.railDescription = payload.railDescription;
         this.railSingularLabel = payload.railSingularLabel;
         this.items = payload.items;
       } catch (error) {
+        if (generation !== this.requestGeneration) return;
         this.listError = error instanceof Error ? error.message : 'Unable to load the home rail';
       } finally {
-        this.loadingList = false;
+        if (generation === this.requestGeneration) this.loadingList = false;
       }
     },
 
@@ -315,11 +321,13 @@ export const useMomentsStore = defineStore('moments', {
         this.currentHasMore = true;
       }
 
+      const generation = this.requestGeneration;
       this.loadingMoment = true;
       this.momentError = null;
 
       try {
         const payload = await fetchMomentFeed(id, this.currentPage, this.currentLimit);
+        if (generation !== this.requestGeneration) return;
         this.railKind = payload.railKind;
         this.railTitle = payload.railTitle;
         this.railDescription = payload.railDescription;
@@ -329,10 +337,11 @@ export const useMomentsStore = defineStore('moments', {
         this.currentPage += 1;
         this.currentHasMore = payload.hasMore;
       } catch (error) {
+        if (generation !== this.requestGeneration) return;
         this.currentMoment = null;
         this.momentError = error instanceof Error ? error.message : 'Unable to load this feed capsule';
       } finally {
-        this.loadingMoment = false;
+        if (generation === this.requestGeneration) this.loadingMoment = false;
       }
     },
 
