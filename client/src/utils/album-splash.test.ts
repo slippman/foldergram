@@ -411,6 +411,24 @@ describe('album startup splash', () => {
     await vi.advanceTimersByTimeAsync(100);
     expect(document.querySelector('.fg-splash--out')).not.toBeNull();
   });
+  it('dismisses when a resilient thumbnail is cached without a fresh load event', async () => {
+    document.getElementById('app')!.innerHTML = '<main data-album-state="ready"></main>';
+    const wrapper = mount(ResilientImage, {
+      attachTo: document.querySelector('main')!,
+      props: { src: '/cached-thumbnail.webp', alt: '' }
+    });
+    try {
+      await flush();
+      const image = wrapper.get('img').element;
+      Object.defineProperty(image, 'complete', { value: true });
+      Object.defineProperty(image, 'naturalWidth', { value: 640 });
+      start(); await flush();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(340);
+      expect(document.querySelector('#fg-splash')).toBeNull();
+    } finally { wrapper.unmount(); }
+  });
   it('dismisses for a settled password or error screen', async () => {
     document.getElementById('app')!.innerHTML = '<main data-album-state="settled">Enter password</main>';
     start();

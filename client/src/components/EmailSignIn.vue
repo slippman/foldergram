@@ -157,7 +157,7 @@ async function confirm() {
 .email-sign-in__notice[hidden] { display: none; }
 .email-sign-in__promise { text-align: center; font-weight: 700; }
 .email-sign-in__logo { width: 112px; height: 112px; object-fit: contain; mix-blend-mode: multiply; }
-:global(:root[data-theme="dark"]) .email-sign-in__logo { filter: invert(1); mix-blend-mode: screen; }
+:root[data-theme="dark"] .email-sign-in__logo { filter: invert(1); mix-blend-mode: screen; }
 .email-sign-in__submit { background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: none; }
 .email-sign-in__submit:hover { background: var(--text); color: var(--bg); opacity: 0.85; }
 </style>

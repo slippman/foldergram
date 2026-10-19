@@ -4,7 +4,10 @@
       <span class="cinema-account__avatar" aria-hidden="true">{{ initials }}</span>
       <span class="cinema-account__name">{{ name }}</span>
     </button>
-    <RouterLink v-else class="cinema-account__sign-in" to="/signin">{{ t('account.signIn') }}</RouterLink>
+    <RouterLink v-else class="cinema-account__sign-in" to="/signin">
+      <span class="cinema-account__sign-in-icon i-fluent-person-20-regular" aria-hidden="true" />
+      {{ t('account.signIn') }}
+    </RouterLink>
     <section v-if="open && auth.authenticated" class="cinema-account__panel" role="dialog" :aria-label="t('account.title')">
       <AccountIdentity />
       <p v-if="error" class="cinema-account__error" role="alert">{{ error }}</p>
@@ -42,15 +45,16 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
 <style scoped>
 .cinema-account { position: relative; flex: none; margin-left: auto; }
 .cinema-account__trigger { display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; padding: .125rem; border: 0; border-radius: 999px; background: transparent; color: var(--text); cursor: pointer; font: inherit; }
-.cinema-account__avatar { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-alt); font-size: .8rem; font-weight: 700; }
-.cinema-account__name { display: none; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8rem; }
+.cinema-account__avatar { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; border: 1px solid var(--border); background: color-mix(in srgb, var(--text) 12%, var(--bg)); font-size: .8125rem; font-weight: 600; }
+.cinema-account__name { display: none; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8125rem; line-height: 1.4; }
 .cinema-account__trigger:hover { background: var(--surface-hover); }
 .cinema-account__trigger:focus-visible, .cinema-account__sign-in:focus-visible, .cinema-account__sign-out:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .cinema-account__panel { position: absolute; right: 0; top: calc(100% + .5rem); z-index: 60; width: min(20rem, calc(100vw - 2rem)); border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); box-shadow: 0 16px 48px rgb(0 0 0 / 16%); color: var(--text); }
 .cinema-account__sign-in, .cinema-account__sign-out { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .5rem 1rem; border: 1px solid var(--text); border-radius: .75rem; background: var(--text); color: var(--bg); font: inherit; font-size: .8rem; font-weight: 600; text-decoration: none; cursor: pointer; }
 .cinema-account__sign-out { margin: .75rem; width: calc(100% - 1.5rem); }
-.cinema-account__sign-in { min-height: 2.25rem; padding: .375rem .75rem; border-color: var(--border); border-radius: .5rem; background: transparent; color: var(--text); white-space: nowrap; }
-.cinema-account__sign-in:hover { background: var(--surface-hover); }
+.cinema-account__sign-in { min-height: 2.25rem; gap: .375rem; padding: .375rem .625rem; border-color: color-mix(in srgb, var(--text) 18%, var(--bg)); border-radius: 999px; background: color-mix(in srgb, var(--text) 12%, var(--bg)); color: var(--text); font-size: .8125rem; line-height: 1.4; white-space: nowrap; }
+.cinema-account__sign-in-icon { display: inline-block; flex: none; width: 1rem; height: 1rem; }
+.cinema-account__sign-in:hover { background: color-mix(in srgb, var(--text) 18%, var(--bg)); }
 @media (max-width: 767px) { .cinema-account__sign-in { min-height: 2.75rem; } }
 .cinema-account__sign-out:disabled { opacity: .6; cursor: wait; }
 .cinema-account__error { padding: 0 1rem; white-space: normal; font-size: .8rem; }

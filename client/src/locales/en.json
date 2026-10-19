@@ -852,7 +852,12 @@
   },
   "share": {
     "albumOverview": "Album overview",
-    "browseHint": "Tap any photo or video to view it larger, then scroll through the album.",
+    "browseHint": "Tap any image for a closer look",
+    "browseHintClick": "Click any image for a closer look",
+    "guestTeaserTitle": "There’s more to the story.",
+    "guestTeaserAction": "Sign in to see more!",
+    "scrollHint": "Scroll to explore. Tap a photo for fullscreen.",
+    "scrollHintClick": "Scroll to explore. Click a photo for fullscreen.",
     "loadingAlbum": "Loading album…",
     "poweredBy": "Powered by Foldergram",
     "loadingEyebrow": "Folder Share",
@@ -1345,7 +1350,7 @@
     "viewer": "Viewer",
     "open": "Account: {name}",
     "title": "Your account",
-    "signIn": "Sign in / Sign up",
+    "signIn": "Sign in",
     "signOutFailed": "Unable to sign out. Please try again."
   }
 }

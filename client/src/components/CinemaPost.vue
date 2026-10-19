@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
 @media (max-width: 767px) {
   .cinema-post__zoom { display: inline-flex; }
   /* Keep Safari toolbar changes from resizing the scrollable album. */
-  .cinema-post { --cinema-viewport-height: 100svh; --cinema-viewport-reserve: 20rem; }
+  .cinema-post { --cinema-viewport-height: 100svh; --cinema-viewport-reserve: 18.5rem; }
   .cinema-post__metadata { font-size: 0.7rem; }
 }
 </style>

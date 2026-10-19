@@ -32,7 +32,7 @@ describe('Cinema account menu', () => {
     const auth = signedIn(); auth.authenticated = false; auth.user = null;
     const wrapper = mount(CinemaAccountMenu, { global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } });
     expect(wrapper.get('a').attributes('href')).toBe('/signin');
-    expect(wrapper.text()).toBe('Sign in / Sign up'); wrapper.unmount();
+    expect(wrapper.text()).toBe('Sign in'); wrapper.unmount();
   });
   it('shows the email username without its domain when screen names are disabled', async () => {
     const auth = signedIn(); auth.user!.displayName = 'seth_lippman'; auth.user!.email = 'seth_lippman@me.com';

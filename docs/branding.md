@@ -66,15 +66,24 @@ service. The header and More-menu identity displays share this account styling.
 | `client/src/components/AppShell.vue` | Shared Cinema `--ur-logo-filter` / `--ur-logo-blend` variables for light and dark themes. |
 | `AlbumAttribution.vue`, `SharedFolderView.vue`, `EmailSignIn.vue`, `EmailAccessReviewView.vue` | Component logo sizing and/or theme filters. |
 
+Email sign-in and owner-review dark-mode filters must target only their scoped
+logo classes. Keep the root theme selector outside `:global(...)`: Vue can drop
+the trailing logo selector when compiling that form and invert the whole page.
+`client/src/utils/branding-styles.test.ts` checks the compiled selectors.
+
 The current artwork uses multiply blending on light backgrounds and inversion /
 screen blending in dark themes. A new transparent, colored, or already-dark logo
 may need different CSS; review these rules as well as changing the image.
 
 ## Related brand name and email copy
 
+The Cinema shared-album guest teaser lives in `CinemaGuestTeaser.vue`, with copy
+in `share.guestTeaserTitle` and `share.guestTeaserAction` in the locale files.
+The local preview shows it when the guest-header preview is selected.
+
 For a full rename, also review:
 
-- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: small, muted Cinema name beneath the album/feed title on the left; account controls remain on the right. The local static preview uses the same header CSS.
+- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: 13px, darker gray semibold Cinema name. On desktop it sits beneath the album/feed title on the left, with account controls on the right. On mobile it sits at the left of a slim, softly outlined gray strip when there is no back control, and centers between the back and account controls in scroll views, with the full-width title on the next row and the matching 13px hint above the sticky header divider. The local static preview uses the same header CSS.
 - `client/src/utils/document-title.ts`: browser title wording.
 - `client/src/locales/en.json`, `es.json`, `zh.json`: email sign-in name and copy.
 - `server/src/routes/share-preview.ts`: initial and shared-album browser titles.
@@ -142,7 +151,7 @@ Personal invitation links reuse the existing `EmailSignIn.vue` UR front door at
 `/signin#invite=…`; there is no additional logo asset. The optional first-sign-in
 screen-name field reuses that card too. The local confirmation preview in
 `foldergram-dev` / `foldergram-preview.html` includes this field with synthetic
-identity data. Cinema account entry copy is “Sign in / Sign up”.
+identity data. Cinema guest account entry is a compact rounded “Sign in” button with a person icon, opening the existing combined sign-in/sign-up flow.
 
 The local access-settings preview in `foldergram-dev` / `foldergram-preview.html`
 uses synthetic identities and invitations to show the simplified invite/people

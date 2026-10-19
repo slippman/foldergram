@@ -65,7 +65,7 @@ async function confirm() {
 </script>
 <style scoped>
 .review-logo { object-fit: contain; mix-blend-mode: multiply; }
-:global(:root[data-theme="dark"]) .review-logo { filter: invert(1); mix-blend-mode: screen; }
+:root[data-theme="dark"] .review-logo { filter: invert(1); mix-blend-mode: screen; }
 .review-submit { background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: none; }
 .review-submit:hover { opacity: 0.85; }
 </style>

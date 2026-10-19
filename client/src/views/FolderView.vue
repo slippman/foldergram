@@ -24,9 +24,9 @@
     <template v-else-if="foldersStore.currentFolder">
       <section v-if="isCinema" class="folder-cinema">
         <AlbumHeader :title="foldersStore.currentFolder.name"
-          :show-hint="!isCinemaScroll && foldersStore.currentImages.length > 0"
-          :back-to="isCinemaScroll ? cinemaGridRoute : { name: 'library' }"
+          :back-to="isCinemaScroll ? cinemaGridRoute : undefined"
           :back-label="isCinemaScroll ? t('share.albumOverview') : t('folder.cinema.back')"
+          :hint="foldersStore.currentImages.length ? (isCinemaScroll ? 'scroll' : 'grid') : undefined"
           back-class="folder-cinema__back" />
         <FolderGrid v-if="!isCinemaScroll" :items="foldersStore.currentImages" variant="cinema" />
         <div v-else>

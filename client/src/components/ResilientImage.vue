@@ -1,5 +1,6 @@
 <template>
   <img
+    ref="imageElement"
     v-bind="$attrs"
     v-if="resolvedSrc"
     :src="resolvedSrc"
@@ -52,7 +53,14 @@ const attempt = ref(0);
 const loaded = ref(false);
 const hiddenUntilRetry = ref(false);
 const usingFallback = ref(false);
+const imageElement = ref<HTMLImageElement | null>(null);
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let completionTimer: ReturnType<typeof setInterval> | null = null;
+
+function clearCompletionTimer() {
+  if (completionTimer !== null) clearInterval(completionTimer);
+  completionTimer = null;
+}
 
 const activeSrc = computed(() => {
   if (usingFallback.value && props.fallbackSrc && props.fallbackSrc !== props.src) {
@@ -74,6 +82,19 @@ const resolvedSrc = computed(() => {
   const separator = activeSrc.value.includes('?') ? '&' : '?';
   return `${activeSrc.value}${separator}retry=${attempt.value}`;
 });
+
+// Cached images can finish without a fresh load event on a restored page.
+// Check successful completion only: failures still follow the normal retry path.
+watch([imageElement, resolvedSrc, loaded], () => {
+  clearCompletionTimer();
+  const image = imageElement.value;
+  if (!image || !resolvedSrc.value || loaded.value) return;
+  const check = () => {
+    if (image === imageElement.value && image.complete && image.naturalWidth > 0) handleLoad();
+  };
+  completionTimer = setInterval(check, 100);
+  check();
+}, { flush: 'post' });
 
 function clearRetryTimer() {
   if (retryTimer) {
@@ -108,11 +129,13 @@ function scheduleRetry() {
 }
 
 function handleLoad() {
+  clearCompletionTimer();
   clearRetryTimer();
   loaded.value = true;
 }
 
 function handleError() {
+  clearCompletionTimer();
   loaded.value = false;
 
   if (!usingFallback.value && props.fallbackSrc && props.fallbackSrc !== props.src) {
@@ -143,7 +166,7 @@ watch(
   }
 );
 
-onBeforeUnmount(clearRetryTimer);
+onBeforeUnmount(() => { clearRetryTimer(); clearCompletionTimer(); });
 </script>
 
 <style scoped>

@@ -10,9 +10,9 @@
 
       <section v-if="shareStore.access?.granted && shareStore.folder" class="grid" :class="isCinema ? 'mx-auto min-w-0 w-full gap-3' : 'gap-6'">
         <AlbumHeader v-if="isCinema" :title="displayFolderTitle"
-          :show-hint="!isScroll && shareStore.images.length > 0"
           :back-to="isScroll ? { name: 'shared-folder', params: { slug } } : undefined"
-          :back-label="t('share.albumOverview')" />
+          :back-label="t('share.albumOverview')"
+          :hint="shareStore.images.length ? (isScroll ? 'scroll' : 'grid') : undefined" />
         <div v-else class="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-6 max-sm:grid-cols-1 max-sm:text-center">
           <div class="grid place-items-center">
             <Avatar class="h-[7.25rem] w-[7.25rem]" :name="displayFolderTitle" :src="shareStore.folder.avatarThumbnailUrl" />
@@ -41,6 +41,7 @@
           </div>
           <FolderGrid v-else :items="shareStore.images" :variant="isCinema ? 'cinema' : 'posts'" :shared-slug="slug" />
           <InfiniteLoader :loading="shareStore.loading" :has-more="shareStore.hasMore" :show-complete="!isCinema" @load-more="loadMore" />
+          <CinemaGuestTeaser v-if="isCinema && shareStore.images.length && !shareStore.hasMore && !shareStore.loading" />
         </section>
       </section>
 
@@ -116,6 +117,7 @@ import AlbumAttribution from '../components/AlbumAttribution.vue';
 import AlbumHeader from '../components/AlbumHeader.vue';
 import Avatar from '../components/Avatar.vue';
 import CinemaPost from '../components/CinemaPost.vue';
+import CinemaGuestTeaser from '../components/CinemaGuestTeaser.vue';
 import { sharedFeedItem } from '../utils/shared-media';
 import EmptyState from '../components/EmptyState.vue';
 import ErrorState from '../components/ErrorState.vue';

@@ -10,6 +10,8 @@
 
 ### Bug fixes
 
+- Cinema albums and feeds have responsive headers, mobile browsing hints, and a sign-in invitation at the end of guest albums.
+- Dark-mode email branding no longer inverts the whole page, and cached photos can finish loading without another browser load event.
 - Deleted photos and library index resets clear personal likes so they cannot attach to unrelated photos.
 - Sign-in links last 24 hours, and accounts show the part of the email address before @ while screen names are disabled.
 - Email sign-in shows how long to wait when a request is rate-limited instead of suggesting an email was sent. Link request limits apply only in production.

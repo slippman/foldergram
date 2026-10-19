@@ -852,7 +852,12 @@
   },
   "share": {
     "albumOverview": "相册概览",
-    "browseHint": "点击任意照片或视频以放大查看，然后滚动浏览相册。",
+    "browseHint": "轻触任意图像以近距离查看",
+    "browseHintClick": "点击任意图像以近距离查看",
+    "guestTeaserTitle": "精彩故事还在继续。",
+    "guestTeaserAction": "登录查看更多！",
+    "scrollHint": "滚动探索。轻触照片以全屏查看。",
+    "scrollHintClick": "滚动探索。点击照片以全屏查看。",
     "loadingAlbum": "正在加载相册…",
     "poweredBy": "由 Foldergram 提供支持",
     "loadingEyebrow": "文件夹共享",
@@ -1345,7 +1350,7 @@
     "viewer": "访客",
     "open": "账户：{name}",
     "title": "您的账户",
-    "signIn": "登录 / 注册",
+    "signIn": "登录",
     "signOutFailed": "无法退出登录，请重试。"
   }
 }

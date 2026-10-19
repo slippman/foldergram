@@ -15,7 +15,7 @@
   >
     <!-- Main feed column -->
     <div class="min-w-0">
-      <AlbumHeader v-if="isCinema" :title="t('home.feedTitle')" />
+      <AlbumHeader v-if="isCinema" :title="t('home.feedTitle')" :hint="feedStore.items.length ? 'scroll' : undefined" />
       <section
         v-if="appStore.isLibraryRebuildRequired && appStore.stats && !appStore.isRebuilding"
         class="grid gap-[0.55rem] px-5 py-[1rem] mb-[1.1rem] border rounded-[1rem] shadow-[var(--shadow)]"
