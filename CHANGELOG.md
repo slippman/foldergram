@@ -4,11 +4,17 @@
 
 ### New features
 
+- Albums can be shared with all signed-in users or kept share-link only. Link-only albums stay out of feeds, search and viewer album lists; admins can still manage them. Existing and new albums default to all signed-in users.
+
 - Invite-only email sign-in through Resend, with 90-day sessions and an access-request inbox with approval, rejection, and account deletion controls, and optional approval or denial from owner notification emails.
 - Email invitations sent directly to recipients and a sign-in/sign-up entry on shared albums. Optional screen names are available for a later rollout and disabled by default.
 - Personal likes saved to each email account across devices.
 
 ### Bug fixes
+
+- Opening an email sign-in link keeps a consistent themed loading screen until account confirmation is ready, avoiding flashes of the email entry form.
+
+- Cinema share buttons confirm copies briefly without a duplicate link panel. Newly created links copy automatically, with a manual fallback when clipboard access is blocked.
 
 - Cinema albums and feeds have responsive headers, mobile browsing hints, and a sign-in invitation at the end of guest albums.
 - Dark-mode email branding no longer inverts the whole page, and cached photos can finish loading without another browser load event.

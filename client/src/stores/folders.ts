@@ -9,7 +9,8 @@ import {
   revokeFolderShareLink,
   setFolderCover,
   setFolderSharePassword,
-  updateFolderProfile
+  updateFolderProfile,
+  updateFolderShareMode
 } from '../api/gallery';
 import type {
   CreateFolderShareLinkInput,
@@ -19,6 +20,9 @@ import type {
   FolderSummary
 } from '../types/api';
 import { updateCaptionInItems } from '../utils/caption';
+import { useFeedStore } from './feed';
+import { useReelsStore } from './reels';
+import { useMomentsStore } from './moments';
 
 type FolderMediaFilter = 'all' | 'video';
 
@@ -221,6 +225,16 @@ export const useFoldersStore = defineStore('folders', {
       if (this.currentFolder?.slug === slug) {
         this.currentFolder = updated;
       }
+    },
+
+    async updateShareMode(slug: string, mode: 'library' | 'link-only') {
+      const updated = await updateFolderShareMode(slug, mode);
+      this.items = this.items.map(folder => folder.slug === slug ? updated : folder);
+      if (this.currentFolder?.slug === slug) this.currentFolder = updated;
+      useReelsStore().reset();
+      useMomentsStore().resetForRebuild();
+      await useFeedStore().loadInitial(true);
+      return updated;
     },
 
     async setFolderCover(slug: string, imageId: number) {

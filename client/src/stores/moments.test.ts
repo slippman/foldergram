@@ -277,3 +277,18 @@ describe('useMomentsStore localization', () => {
     });
   });
 });
+
+it('discards a capsule response started before visibility invalidation', async () => {
+  setActivePinia(createPinia());
+  const galleryApi = await import('../api/gallery');
+  let finish!: (value: any) => void;
+  const fetch = vi.spyOn(galleryApi, 'fetchMomentFeed').mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const store = useMomentsStore();
+  const pending = store.loadMoment('old');
+  store.resetForRebuild();
+  finish({ railKind: 'moments', railTitle: 'Old', railDescription: '', railSingularLabel: '', moment: createCapsule('old', 'Old', '', ''), items: [createFeedItem(999)], hasMore: false });
+  await pending;
+  expect(store.currentImages).toEqual([]);
+  expect(store.currentMoment).toBeNull();
+  fetch.mockRestore();
+});

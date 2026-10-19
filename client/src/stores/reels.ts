@@ -7,6 +7,7 @@ import { resolveReelsAffinitySnapshot, type ReelsAffinitySnapshot } from '../uti
 import { useAppStore } from './app';
 
 interface ReelsState {
+  requestGeneration: number;
   mode: ReelsFeedMode;
   loadedMode: ReelsFeedMode | null;
   items: FeedItem[];
@@ -32,6 +33,7 @@ function createReelsSeed(): number {
 
 export const useReelsStore = defineStore('reels', {
   state: (): ReelsState => ({
+    requestGeneration: 0,
     mode: 'random',
     loadedMode: null,
     items: [],
@@ -78,6 +80,7 @@ export const useReelsStore = defineStore('reels', {
     },
 
     reset() {
+      this.requestGeneration += 1;
       this.mode = 'random';
       this.loadedMode = null;
       this.items = [];
@@ -130,6 +133,7 @@ export const useReelsStore = defineStore('reels', {
         this.affinitySnapshot = null;
       }
 
+      const generation = this.requestGeneration;
       this.loading = true;
       this.error = null;
 
@@ -147,6 +151,7 @@ export const useReelsStore = defineStore('reels', {
             : {}
         );
 
+        if (generation !== this.requestGeneration) return;
         this.items.push(...payload.items);
         this.loadedMode = payload.mode ?? this.mode;
         this.page += 1;
@@ -157,9 +162,9 @@ export const useReelsStore = defineStore('reels', {
           this.activeReelId = this.items[0]?.id ?? null;
         }
       } catch (error) {
-        this.error = error instanceof Error ? error.message : 'Unable to load reels';
+        if (generation === this.requestGeneration) this.error = error instanceof Error ? error.message : 'Unable to load reels';
       } finally {
-        this.loading = false;
+        if (generation === this.requestGeneration) this.loading = false;
       }
     },
 

@@ -38,8 +38,9 @@ account avatar that opens the current user name and sign-out action. The More
 menu also identifies the current account. Email-mode guests on shared Cinema
 albums see a Sign in button. Avatars use local initials; no email address is sent
 to an external avatar service. Collections for email visitors remain
-browser-local. Comments and per-album library visibility are separate features;
-this first email-access implementation grants the existing full-library view.
+browser-local. Comments remain a future feature. Email accounts can browse
+albums marked All signed-in users; share-link-only albums still require their
+scoped share link or album password.
 
 Album share links and album passwords continue to grant their existing scoped
 access without email sign-in. Already signed-in accounts opening a shared album

@@ -45,11 +45,15 @@ describe('FolderShareModal', () => {
       await flushPromises();
       expect(copy).toHaveBeenCalledWith('travel-2024', 7);
       expect(writeText).toHaveBeenCalledWith(new URL(shareUrl, window.location.origin).href);
-      expect(store.lastCreatedShareUrl).toBe(shareUrl);
-      expect(wrapper.text()).toContain(succeeds ? 'Link copied' : 'Select the link below to copy it');
-      expect(button.text().trim()).toBe(cinema && succeeds ? 'Copied' : 'Copy');
+      expect(store.lastCreatedShareUrl).toBe(cinema ? null : shareUrl);
+      if (!cinema || !succeeds) expect(wrapper.text()).toContain(succeeds ? 'Link copied' : 'Select the link below to copy it');
+      if (cinema && succeeds) {
+        expect(wrapper.findAll('input[readonly]')).toHaveLength(0);
+        expect(wrapper.find('[role=status]').exists()).toBe(false);
+      }
+      expect(button.text().trim()).toBe(cinema && succeeds ? 'Copied!' : 'Copy');
       expect(button.find('.i-fluent-checkmark-20-regular').exists()).toBe(cinema && succeeds);
-      await vi.advanceTimersByTimeAsync(2500);
+      await vi.advanceTimersByTimeAsync(2000);
       expect(button.text().trim()).toBe('Copy');
       wrapper.unmount();
     } finally {
@@ -61,6 +65,70 @@ describe('FolderShareModal', () => {
       else Reflect.deleteProperty(navigator, 'clipboard');
     }
   });
+  it.each([true, false])('creates one Cinema link and automatically copies it, with manual fallback only if blocked: %s', async succeeds => {
+    vi.useFakeTimers();
+    const { useFoldersStore } = await import('../stores/folders');
+    const store = useFoldersStore();
+    store.loadShareLinks = vi.fn().mockResolvedValue(undefined);
+    const link = { id: 42, folderId: 1, tokenPrefix: 'new-link', expiresAt: null, revokedAt: null,
+      createdAt: new Date().toISOString(), lastUsedAt: null, status: 'active' as const, canCopy: true };
+    const shareUrl = '/share/travel-2024#token=new-secret';
+    const create = vi.spyOn(galleryApi, 'createFolderShareLink').mockResolvedValue({ link, shareUrl } as any);
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const originalExec = Object.getOwnPropertyDescriptor(document, 'execCommand');
+    const writeText = succeeds ? vi.fn().mockResolvedValue(undefined) : vi.fn().mockRejectedValue(new Error('Blocked'));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => { throw new Error('Blocked'); }) });
+    const wrapper = mount(FolderShareModal, { props: { folder: createFolder(), cinema: true } });
+    try {
+      const button = wrapper.findAll('button').find(button => button.text().trim() === 'Create Link')!;
+      await button.trigger('click'); await flushPromises();
+      expect(create).toHaveBeenCalledOnce();
+      expect(writeText).toHaveBeenCalledWith(new URL(shareUrl, window.location.origin).href);
+      expect(store.shareLinks.map(link => link.id)).toEqual([42]);
+      expect(wrapper.findAll('input[readonly]')).toHaveLength(succeeds ? 0 : 1);
+      expect(wrapper.findAll('button').filter(button => button.text().trim() === 'Copy')).toHaveLength(1);
+      expect(wrapper.find('[role=status]').exists()).toBe(false);
+      expect(button.text().trim()).toBe(succeeds ? 'Link created and copied!' : 'Create Link');
+      expect(wrapper.text()).not.toContain('Copy this link now');
+      if (!succeeds) expect(wrapper.text()).toContain('Select the link below to copy it');
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(button.text().trim()).toBe('Create Link');
+    } finally {
+      wrapper.unmount(); create.mockRestore(); vi.useRealTimers();
+      if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+      if (originalExec) Object.defineProperty(document, 'execCommand', originalExec);
+      else Reflect.deleteProperty(document, 'execCommand');
+    }
+  });
+
+  it.each([true, false])('saves album visibility with rollback on failure: %s', async succeeds => {
+    const { useFoldersStore } = await import('../stores/folders');
+    const store = useFoldersStore();
+    store.loadShareLinks = vi.fn().mockResolvedValue(undefined);
+    store.updateShareMode = succeeds
+      ? vi.fn().mockResolvedValue(createFolder({ shareMode: 'link-only' }))
+      : vi.fn().mockRejectedValue(new Error('Cannot save visibility'));
+    const wrapper = mount(FolderShareModal, { props: { folder: createFolder(), cinema: true } });
+    const select = wrapper.get('select');
+    expect((select.element as HTMLSelectElement).value).toBe('library');
+    await select.setValue('link-only');
+    await flushPromises();
+    expect(store.updateShareMode).toHaveBeenCalledWith('travel-2024', 'link-only');
+    expect((select.element as HTMLSelectElement).value).toBe(succeeds ? 'link-only' : 'library');
+    expect(wrapper.text()).toContain(succeeds ? 'Album visibility saved.' : 'Cannot save visibility');
+    wrapper.unmount();
+  });
+
+  it('preserves Classic controls without the Cinema visibility panel', async () => {
+    const { useFoldersStore } = await import('../stores/folders');
+    useFoldersStore().loadShareLinks = vi.fn().mockResolvedValue(undefined);
+    const wrapper = mount(FolderShareModal, { props: { folder: createFolder() } });
+    expect(wrapper.text()).not.toContain('Album visibility');
+    wrapper.unmount();
+  });
+
   beforeEach(() => {
     setActivePinia(createPinia());
   });

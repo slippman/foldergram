@@ -283,13 +283,14 @@ function mapShareLink(link: FolderShareLinkRecord, now = new Date()): PublicFold
 }
 
 function getGlobalGrant(request: express.Request, folderId: number): FolderShareGrant | null {
-  if (!authService.isEnabled() || authService.isAuthenticatedRequest(request) || authService.isPublicViewerAccessEnabled()) {
-    return {
-      folderId,
-      kind: 'global'
-    };
+  const context = authService.getRequestAuthContext(request);
+  const folder = folderRepository.getById(folderId);
+  if (!folder || folder.role !== 'normal') return null;
+  // A library session must not silently unlock a link-only album on share APIs.
+  if (folder.share_mode === 'link-only' && context.role !== 'admin') return null;
+  if (!authService.isEnabled() || context.authenticated || authService.isPublicViewerAccessEnabled()) {
+    return { folderId, kind: 'global' };
   }
-
   return null;
 }
 
@@ -355,12 +356,13 @@ function getPasswordRecord(folderId: number): FolderSharePasswordRecord | undefi
 
 function createMediaTokenFactory(request: express.Request) {
   const session = getShareSessionGrant(request);
-  const global = getGlobalGrant(request, 0);
+  const globals = new Map<number, FolderShareGrant | null>();
   const windowMs = appConfig.mediaCacheTtlSeconds * 1000;
   const exp = (Math.floor(Date.now() / windowMs) + 2) * windowMs;
   let secret: Buffer | undefined;
   return (folderId: number, scope: string, scopeImageId: number): string | null => {
-    const grant = session?.folderId === folderId ? session : global ? { folderId, kind: 'global' as const } : null;
+    if (!globals.has(folderId)) globals.set(folderId, getGlobalGrant(request, folderId));
+    const grant = session?.folderId === folderId ? session : globals.get(folderId);
     if (!grant) return null;
     secret ??= getShareSessionSecret();
     const payload = Buffer.from(JSON.stringify({ ...grant, scope, scopeImageId, exp })).toString('base64url');
@@ -580,11 +582,12 @@ export const folderShareService = {
     publicAccess: boolean;
   } {
     const folder = folderRepository.getNormalBySlug(slug);
-    const publicAccess = !authService.isEnabled() || authService.isPublicViewerAccessEnabled();
+    const publicAccess = (!authService.isEnabled() || authService.isPublicViewerAccessEnabled())
+      && (!folder || folder.share_mode === 'library');
     const granted = folder ? Boolean(this.getFolderGrant(request, folder.id)) : false;
     // Password entry must remain available without confirming a guessed album's
     // existence or whether its owner configured a reusable password.
-    if (!publicAccess && !authService.isAuthenticatedRequest(request) && !granted) {
+    if (!publicAccess && authService.getRequestAuthContext(request).role !== 'admin' && !granted) {
       return { exists: true, granted: false, hasPassword: true, publicAccess: false };
     }
     if (!folder) {

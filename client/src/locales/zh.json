@@ -770,6 +770,15 @@
       }
     },
     "shareModal": {
+      "copied": "已复制！",
+      "createdAndCopied": "链接已创建并复制！",
+      "visibilityTitle": "相册可见性",
+      "visibilityLibrary": "所有已登录用户",
+      "visibilityLinkOnly": "仅通过分享链接",
+      "visibilityLibraryDescription": "已登录用户可在动态和相册列表中查看。",
+      "visibilityLinkOnlyDescription": "在所有动态和非管理员相册列表中隐藏。管理员仍可打开，其他人需要有效分享链接。",
+      "visibilitySaved": "相册可见性已保存。",
+      "visibilityFailed": "无法保存相册可见性。",
       "title": "共享文件夹",
       "publicUrl": "公开文件夹 URL",
       "accessSummaryTitle": "当前访问方式",

@@ -18,6 +18,26 @@ optional admin/viewer/public access gate for homelab and LAN use.
   and preview roots are trusted not to replace directories while Foldergram is
   performing a delete or recovery operation
 
+## Album visibility
+
+An album defaults to `library`, allowing regular library access. A Cinema admin
+can select `link-only` in Share Folder. The server excludes link-only albums from
+feed modes, search, Reels, moments, places, likes and collection previews, including
+administrator discovery. Viewer album lists and normal folder/post/original and
+cookie-gated derivative routes reject these albums; admins retain direct album
+and management access. Story/carousel media inherits its owning album's access.
+
+A viewer's signed-in session does not unlock a link-only album through the share
+API. Its existing share-link or album-password grant is required and remains
+scoped to that album. Unauthenticated access checks conceal whether an album
+exists. Share media capabilities continue to follow the existing finite caching
+policy: changing visibility does not erase cached or downloaded bytes.
+
+Visibility updates require administrator capability and mutation trust checks.
+Existing albums migrate to `library`; scans preserve each album's choice. The
+request scope uses async-local storage, so concurrent requests do not share roles
+or visibility state. Internal maintenance retains access to the complete index.
+
 ## Password protection
 
 Foldergram can optionally protect the library from the Settings page with:

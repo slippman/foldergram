@@ -17,6 +17,26 @@ describe('email sign-in confirmation', () => {
     mocks.inspect.mockResolvedValue({ email: 'family@example.com', displayName: 'Family' });
     mocks.confirm.mockResolvedValue({ ok: true });
   });
+  it('never paints the request form while a link inspection is pending', async () => {
+    const token = 'a'.repeat(43);
+    window.history.replaceState({}, '', `/signin#token=${token}`);
+    let finish!: (identity: any) => void;
+    mocks.inspect.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const wrapper = mount(EmailSignIn);
+    expect(wrapper.attributes('data-album-state')).toBe('loading');
+    expect(wrapper.find('input[type=email]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Access to UnReeled Photos requires');
+    await flushPromises();
+    expect(wrapper.attributes('data-album-state')).toBe('loading');
+    expect(mocks.confirm).not.toHaveBeenCalled();
+    finish({ email: 'family@example.com', firstSignIn: false });
+    await flushPromises();
+    expect(wrapper.attributes('data-album-state')).toBe('settled');
+    expect(wrapper.text()).toContain('Sign in as family@example.com?');
+    expect(wrapper.find('input[type=email]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it('offers an optional first-sign-in screen name and submits it only with verification', async () => {
     window.history.replaceState({}, '', `/signin#token=${'a'.repeat(43)}`);
     mocks.inspect.mockResolvedValue({ email: 'family@example.com', displayName: 'Family', firstSignIn: true });

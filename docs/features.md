@@ -116,6 +116,22 @@ and next navigation within a folder.
 Admins can share one folder without creating user accounts or unlocking the
 whole library.
 
+In Cinema, admins choose **Album visibility** in the Share Folder dialog:
+
+- **All signed-in users** is the default for new and existing albums.
+- **Share link only** removes an album from feed modes, Reels, search and discovery,
+  including administrator feeds. It also removes the album from non-admin album
+  lists and blocks their normal album/post/media URLs. Admins retain album-list
+  and direct management access.
+- A valid scoped share link or album-password session still opens a link-only
+  album. Signing in alone does not grant access to it. Signed-in viewers stay in
+  its shared view; admins can enter the regular album view.
+
+Changing visibility preserves share links, album passwords and the source media.
+Rescans preserve the choice. Already downloaded or finitely cached media may
+remain accessible under the existing media-cache policy; this does not erase
+copies. The Classic presentation remains unchanged.
+
 The Share Folder dialog supports:
 
 - normal public folder URL copying when public viewer mode is enabled

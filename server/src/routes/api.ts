@@ -634,6 +634,14 @@ router.get('/folders/:slug', (request, response) => {
   response.json(folder);
 });
 
+router.patch('/admin/folders/:slug/share-mode', requireCapability('canManageLibrary', 'Admin access is required.'), (request, response) => {
+  const { slug } = slugSchema.parse(request.params);
+  const { shareMode } = z.object({ shareMode: z.enum(['library', 'link-only']) }).strict().parse(request.body);
+  const folder = galleryService.updateFolderShareMode(slug, shareMode);
+  if (!folder) { response.status(404).json({ message: 'Album not found' }); return; }
+  response.json(folder);
+});
+
 router.patch('/folders/:slug', requireCapability('canManageLibrary', 'Admin access is required.'), (request, response) => {
   const params = slugSchema.parse(request.params);
   const body = patchFolderBodySchema.parse(request.body);
