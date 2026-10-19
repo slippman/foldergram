@@ -1,8 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_LOCALE, i18n } from '../locales';
 import type { FeedItem } from '../types/api';
+import { useAuthStore } from './auth';
+import * as gallery from '../api/gallery';
+
 import { useLikesStore } from './likes';
 
 function createFeedItem(id: number): FeedItem {
@@ -51,5 +54,26 @@ describe('useLikesStore localization', () => {
     expect(store.collectionLabel).toBe('收藏');
     expect(store.collectionSectionLabel).toBe('收藏帖子');
     expect(store.toggleAriaLabel(true)).toBe('取消收藏帖子');
+  });
+});
+
+
+describe('personal likes account switches', () => {
+  beforeEach(() => { setActivePinia(createPinia()); vi.restoreAllMocks(); });
+  it('loads personal likes from the account API', async () => {
+    const auth = useAuthStore(); auth.user = { id: 1, email: 'one@example.com', displayName: 'One' }; auth.likesMode = 'personal';
+    vi.spyOn(gallery, 'fetchLikes').mockResolvedValue({ items: [createFeedItem(1)] });
+    const store = useLikesStore(); await store.initialize();
+    expect(store.mode).toBe('personal'); expect(store.likedIds).toEqual([1]);
+  });
+  it('discards a pending response after the person signs out or switches accounts', async () => {
+    const auth = useAuthStore(); auth.user = { id: 1, email: 'one@example.com', displayName: 'One' }; auth.likesMode = 'personal';
+    let finish!: (value: { items: FeedItem[] }) => void;
+    vi.spyOn(gallery, 'fetchLikes').mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    const store = useLikesStore(); const pending = store.initialize();
+    auth.user = { id: 2, email: 'two@example.com', displayName: 'Two' };
+    store.resetForRebuild(); store.syncFromItems([createFeedItem(2)], 'personal');
+    finish({ items: [createFeedItem(1)] }); await pending;
+    expect(store.likedIds).toEqual([2]); expect(store.items.map(item => item.id)).toEqual([2]);
   });
 });

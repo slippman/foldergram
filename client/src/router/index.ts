@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router';
 
+import EmailAccessReviewView from '../views/EmailAccessReviewView.vue';
+import AdminSignInView from '../views/AdminSignInView.vue';
+import EmailSignIn from '../components/EmailSignIn.vue';
 import HomeView from '../views/HomeView.vue';
 import PostView from '../views/PostView.vue';
 import LibraryView from '../views/LibraryView.vue';
@@ -42,6 +45,9 @@ function shouldPreserveModalScroll(to: RouteLocationNormalized, from: RouteLocat
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/access/review', name: 'email-access-review', component: EmailAccessReviewView, meta: { publicAuth: true } },
+    { path: '/admin', name: 'admin-sign-in', component: AdminSignInView, meta: { publicAuth: true } },
+    { path: '/signin', name: 'email-sign-in', component: EmailSignIn, meta: { publicAuth: true } },
     {
       path: '/',
       name: 'home',

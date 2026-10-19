@@ -113,6 +113,9 @@ export default defineConfig(async ({ command, mode }) => {
       allowedHosts: env.DEV_ALLOWED_HOSTS?.split(',').map(host => host.trim()).filter(Boolean),
       port: resolvedDevClientPort,
       proxy: {
+        ...(['true', '1'].includes(env.EMAIL_SIGN_IN_ENABLED ?? '') ? {
+          '^/(?:signin/?|admin/?|access/review/?)?(?:[?].*)?$': `http://localhost:${devServerPort}`
+        } : {}),
         '/branding': {
           target: `http://localhost:${devServerPort}`,
           // Vite's asset imports are JS modules, not the public PNG response.

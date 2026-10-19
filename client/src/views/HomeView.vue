@@ -15,7 +15,7 @@
   >
     <!-- Main feed column -->
     <div class="min-w-0">
-      <CinemaHeader v-if="isCinema" :title="t('home.feedTitle')" />
+      <AlbumHeader v-if="isCinema" :title="t('home.feedTitle')" :hint="feedStore.items.length ? 'scroll' : undefined" />
       <section
         v-if="appStore.isLibraryRebuildRequired && appStore.stats && !appStore.isRebuilding"
         class="grid gap-[0.55rem] px-5 py-[1rem] mb-[1.1rem] border rounded-[1rem] shadow-[var(--shadow)]"
@@ -290,7 +290,7 @@ import InfiniteLoader from '../components/InfiniteLoader.vue';
 import StoriesModal from '../components/StoriesModal.vue';
 import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
-import CinemaHeader from '../components/CinemaHeader.vue';
+import AlbumHeader from '../components/AlbumHeader.vue';
 import CinemaPost from '../components/CinemaPost.vue';
 import AlbumAttribution from '../components/AlbumAttribution.vue';
 import { provideCinemaAudio } from '../composables/useCinemaAudio';

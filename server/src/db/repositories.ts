@@ -1,3 +1,4 @@
+import { getRequestUserId } from '../services/request-user.js';
 import { databaseManager } from './database.js';
 import { SHARE_SESSION_SECRET_SETTING_KEY } from '../constants/app-setting-keys.js';
 import { normalizePath, safeJoin } from '../utils/path-utils.js';
@@ -45,6 +46,11 @@ const database = new Proxy({} as DatabaseSync, {
     return typeof value === 'function' ? value.bind(conn) : value;
   }
 });
+
+function likesReadSql(): string {
+  const userId = getRequestUserId();
+  return userId === null ? 'likes' : `(SELECT post_id, created_at FROM user_likes WHERE user_id = ${userId})`;
+}
 
 const EFFECTIVE_FEED_TIME_SQL = 'COALESCE(posts.taken_at, posts.sort_timestamp)';
 const EFFECTIVE_IMAGE_FEED_TIME_SQL = 'COALESCE(images.taken_at, images.sort_timestamp)';
@@ -197,7 +203,7 @@ const MEDIA_SEARCH_FIELD_SQL = [
   EXIF_LENS_MODEL_SEARCH_SQL
 ] as const;
 
-const POST_SAVED_SELECT_SQL = `
+const postSavedSelectSql = () => getRequestUserId() !== null ? '0 AS isSaved' : `
   CASE WHEN EXISTS (
     SELECT 1
     FROM collections
@@ -207,7 +213,7 @@ const POST_SAVED_SELECT_SQL = `
   ) THEN 1 ELSE 0 END AS isSaved
 `;
 
-const BASE_POST_SELECT_SQL = `
+const basePostSelectSql = () => `
   SELECT
     posts.id,
     posts.folder_id AS folderId,
@@ -229,7 +235,7 @@ const BASE_POST_SELECT_SQL = `
     posts.sort_timestamp AS sortTimestamp,
     posts.taken_at AS takenAt,
     posts.taken_at_source AS takenAtSource,
-    ${POST_SAVED_SELECT_SQL},
+    ${postSavedSelectSql()},
     places.id AS placeId,
     places.slug AS placeSlug,
     places.display_name AS placeName,
@@ -778,6 +784,7 @@ export const folderRepository = {
   },
 
   delete(id: number): void {
+    database.prepare('DELETE FROM user_likes WHERE post_id IN (SELECT id FROM posts WHERE folder_id = ?)').run(id);
     database.prepare('DELETE FROM folders WHERE id = ?').run(id);
   },
 
@@ -1350,6 +1357,7 @@ export const postRepository = {
       }
 
       database.prepare('DELETE FROM likes WHERE post_id = ?').run(post.id);
+      database.prepare('DELETE FROM user_likes WHERE post_id = ?').run(post.id);
       database.prepare('DELETE FROM collection_items WHERE post_id = ?').run(post.id);
       database.prepare('DELETE FROM post_items WHERE post_id = ?').run(post.id);
       database.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
@@ -1473,7 +1481,7 @@ export const postRepository = {
     const offset = (page - 1) * limit;
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE ${VISIBLE_POST_WHERE_SQL}
       ORDER BY posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
@@ -1532,7 +1540,7 @@ export const postRepository = {
     const mediaTypeClause = mediaType ? ' AND images.media_type = ?' : '';
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE posts.folder_id = ? AND ${VISIBLE_POST_WHERE_SQL}${mediaTypeClause}
       ORDER BY ${orderBySql}
       LIMIT ? OFFSET ?
@@ -1565,7 +1573,7 @@ export const postRepository = {
   listRecentCandidates(offset: number, limit: number): FeedPost[] {
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE ${VISIBLE_POST_WHERE_SQL}
       ORDER BY ${EFFECTIVE_FEED_TIME_SQL} DESC, posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
@@ -1588,8 +1596,8 @@ export const postRepository = {
   listRediscoverCandidates(offset: number, limit: number, cutoffTimestamp: number): FeedPost[] {
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
-      LEFT JOIN likes ON likes.post_id = posts.id
+      ${basePostSelectSql()}
+      LEFT JOIN ${likesReadSql()} AS likes ON likes.post_id = posts.id
       WHERE ${VISIBLE_POST_WHERE_SQL} AND ${EFFECTIVE_FEED_TIME_SQL} <= ?
       ORDER BY
         CASE WHEN likes.post_id IS NULL THEN 0 ELSE 1 END DESC,
@@ -1607,7 +1615,7 @@ export const postRepository = {
     const offset = (page - 1) * limit;
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE ${VISIBLE_POST_WHERE_SQL}
       ORDER BY ABS(((posts.id * 1103515245) + (? * 1013904223)) % 2147483647), posts.id DESC
       LIMIT ? OFFSET ?
@@ -1641,7 +1649,7 @@ export const postRepository = {
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
         posts.taken_at_source AS takenAtSource,
-        ${POST_SAVED_SELECT_SQL},
+        ${postSavedSelectSql()},
         places.id AS placeId,
         places.slug AS placeSlug,
         places.display_name AS placeName,
@@ -1653,7 +1661,7 @@ export const postRepository = {
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
       JOIN images ON images.id = post_items.image_id
       LEFT JOIN places ON places.id = posts.place_id
-      LEFT JOIN likes ON likes.post_id = posts.id
+      LEFT JOIN ${likesReadSql()} AS likes ON likes.post_id = posts.id
       WHERE ${VISIBLE_POST_WHERE_SQL}
         AND posts.post_type = 'single'
         AND images.media_type = 'video'
@@ -1688,7 +1696,7 @@ export const postRepository = {
         GROUP BY posts.id
       ) AS search_matches
       JOIN (
-        ${BASE_POST_SELECT_SQL}
+        ${basePostSelectSql()}
       ) AS base_posts ON base_posts.id = search_matches.postId
       ORDER BY search_matches.searchRank DESC, base_posts.sortTimestamp DESC, base_posts.id DESC
       LIMIT ? OFFSET ?
@@ -1755,7 +1763,7 @@ export const postRepository = {
 
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE ${VISIBLE_POST_WHERE_SQL}
         AND strftime('%m-%d', ${EFFECTIVE_FEED_TIME_SQL} / 1000, 'unixepoch', 'localtime') IN (${placeholders})
         AND CAST(strftime('%Y', ${EFFECTIVE_FEED_TIME_SQL} / 1000, 'unixepoch', 'localtime') AS INTEGER) < ?
@@ -1789,7 +1797,7 @@ export const postRepository = {
 
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE ${VISIBLE_POST_WHERE_SQL}
         AND ${EFFECTIVE_FEED_TIME_SQL} BETWEEN ? AND ?
       ORDER BY ${EFFECTIVE_FEED_TIME_SQL} DESC, posts.sort_timestamp DESC, posts.id DESC
@@ -1804,7 +1812,7 @@ export const postRepository = {
     const offset = (page - 1) * limit;
     const posts = database.prepare(
       `
-      ${BASE_POST_SELECT_SQL}
+      ${basePostSelectSql()}
       WHERE posts.place_id = ? AND ${VISIBLE_POST_WHERE_SQL}
       ORDER BY posts.sort_timestamp DESC, posts.id DESC
       LIMIT ? OFFSET ?
@@ -1839,7 +1847,7 @@ export const postRepository = {
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
         posts.taken_at_source AS takenAtSource,
-        ${POST_SAVED_SELECT_SQL},
+        ${postSavedSelectSql()},
         posts.trashed_at AS trashedAt,
         places.id AS placeId,
         places.slug AS placeSlug,
@@ -1909,7 +1917,7 @@ export const postRepository = {
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
         posts.taken_at_source AS takenAtSource,
-        ${POST_SAVED_SELECT_SQL},
+        ${postSavedSelectSql()},
         places.id AS placeId,
         places.slug AS placeSlug,
         places.display_name AS placeName,
@@ -2105,6 +2113,7 @@ export const postRepository = {
     }
 
     const folder = folderRepository.getById(post.folder_id);
+    database.prepare('DELETE FROM user_likes WHERE post_id = ?').run(post.id);
     database.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
     return {
       id: post.id,
@@ -2966,7 +2975,7 @@ export const imageRepository = {
 
 export const likeRepository = {
   listAll(): LikeRecord[] {
-    return database.prepare('SELECT post_id, post_id AS image_id, created_at FROM likes ORDER BY created_at DESC, post_id DESC').all() as unknown as LikeRecord[];
+    return database.prepare(`SELECT post_id, post_id AS image_id, created_at FROM ${likesReadSql()} AS likes ORDER BY created_at DESC, post_id DESC`).all() as unknown as LikeRecord[];
   },
 
   listAllLikes(): LikeRecord[] {
@@ -2976,11 +2985,11 @@ export const likeRepository = {
   getByImageId(imageId: number): LikeRecord | undefined {
     const postId = resolvePostIdByImageId(imageId);
     if (!postId) return undefined;
-    return database.prepare('SELECT post_id, post_id AS image_id, created_at FROM likes WHERE post_id = ?').get(postId) as LikeRecord | undefined;
+    return database.prepare(`SELECT post_id, post_id AS image_id, created_at FROM ${likesReadSql()} AS likes WHERE post_id = ?`).get(postId) as LikeRecord | undefined;
   },
 
   getByPostId(postId: number): LikeRecord | undefined {
-    return database.prepare('SELECT post_id, post_id AS image_id, created_at FROM likes WHERE post_id = ?').get(postId) as LikeRecord | undefined;
+    return database.prepare(`SELECT post_id, post_id AS image_id, created_at FROM ${likesReadSql()} AS likes WHERE post_id = ?`).get(postId) as LikeRecord | undefined;
   },
 
   count(): number {
@@ -2990,7 +2999,7 @@ export const likeRepository = {
           .prepare(
             `
             SELECT COUNT(*) AS count
-            FROM likes
+            FROM ${likesReadSql()} AS likes
             INNER JOIN posts ON posts.id = likes.post_id
             INNER JOIN folders ON folders.id = posts.folder_id
             WHERE ${VISIBLE_POST_WHERE_SQL}
@@ -3026,13 +3035,13 @@ export const likeRepository = {
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
         posts.taken_at_source AS takenAtSource,
-        1 AS isSaved,
+        ${getRequestUserId() === null ? 1 : 0} AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
         places.display_name AS placeName,
         places.kind AS placeKind,
         places.is_approximate AS placeIsApproximate
-      FROM likes
+      FROM ${likesReadSql()} AS likes
       INNER JOIN posts ON posts.id = likes.post_id
       INNER JOIN folders ON folders.id = posts.folder_id
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
@@ -3072,13 +3081,13 @@ export const likeRepository = {
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
         posts.taken_at_source AS takenAtSource,
-        1 AS isSaved,
+        ${getRequestUserId() === null ? 1 : 0} AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
         places.display_name AS placeName,
         places.kind AS placeKind,
         places.is_approximate AS placeIsApproximate
-      FROM likes
+      FROM ${likesReadSql()} AS likes
       INNER JOIN posts ON posts.id = likes.post_id
       INNER JOIN folders ON folders.id = posts.folder_id
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
@@ -3117,13 +3126,13 @@ export const likeRepository = {
         posts.sort_timestamp AS sortTimestamp,
         posts.taken_at AS takenAt,
         posts.taken_at_source AS takenAtSource,
-        1 AS isSaved,
+        ${getRequestUserId() === null ? 1 : 0} AS isSaved,
         places.id AS placeId,
         places.slug AS placeSlug,
         places.display_name AS placeName,
         places.kind AS placeKind,
         places.is_approximate AS placeIsApproximate
-      FROM likes
+      FROM ${likesReadSql()} AS likes
       INNER JOIN posts ON posts.id = likes.post_id
       INNER JOIN folders ON folders.id = posts.folder_id
       JOIN post_items ON post_items.post_id = posts.id AND post_items.position = 1
@@ -3140,6 +3149,13 @@ export const likeRepository = {
 
   upsert(postId: number): LikeRecord {
     const createdAt = nowIso();
+    const userId = getRequestUserId();
+    if (userId !== null) {
+      database.prepare(`INSERT INTO user_likes (user_id, post_id, created_at) VALUES (?, ?, ?)
+        ON CONFLICT(user_id, post_id) DO NOTHING`).run(userId, postId, createdAt);
+      return this.getByPostId(postId)!;
+    }
+
     database.prepare(
       `
       INSERT INTO likes (post_id, created_at)
@@ -3153,6 +3169,11 @@ export const likeRepository = {
   },
 
   remove(postId: number): boolean {
+    const userId = getRequestUserId();
+    if (userId !== null) {
+      return Number(database.prepare('DELETE FROM user_likes WHERE user_id = ? AND post_id = ?').run(userId, postId).changes) > 0;
+    }
+
     const result = database.prepare('DELETE FROM likes WHERE post_id = ?').run(postId);
     return Number(result.changes ?? 0) > 0;
   },
@@ -3795,6 +3816,7 @@ export const maintenanceRepository = {
       BEGIN;
       UPDATE folders SET avatar_image_id = NULL;
       DELETE FROM likes;
+      DELETE FROM user_likes;
       DELETE FROM collection_items;
       DELETE FROM collections WHERE is_default = 0;
       DELETE FROM folder_share_passwords;

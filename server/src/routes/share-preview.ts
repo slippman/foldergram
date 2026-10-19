@@ -8,7 +8,7 @@ import { folderShareService } from '../services/folder-share-service.js';
 import { galleryService } from '../services/gallery-service.js';
 import { serveDerivativeForImage } from './lazy-derivatives.js';
 
-function albumShellHtml(): string | null {
+function albumShellHtml(emailEntry = false): string | null {
   const indexPath = appConfig.nodeEnv === 'production'
     ? path.join(repositoryRoot, 'client/dist/index.html') : path.join(repositoryRoot, 'client/index.html');
   if (!fs.existsSync(indexPath)) return null;
@@ -20,8 +20,8 @@ function albumShellHtml(): string | null {
     if (!Number.isInteger(delay) || delay < 0 || delay > 10000) throw new Error('Invalid viewer loader delay');
     html = html.replace('</head>', `<meta name="cinema-viewer-loader-delay-ms" content="${delay}"></head>`);
   }
-  if (galleryService.getAlbumDisplayTheme() === 'cinema') {
-    html = html.replace('<html ', '<html class="shared-album-entry" data-cinema-entry="true" ');
+  if (emailEntry || galleryService.getAlbumDisplayTheme() === 'cinema') {
+    html = html.replace('<html ', emailEntry ? '<html class="email-auth-entry" ' : '<html class="shared-album-entry" data-cinema-entry="true" ');
     html = html.replace('<title>Foldergram</title>', '<title>UnReeled Photos</title>');
     for (const [original, branded] of [
       ['/favicon.svg', '/branding/ur-favicon-9a5af93327d1.svg'],
@@ -29,6 +29,7 @@ function albumShellHtml(): string | null {
       ['/icon-16.png', '/branding/ur-favicon-9a5af93327d1-16.png']
     ]) html = html.replace(`href="${original}"`, `href="${branded}" data-classic-href="${original}"`);
   }
+  if (emailEntry) html = html.replace('<p>Loading album…</p>', '<p>Loading UnReeled Photos…</p>');
   return html;
 }
 
@@ -50,6 +51,16 @@ function previewOrigin(request: express.Request): string | null {
 }
 
 export const sharePreviewRouter = express.Router();
+
+// Brand the email front door before Vue or authentication requests can finish.
+sharePreviewRouter.get(['/', '/signin', '/admin', '/access/review'], (_request, response, next) => {
+  if (!appConfig.emailSignInEnabled) return next();
+  let html = albumShellHtml(true);
+  if (!html) return next();
+  response.setHeader('Cache-Control', 'no-store');
+  if (appConfig.nodeEnv !== 'production') html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
+  response.type('html').send(html);
+});
 
 // Redirects carry the original fragment token to the browser; GET never grants a session.
 sharePreviewRouter.get('/s/:code', (request, response) => {

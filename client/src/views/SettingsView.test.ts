@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as galleryApi from '../api/gallery';
 import type { AppStats, AppStatus, PlacesStatus } from '../types/api';
 import { useAppStore } from '../stores/app';
+import { useAuthStore } from '../stores/auth';
 import SettingsView from './SettingsView.vue';
 
 vi.mock('vue-router', () => ({
@@ -132,7 +133,8 @@ function mountSettingsView() {
   return mount(SettingsView, {
     global: {
       stubs: {
-        ConfirmDialog: true
+        ConfirmDialog: true,
+        EmailAccessSettings: true
       }
     }
   });
@@ -162,6 +164,20 @@ describe('SettingsView', () => {
       value: scrollIntoViewSpy
     });
     vi.spyOn(galleryApi, 'fetchAdminStats').mockResolvedValue(createAppStats());
+  });
+
+  it('hides password disabling in email mode while preserving the password-mode controls', async () => {
+    const auth = useAuthStore();
+    auth.enabled = true; auth.accessMode = 'email';
+    useAppStore().$patch({ stats: createAppStatus() });
+    const wrapper = mountSettingsView();
+    await flushPromises();
+    await wrapper.findAll('button').find(button => button.text().includes('Security & Access'))!.trigger('click');
+    expect(wrapper.text()).not.toContain('Disable admin password');
+    auth.accessMode = 'password';
+    await flushPromises();
+    expect(wrapper.text()).toContain('Disable admin password');
+    wrapper.unmount();
   });
 
   it('shows a persistent warning when permanent deletion recovery needs attention', async () => {

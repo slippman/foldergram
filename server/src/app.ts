@@ -8,12 +8,14 @@ import { requireApiAuthentication, requireMediaAuthentication } from './middlewa
 import { handleRequestError } from './middleware/error-handler.js';
 import { requireTrustedMutationRequest } from './middleware/csrf-protection.js';
 import { blockPublicDemoMutations } from './middleware/public-demo-mode.js';
+import { emailAuthRouter } from './routes/email-auth.js';
 import { apiRouter } from './routes/api.js';
 import { sharePreviewRouter } from './routes/share-preview.js';
 import { authService } from './services/auth-service.js';
 import { lazyThumbnailsRouter, lazyPreviewsRouter } from './routes/lazy-derivatives.js';
 import { createProtectedStaticOptions } from './utils/media-response.js';
 import { cacheLibraryMediaUrls } from './services/shared-media-cache.js';
+import { withRequestUser } from './services/request-user.js';
 import { applySecurityHeaders } from './middleware/security-headers.js';
 
 export function applyApiNoStoreHeaders(response: Pick<express.Response, 'setHeader'>) {
@@ -60,6 +62,9 @@ export function createApp() {
     next();
   });
   app.use('/api', blockPublicDemoMutations, requireTrustedMutationRequest, requireApiAuthentication);
+  app.use('/api', (request, _response, next) => {
+    withRequestUser(request.path.startsWith('/share/') ? null : authService.getRequestAuthContext(request).user?.id ?? null, next);
+  });
   app.use('/api', (request, response, next) => {
     if (appConfig.mediaCacheEnabled && request.method === 'GET' && !/^\/(share|auth|admin)(\/|$)/.test(request.path)) {
       const json = response.json.bind(response);
@@ -67,6 +72,7 @@ export function createApp() {
     }
     next();
   });
+  app.use('/api', emailAuthRouter);
   app.use('/api', apiRouter);
 
   if (appConfig.nodeEnv === 'production') {

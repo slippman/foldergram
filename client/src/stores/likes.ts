@@ -100,36 +100,42 @@ export const useLikesStore = defineStore('likes', {
     isLiked: (state) => (id: number) => state.likedIds.includes(id),
     isPending: (state) => (id: number) => state.pendingIds.includes(id),
     collectionLabel: (state) => {
+      if (state.mode === 'personal') return i18n.global.t('emailAuth.personalCollection');
       void i18n.global.locale.value;
       return state.mode === 'local'
         ? i18n.global.t('likes.labels.localCollection')
         : i18n.global.t('likes.labels.sharedCollection');
     },
     collectionSectionLabel: (state) => {
+      if (state.mode === 'personal') return i18n.global.t('emailAuth.personalSection');
       void i18n.global.locale.value;
       return state.mode === 'local'
         ? i18n.global.t('likes.labels.localSection')
         : i18n.global.t('likes.labels.sharedSection');
     },
     emptyTitle: (state) => {
+      if (state.mode === 'personal') return i18n.global.t('emailAuth.personalEmptyTitle');
       void i18n.global.locale.value;
       return state.mode === 'local'
         ? i18n.global.t('likes.states.localEmptyTitle')
         : i18n.global.t('likes.states.sharedEmptyTitle');
     },
     emptyDescription: (state) => {
+      if (state.mode === 'personal') return i18n.global.t('emailAuth.personalEmptyDescription');
       void i18n.global.locale.value;
       return state.mode === 'local'
         ? i18n.global.t('likes.states.localEmptyDescription')
         : i18n.global.t('likes.states.sharedEmptyDescription');
     },
     loadingLabel: (state) => {
+      if (state.mode === 'personal') return i18n.global.t('emailAuth.personalLoading');
       void i18n.global.locale.value;
       return state.mode === 'local'
         ? i18n.global.t('likes.states.localLoadingLabel')
         : i18n.global.t('likes.states.sharedLoadingLabel');
     },
     errorTitle: (state) => {
+      if (state.mode === 'personal') return i18n.global.t('emailAuth.personalError');
       void i18n.global.locale.value;
       return state.mode === 'local'
         ? i18n.global.t('likes.states.localErrorTitle')
@@ -174,26 +180,29 @@ export const useLikesStore = defineStore('likes', {
         return;
       }
 
+      const identity = authStore.user?.id ?? authStore.role;
       this.loading = true;
       this.error = null;
 
       try {
-        if (authStore.likesMode === 'shared') {
+        if (authStore.likesMode !== 'local') {
           const payload = await fetchLikes();
-          this.syncFromItems(payload.items, 'shared');
+          if ((authStore.user?.id ?? authStore.role) !== identity) return;
+          this.syncFromItems(payload.items, authStore.likesMode);
         } else {
           this.syncFromItems(readLocalFavorites(), 'local');
         }
 
         this.initialized = true;
       } catch (error) {
+        if ((authStore.user?.id ?? authStore.role) !== identity) return;
         this.error = error instanceof Error
           ? error.message
           : this.mode === 'local'
             ? i18n.global.t('likes.errors.loadLocal')
             : i18n.global.t('likes.errors.loadShared');
       } finally {
-        this.loading = false;
+        if ((authStore.user?.id ?? authStore.role) === identity) this.loading = false;
       }
     },
 
@@ -203,6 +212,7 @@ export const useLikesStore = defineStore('likes', {
         return;
       }
 
+      const identity = authStore.user?.id ?? authStore.role;
       const mode = authStore.likesMode;
       const wasLiked = this.likedIds.includes(item.id);
       this.mode = mode;
@@ -227,6 +237,7 @@ export const useLikesStore = defineStore('likes', {
           await likeImage(item.id);
         }
       } catch (error) {
+        if ((authStore.user?.id ?? authStore.role) !== identity) return;
         if (wasLiked) {
           this.likedIds = [item.id, ...this.likedIds.filter((id) => id !== item.id)];
           this.items = [item, ...this.items.filter((entry) => entry.id !== item.id)];
@@ -241,11 +252,11 @@ export const useLikesStore = defineStore('likes', {
             ? i18n.global.t('likes.errors.updateLocal')
             : i18n.global.t('likes.errors.updateShared');
       } finally {
-        if (mode === 'local') {
+        if ((authStore.user?.id ?? authStore.role) === identity && mode === 'local') {
           writeLocalFavorites(this.items);
         }
 
-        this.pendingIds = this.pendingIds.filter((id) => id !== item.id);
+        if ((authStore.user?.id ?? authStore.role) === identity) this.pendingIds = this.pendingIds.filter((id) => id !== item.id);
       }
     },
 

@@ -20,6 +20,62 @@ CREATE TABLE IF NOT EXISTS folders (
   FOREIGN KEY (carousel_owner_folder_id) REFERENCES folders(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS library_users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  display_name TEXT NOT NULL,
+  access_status TEXT NOT NULL DEFAULT 'approved' CHECK (access_status IN ('pending', 'approved', 'banned')),
+  requested_at INTEGER NULL,
+  last_requested_at INTEGER NULL,
+  revoked_at INTEGER NULL,
+  created_at INTEGER NOT NULL,
+  last_signed_in_at INTEGER NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_library_users_access_status ON library_users(access_status, requested_at);
+
+CREATE TABLE IF NOT EXISTS email_invitations (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES library_users(id) ON DELETE CASCADE,
+  auth_version INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS email_access_reviews (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES library_users(id) ON DELETE CASCADE,
+  auth_version INTEGER NOT NULL,
+  reviewer_hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_access_reviews_expiry ON email_access_reviews(expires_at);
+
+CREATE TABLE IF NOT EXISTS email_sign_in_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES library_users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_sign_in_tokens_expiry ON email_sign_in_tokens(expires_at);
+
+CREATE TABLE IF NOT EXISTS library_user_sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES library_users(id) ON DELETE CASCADE,
+  auth_version INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_library_user_sessions_user ON library_user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_library_user_sessions_expiry ON library_user_sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS email_sign_in_limits (
+  address_hash TEXT PRIMARY KEY,
+  window_started_at INTEGER NOT NULL,
+  last_requested_at INTEGER NOT NULL,
+  requests INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS images (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   folder_id INTEGER NOT NULL,
@@ -88,6 +144,15 @@ CREATE TABLE IF NOT EXISTS post_items (
   FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
   CHECK (position >= 1 AND position <= 20)
 );
+
+
+CREATE TABLE IF NOT EXISTS user_likes (
+  user_id INTEGER NOT NULL REFERENCES library_users(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, post_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_likes_post ON user_likes(post_id);
 
 CREATE TABLE IF NOT EXISTS places (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

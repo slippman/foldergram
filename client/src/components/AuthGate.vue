@@ -47,6 +47,7 @@ import { useI18n } from 'vue-i18n';
 import BrandMark from './BrandMark.vue';
 import { useAuthStore } from '../stores/auth';
 
+const props = defineProps<{ adminOnly?: boolean }>();
 const { t } = useI18n();
 const authStore = useAuthStore();
 const password = ref('');
@@ -54,12 +55,12 @@ const submitting = ref(false);
 const localError = ref<string | null>(null);
 const errorMessage = computed(() => localError.value ?? authStore.error);
 const description = computed(() =>
-  authStore.accessMode === 'password'
+  !props.adminOnly && authStore.accessMode === 'password'
     ? t('auth.gate.descriptionPassword')
     : t('auth.gate.descriptionAdmin')
 );
 const placeholder = computed(() =>
-  authStore.accessMode === 'password' ? t('auth.gate.placeholderPassword') : t('auth.gate.placeholderAdmin')
+  !props.adminOnly && authStore.accessMode === 'password' ? t('auth.gate.placeholderPassword') : t('auth.gate.placeholderAdmin')
 );
 
 async function submitLogin() {
@@ -72,7 +73,8 @@ async function submitLogin() {
   authStore.clearError();
 
   try {
-    await authStore.login(password.value);
+    if (props.adminOnly) await authStore.unlockAdmin(password.value);
+    else await authStore.login(password.value);
     password.value = '';
   } catch (error) {
     localError.value = error instanceof Error ? error.message : t('auth.gate.unableToSignIn');

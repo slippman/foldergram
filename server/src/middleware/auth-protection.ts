@@ -17,7 +17,7 @@ function isPublicApiRoute(request: express.Request): boolean {
 
   return (
     (method === 'GET' && (path === '/health' || path === '/auth/status')) ||
-    (method === 'POST' && (path === '/auth/login' || path === '/auth/logout' || path === '/auth/unlock-admin')) ||
+    (method === 'POST' && (path === '/auth/login' || path === '/auth/logout' || path === '/auth/unlock-admin' || ['/auth/email/request', '/auth/email/inspect', '/auth/email/confirm', '/auth/email/review/inspect', '/auth/email/review/confirm', '/auth/email/invitation/inspect', '/auth/email/invitation/accept'].includes(path))) ||
     isShareReadRoute ||
     isShareUnlockRoute
   );

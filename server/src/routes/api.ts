@@ -428,7 +428,7 @@ router.put('/auth/password', authRateLimiter, (request, response) => {
 router.delete('/auth/password', authRateLimiter, (request, response) => {
   authService.setNoStoreHeaders(response);
 
-  if (appConfig.authRequired) {
+  if (appConfig.authRequired || appConfig.emailSignInEnabled) {
     response.status(409).json({ message: 'Password protection is required by server configuration.' });
     return;
   }

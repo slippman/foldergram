@@ -1,4 +1,7 @@
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+
+import { emailAccountRepository, type LibraryUser } from '../db/email-account-repository.js';
+import { EMAIL_SESSION_DURATION_MS } from './resend-service.js';
 
 import type express from 'express';
 
@@ -18,8 +21,8 @@ import { storageService } from './storage-service.js';
 
 export type AuthRole = 'admin' | 'viewer' | 'anonymous';
 export type SessionRole = Exclude<AuthRole, 'anonymous'>;
-export type ViewerAccessMode = 'off' | 'password' | 'public';
-export type LikesMode = 'shared' | 'local';
+export type ViewerAccessMode = 'off' | 'password' | 'public' | 'email';
+export type LikesMode = 'shared' | 'local' | 'personal';
 type SupportedLocale = 'en' | 'es' | 'zh';
 
 export interface AuthCapabilities {
@@ -58,9 +61,11 @@ export interface AuthStatus {
   likesMode: LikesMode;
   defaultLocale: SupportedLocale | null;
   capabilities: AuthCapabilities;
+  user?: { id: number; email: string; displayName: string };
 }
 
 export const AUTH_SESSION_COOKIE_NAME = 'foldergram_session';
+export const EMAIL_SESSION_COOKIE_NAME = 'foldergram_email_session';
 export const AUTH_PASSWORD_MIN_LENGTH = 8;
 export const AUTH_PASSWORD_MAX_LENGTH = 256;
 const PASSWORD_HASH_LENGTH = 64;
@@ -152,7 +157,7 @@ function createStatus(role: AuthRole, authenticated: boolean, enabled: boolean, 
     enabled,
     authenticated,
     role,
-    accessMode,
+    accessMode: appConfig.emailSignInEnabled ? 'email' : accessMode,
     likesMode: capabilities.canUseSharedLikes ? 'shared' : 'local',
     defaultLocale: getDefaultLocale(),
     capabilities
@@ -324,13 +329,13 @@ function getRequestSessionRole(request: express.Request): SessionRole | null {
     return null;
   }
 
-  return payload.sv === authConfig.sessionVersion ? payload.role : null;
+  return payload.sv === authConfig.sessionVersion && !(appConfig.emailSignInEnabled && payload.role === 'viewer') ? payload.role : null;
 }
 
 export const authService = {
   isUnavailable(): boolean {
     return storageService.prepareStartup().usingInMemoryDatabase || authConfig.incomplete ||
-      (appConfig.authRequired && !authConfig.enabled);
+      ((appConfig.authRequired || appConfig.emailSignInEnabled) && !authConfig.enabled);
   },
 
   refresh(): void {
@@ -338,7 +343,7 @@ export const authService = {
   },
 
   getViewerAccessMode(): ViewerAccessMode {
-    return authConfig.viewerAccessMode;
+    return appConfig.emailSignInEnabled ? 'email' : authConfig.viewerAccessMode;
   },
 
   isEnabled(): boolean {
@@ -346,7 +351,7 @@ export const authService = {
   },
 
   isPublicViewerAccessEnabled(): boolean {
-    return !this.isUnavailable() && authConfig.enabled && authConfig.viewerAccessMode === 'public';
+    return !appConfig.emailSignInEnabled && !this.isUnavailable() && authConfig.enabled && authConfig.viewerAccessMode === 'public';
   },
 
   getStatus(request: express.Request): AuthStatus {
@@ -369,6 +374,13 @@ export const authService = {
     }
 
     const role = getRequestSessionRole(request);
+    if (role === 'admin') return createAuthenticatedStatus(role);
+    const user = this.getEmailUser(request);
+    if (user) {
+      const status = createAuthenticatedStatus('viewer');
+      return { ...status, user: { id: user.id, email: user.email, displayName: appConfig.emailScreenNamesEnabled ? user.display_name : user.email.split('@')[0] },
+        likesMode: 'personal', capabilities: { ...status.capabilities, canUseSharedCollections: false, canUseLocalCollections: true } };
+    }
     return role ? createAuthenticatedStatus(role) : getAnonymousStatus();
   },
 
@@ -413,7 +425,7 @@ export const authService = {
       return 'admin';
     }
 
-    if (this.verifyViewerPassword(password)) {
+    if (!appConfig.emailSignInEnabled && this.verifyViewerPassword(password)) {
       return 'viewer';
     }
 
@@ -444,7 +456,8 @@ export const authService = {
     return createAuthenticatedStatus('admin');
   },
 
-  setViewerAccess(mode: ViewerAccessMode, viewerPassword: string | null = null): AuthStatus {
+  setViewerAccess(mode: Exclude<ViewerAccessMode, 'email'>, viewerPassword: string | null = null): AuthStatus {
+    if (appConfig.emailSignInEnabled) throw new Error('Email sign-in is configured by the server.');
     if (!authConfig.enabled) {
       throw new Error('Enable the admin password before configuring viewer access.');
     }
@@ -475,7 +488,7 @@ export const authService = {
   },
 
   disable(): AuthStatus {
-    if (appConfig.authRequired) throw new Error('Password protection is required by server configuration.');
+    if (appConfig.authRequired || appConfig.emailSignInEnabled) throw new Error('Password protection is required by server configuration.');
     appSettingsRepository.remove(AUTH_PASSWORD_HASH_SETTING_KEY);
     appSettingsRepository.remove(AUTH_PASSWORD_SALT_SETTING_KEY);
     appSettingsRepository.remove(AUTH_SESSION_SECRET_SETTING_KEY);
@@ -511,7 +524,31 @@ export const authService = {
     });
   },
 
+  getEmailUser(request: express.Request): LibraryUser | null {
+    if (!appConfig.emailSignInEnabled || this.isUnavailable()) return null;
+    const token = parseCookieValue(request.get('cookie'), EMAIL_SESSION_COOKIE_NAME);
+    if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
+    return emailAccountRepository.getSessionUser(createHash('sha256').update(token).digest('hex'), authConfig.sessionVersion) ?? null;
+  },
+
+  getSessionVersion(): number { return authConfig.sessionVersion; },
+
+  setEmailSession(response: express.Response, request: express.Request, token: string): void {
+    this.clearAuthenticatedSession(response, request);
+    response.cookie(EMAIL_SESSION_COOKIE_NAME, token, {
+      httpOnly: true, maxAge: EMAIL_SESSION_DURATION_MS, path: '/', sameSite: 'lax',
+      secure: appConfig.emailSignInOrigin?.startsWith('https:') || isSecureRequest(request)
+    });
+  },
+
   clearAuthenticatedSession(response: express.Response, request: express.Request): void {
+    const emailToken = parseCookieValue(request.get('cookie'), EMAIL_SESSION_COOKIE_NAME);
+    if (emailToken && /^[A-Za-z0-9_-]{43}$/.test(emailToken)) {
+      emailAccountRepository.deleteSession(createHash('sha256').update(emailToken).digest('hex'));
+    }
+    response.cookie(EMAIL_SESSION_COOKIE_NAME, '', { httpOnly: true, maxAge: 0, path: '/', sameSite: 'lax',
+      secure: appConfig.emailSignInOrigin?.startsWith('https:') || isSecureRequest(request) });
+
     response.cookie(AUTH_SESSION_COOKIE_NAME, '', {
       encode: (value) => value,
       expires: new Date(0),

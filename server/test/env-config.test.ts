@@ -33,6 +33,41 @@ describe.sequential('derivative mode env config', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('disables screen names by default and accepts an explicit later-phase opt-in', async () => {
+    await stubBaseEnv();
+    vi.stubEnv('EMAIL_SCREEN_NAMES_ENABLED', undefined);
+    expect((await import('../src/config/env.js')).appConfig.emailScreenNamesEnabled).toBe(false);
+    vi.resetModules(); vi.stubEnv('EMAIL_SCREEN_NAMES_ENABLED', 'true');
+    expect((await import('../src/config/env.js')).appConfig.emailScreenNamesEnabled).toBe(true);
+  });
+
+  it.each([
+    'http://photos.example.com',
+    'https://photos.example.com/path',
+    'https://name:password@photos.example.com',
+    'https://photos.example.com/?token=value'
+  ])('rejects an unsafe production email origin %s', async (origin) => {
+    await stubBaseEnv();
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EMAIL_SIGN_IN_ORIGIN', origin);
+    await expect(import('../src/config/env.js')).rejects.toThrow(/EMAIL_SIGN_IN_ORIGIN/);
+  });
+
+  it('accepts empty optional Compose email settings while leaving email sign-in disabled', async () => {
+    await stubBaseEnv();
+    for (const name of ['EMAIL_SIGN_IN_ORIGIN', 'EMAIL_FROM', 'RESEND_API_KEY', 'EMAIL_ACCESS_REVIEW_TO']) vi.stubEnv(name, '');
+    const { appConfig } = await import('../src/config/env.js');
+    expect(appConfig.emailSignInEnabled).toBe(false);
+    expect(appConfig.resendApiKey).toBeUndefined();
+  });
+
+  it('reads an optional owner approval inbox and rejects malformed addresses', async () => {
+    await stubBaseEnv(); vi.stubEnv('EMAIL_ACCESS_REVIEW_TO', 'owner@example.com');
+    expect((await import('../src/config/env.js')).appConfig.emailAccessReviewTo).toBe('owner@example.com');
+    vi.resetModules(); vi.stubEnv('EMAIL_ACCESS_REVIEW_TO', 'not an email');
+    await expect(import('../src/config/env.js')).rejects.toThrow(/EMAIL_ACCESS_REVIEW_TO/);
+  });
+
   it('uses preview and eager defaults when the new env vars are unset', async () => {
     await stubBaseEnv();
     vi.doMock('dotenv', () => ({
