@@ -135,7 +135,7 @@
         var splashTemplate = initialSplash.cloneNode(true);
         // Reels' first-paint label must not carry into later album navigation.
         var templateLabel = splashTemplate.querySelector('.fg-splash__album p');
-        if (window.location.pathname === '/reels' && templateLabel) templateLabel.textContent = 'Loading album…';
+        if (templateLabel) templateLabel.textContent = 'Loading album…';
         var stopCurrentRun = null;
         var generation = 0;
         var revealTimer = null;

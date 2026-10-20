@@ -68,8 +68,8 @@ describe('album startup splash', () => {
     expect(document.getElementById('fg-splash')).toBeNull();
   });
 
-  it('does not carry a direct Reels entry label into a later album', async () => {
-    window.history.replaceState({}, '', '/reels');
+  it.each(['/reels', '/reels/', '/Reels/'])('does not carry the %s entry label into a later album', async entry => {
+    window.history.replaceState({}, '', entry);
     document.querySelector('.fg-splash__album p')!.textContent = 'Loading reels…';
     document.getElementById('app')!.innerHTML = '<main data-album-theme="cinema" data-album-state="settled"></main>';
     try {
