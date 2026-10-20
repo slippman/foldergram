@@ -16,7 +16,7 @@ export function notifyAlbumLoading(to: RouteLocationNormalized, from: RouteLocat
     return;
   }
   if (to.name !== 'folder' && to.name !== 'shared-folder') {
-    if (['folder', 'shared-folder', ...imageRoutes].includes(String(from.name))
+    if (['folder', 'shared-folder', 'reels', ...imageRoutes].includes(String(from.name))
       && !imageRoutes.includes(String(to.name))) {
       window.dispatchEvent(new Event('foldergram:album-view-cancel'));
     }

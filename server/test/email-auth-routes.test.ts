@@ -228,6 +228,22 @@ describe.sequential('invite-only email sign-in', () => {
     expect(classicAlbum.body).toContain('<title>Foldergram</title>');
   });
 
+  it('brands Reels using the feed theme independently of the album theme', async () => {
+    const { FEED_DISPLAY_THEME_SETTING_KEY, FOLDER_DISPLAY_THEME_SETTING_KEY } = await import('../src/constants/app-setting-keys.js');
+    repo.appSettingsRepository.set(FEED_DISPLAY_THEME_SETTING_KEY, 'cinema');
+    repo.appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'classic');
+    const cinema = await request(app, 'GET', '/reels');
+    expect(cinema.status).toBe(200);
+    expect(cinema.body).toContain('data-cinema-entry="true"');
+    expect(cinema.body).toContain('<p>Loading reels…</p>');
+    expect(cinema.body).toContain('<title>UnReeled Photos</title>');
+    repo.appSettingsRepository.set(FEED_DISPLAY_THEME_SETTING_KEY, 'classic');
+    repo.appSettingsRepository.set(FOLDER_DISPLAY_THEME_SETTING_KEY, 'cinema');
+    const classic = await request(app, 'GET', '/reels');
+    expect(classic.body).not.toContain('data-cinema-entry="true"');
+    expect(classic.body).toContain('<title>Foldergram</title>');
+  });
+
   async function ownerReviewFor(email: string) {
     const { appConfig } = await import('../src/config/env.js');
     appConfig.emailAccessReviewTo = 'owner@example.com';

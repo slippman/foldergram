@@ -134,7 +134,7 @@ const isCinemaPage = computed(() => {
   if (authStore.requiresLogin) return false;
   if (route.name === 'image') return showImageModal.value ? isCinemaImageModal.value
     : appStore.stats ? appStore.folderDisplayTheme === 'cinema' : null;
-  if (route.name === 'folder' || route.name === 'home') {
+  if (route.name === 'folder' || route.name === 'home' || route.name === 'reels') {
     if (!appStore.stats) return null;
     return (route.name === 'folder' ? appStore.folderDisplayTheme : appStore.feedDisplayTheme) === 'cinema';
   }

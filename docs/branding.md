@@ -33,8 +33,9 @@ current file bytes, so do not assume they can be regenerated from that alone.
 
 | Location | Where the logo appears | Size / behavior |
 | --- | --- | --- |
-| `client/index.html` | Startup splash before Vue loads, for Cinema album entry and the email front door. Email sign-in applies its saved theme before painting and keeps the splash through link inspection. | 144px; hidden in the Classic splash. |
+| `client/index.html` | Startup splash before Vue loads, for Cinema album/Reels entry and the email front door. Reels uses its feed theme and loading label; email sign-in keeps the splash through link inspection. | 144px; hidden in the Classic splash. |
 | `client/src/views/SharedFolderView.vue` | Shared Cinema album loading screen. | 144px; Cinema branch only. |
+| `client/src/views/ReelsView.vue` | Cinema Reels loading screen during navigation; uses the same UR logo and progress line, and waits for the active poster on startup. | 144px; feed Cinema only, Classic unchanged. |
 | `client/src/components/AlbumAttribution.vue` | Cinema attribution footer. | 144px desktop, 112px mobile; links to `https://slip.unreeled.com`. |
 | `client/src/components/EmailSignIn.vue` | Public email sign-in card and post-request waiting page. | 112px; same component and logo. |
 | `client/src/views/EmailAccessReviewView.vue` | Owner approval/denial page and its result screen. | 112px. |
@@ -61,7 +62,7 @@ service. The header and More-menu identity displays share this account styling.
 | `client/src/utils/favicon.ts` | Maps the three default favicon URLs to the current UR favicon URLs, and restores Classic icons when appropriate. |
 | `client/src/App.vue` | Chooses when to apply UR favicons and document titles: Cinema pages and the explicitly branded email front door. |
 | `server/src/routes/share-preview.ts` | Sets initial favicon URLs and title before JavaScript; selects `shared-album-entry` or `email-auth-entry` startup branding. |
-| `client/vite.config.ts` | Routes email front-door HTML through the backend during development so initial branding is present before Vue boots. |
+| `client/vite.config.ts` | Routes email front-door and Reels HTML through the backend during development so initial branding follows the appropriate theme before Vue boots. |
 | `client/index.html` | Startup logo sizing, light/dark filters, blend mode, and the default Classic favicon links. |
 | `client/src/components/AppShell.vue` | Shared Cinema `--ur-logo-filter` / `--ur-logo-blend` variables for light and dark themes. |
 | `AlbumAttribution.vue`, `SharedFolderView.vue`, `EmailSignIn.vue`, `EmailAccessReviewView.vue` | Component logo sizing and/or theme filters. |

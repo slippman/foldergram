@@ -1,5 +1,8 @@
 <template>
-  <section class="reels-view">
+  <section class="reels-view"
+    :data-album-theme="appStore.stats ? (isCinema ? 'cinema' : 'classic') : appStore.error ? 'classic' : 'unknown'"
+    :data-album-state="loadingState"
+    :data-album-loading-label="isCinema ? t('reels.view.loadingTitle') : undefined">
     <section v-if="appStore.isLibraryUnavailable" class="reels-view__message-card">
       <p class="reels-view__eyebrow">{{ t('nav.reels') }}</p>
       <h1 class="reels-view__title">{{ t('reels.view.libraryUnavailableTitle') }}</h1>
@@ -10,6 +13,12 @@
       <p class="reels-view__eyebrow">{{ t('nav.reels') }}</p>
       <h1 class="reels-view__title">{{ t('reels.view.loadErrorTitle') }}</h1>
       <p class="reels-view__message">{{ reelsStore.error }}</p>
+    </section>
+
+    <section v-else-if="showLoadingState && isCinema" class="reels-view__cinema-loading" role="status">
+      <img class="reels-view__loading-logo" src="/branding/ur-logo-4e4dc1180945.png" alt="UnReeled Photos" width="144" height="144" />
+      <p>{{ t('reels.view.loadingTitle') }}</p>
+      <span class="reels-view__loading-indicator" aria-hidden="true" />
     </section>
 
     <section v-else-if="showLoadingState" class="reels-view__message-card">
@@ -25,13 +34,15 @@
     </section>
 
     <div v-else class="reels-view__layout">
-      <div class="reels-view__deck-shell">
+      <div class="reels-view__deck-shell" :data-album-poster="isCinema ? activeItem?.thumbnailUrl : undefined">
         <ReelDeck
           ref="deckElement"
           :items="reelsStore.items"
           :folders="foldersStore.items"
           :active-reel-id="reelsStore.activeReelId"
           :loading="reelsStore.loading"
+          :cinema="isCinema"
+          :playback-allowed="!isCinema || startupReady"
           @active-change="handleActiveChange"
           @prefetch="handlePrefetch"
         >
@@ -143,6 +154,17 @@ const appStore = useAppStore();
 const foldersStore = useFoldersStore();
 const reelsStore = useReelsStore();
 const { t } = useI18n();
+const isCinema = computed(() => appStore.feedDisplayTheme === 'cinema');
+// Keep the first player paused through the splash's poster wait and exit fade.
+const startupReady = ref(false);
+function handleStartupLoading() { startupReady.value = false; }
+function handleStartupReady() { startupReady.value = !document.getElementById('fg-splash'); }
+const loadingState = computed(() => appStore.isLibraryUnavailable || appStore.error || reelsStore.error
+  || reelsStore.initialized && reelsStore.items.length === 0 ? 'settled'
+  : reelsStore.items.length ? 'ready' : 'loading');
+watch([isCinema, loadingState], ([cinema, state]) => {
+  if (cinema && state === 'loading') window.dispatchEvent(new Event('foldergram:album-view-loading'));
+}, { immediate: true, flush: 'post' });
 const deckElement = ref<InstanceType<typeof ReelDeck> | null>(null);
 const isInfoSidebarOpen = ref(false);
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 0);
@@ -229,6 +251,9 @@ function handleGlobalWheel(event: WheelEvent) {
 }
 
 onMounted(async () => {
+  window.addEventListener('foldergram:album-view-loading', handleStartupLoading);
+  window.addEventListener('foldergram:album-ready', handleStartupReady);
+  handleStartupReady();
   updateViewportMode();
   window.addEventListener('resize', updateViewportMode);
   window.addEventListener('wheel', handleGlobalWheel, { passive: false });
@@ -236,6 +261,8 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('foldergram:album-view-loading', handleStartupLoading);
+  window.removeEventListener('foldergram:album-ready', handleStartupReady);
   window.removeEventListener('resize', updateViewportMode);
   window.removeEventListener('wheel', handleGlobalWheel);
 });
@@ -254,6 +281,14 @@ watch(activeItem, (item) => {
   background: var(--bg);
   color: var(--text);
 }
+
+.reels-view__cinema-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; min-height: 60vh; color: var(--muted); font-size: .95rem; }
+.reels-view__cinema-loading p { margin: 0; }
+.reels-view__loading-logo { width: 144px; height: 144px; object-fit: contain; background: white; border-radius: 1rem; mix-blend-mode: var(--ur-logo-blend, multiply); filter: var(--ur-logo-filter, none); }
+.reels-view__loading-indicator { width: 5rem; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.reels-view__loading-indicator::after { content: ''; display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--muted); animation: reels-cinema-loading 1.4s ease-in-out infinite alternate; }
+@keyframes reels-cinema-loading { from { transform: translateX(0); } to { transform: translateX(150%); } }
+@media (prefers-reduced-motion: reduce) { .reels-view__loading-indicator::after { animation: none; width: 100%; opacity: .5; } }
 
 .reels-view__layout {
   --reels-desktop-rail-width: 3.8rem;

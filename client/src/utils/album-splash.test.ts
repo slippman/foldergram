@@ -36,6 +36,38 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('album startup splash', () => {
+  it('uses the Reels label and waits for the active poster after queue loading', async () => {
+    const app = document.getElementById('app')!;
+    app.innerHTML = '<main data-album-theme="cinema" data-album-state="loading" data-album-loading-label="Loading reels"></main>';
+    start(); await flush();
+    expect(document.querySelector('.fg-splash__album p')?.textContent).toBe('Loading reels');
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    const poster = document.createElement('img');
+    Object.defineProperty(poster, 'complete', { value: false, configurable: true });
+    Object.defineProperty(poster, 'naturalWidth', { value: 640 });
+    vi.stubGlobal('Image', function () { return poster; });
+    app.querySelector('main')!.innerHTML = '<div data-album-poster="/active-reel.jpg"></div>';
+    app.querySelector('main')!.setAttribute('data-album-state', 'ready');
+    await flush();
+    expect(poster.getAttribute('src')).toBe('/active-reel.jpg');
+    expect(document.querySelector('.fg-splash--out')).toBeNull();
+    Object.defineProperty(poster, 'complete', { value: true });
+    poster.dispatchEvent(new Event('load')); await flush();
+    expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+  });
+  it('does not carry a direct Reels entry label into a later album', async () => {
+    window.history.replaceState({}, '', '/reels');
+    document.querySelector('.fg-splash__album p')!.textContent = 'Loading reels…';
+    document.getElementById('app')!.innerHTML = '<main data-album-theme="cinema" data-album-state="settled"></main>';
+    try {
+      start(); await flush(); await vi.advanceTimersByTimeAsync(340);
+      document.getElementById('app')!.innerHTML = '<main data-album-theme="cinema" data-album-state="loading"></main>';
+      window.dispatchEvent(new Event('foldergram:album-view-loading'));
+      await flush();
+      expect(document.querySelector('.fg-splash__album p')?.textContent).toBe('Loading album…');
+    } finally { window.history.replaceState({}, '', '/'); }
+  });
+
   it('keeps the email splash until token inspection settles', async () => {
     const app = document.getElementById('app')!;
     app.innerHTML = '<section data-album-theme="cinema" data-album-state="loading">Checking link</section>';

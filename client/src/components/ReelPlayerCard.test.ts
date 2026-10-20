@@ -116,6 +116,54 @@ describe('ReelPlayerCard', () => {
     window.localStorage.clear();
   });
 
+  it('waits through startup readiness events before playing, and pauses when blocked again', async () => {
+    const wrapper = mount(ReelPlayerCard, {
+      props: { item: createFeedItem(1), folder: createFolder(), active: true, cinema: true, playbackAllowed: false },
+      global: { stubs: globalStubs }
+    });
+    const player = getPlayerElement(wrapper);
+    player.dispatchEvent(new Event('loaded-metadata'));
+    player.dispatchEvent(new Event('can-play'));
+    await flushPromises();
+    expect(player.playCallCount).toBe(0);
+    expect(player.paused).toBe(true);
+    expect(wrapper.find('.reel-player-card__pause-indicator').exists()).toBe(false);
+    await wrapper.setProps({ playbackAllowed: true });
+    await flushPromises();
+    expect(player.paused).toBe(false);
+    await wrapper.setProps({ playbackAllowed: false });
+    await flushPromises();
+    expect(player.paused).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('configures Cinema provider mute state and preserves the sound choice between reels', async () => {
+    const wrapper = mount(ReelPlayerCard, {
+      props: { item: createFeedItem(1), folder: createFolder(), active: true, cinema: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    expect(getPlayerElement(wrapper).hasAttribute('muted')).toBe(true);
+    await wrapper.get('.reel-player-card__sound-button').trigger('click');
+    expect(getPlayerElement(wrapper).hasAttribute('muted')).toBe(false);
+    await wrapper.setProps({ active: false });
+    await wrapper.setProps({ active: true });
+    await flushPromises();
+    expect(getPlayerElement(wrapper).muted).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('preserves Classic provider configuration defaults', async () => {
+    const wrapper = mount(ReelPlayerCard, {
+      props: { item: createFeedItem(1), folder: createFolder(), active: true },
+      global: { stubs: globalStubs }
+    });
+    await flushPromises();
+    expect(getPlayerElement(wrapper).hasAttribute('muted')).toBe(false);
+    expect(getPlayerElement(wrapper).playCallCount).toBeGreaterThan(0);
+    wrapper.unmount();
+  });
+
   it('shows the overlay only for the active reel', async () => {
     const wrapper = mount(ReelPlayerCard, {
       props: {

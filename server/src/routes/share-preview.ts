@@ -8,7 +8,7 @@ import { folderShareService } from '../services/folder-share-service.js';
 import { galleryService } from '../services/gallery-service.js';
 import { serveDerivativeForImage } from './lazy-derivatives.js';
 
-function albumShellHtml(emailEntry = false): string | null {
+function albumShellHtml(emailEntry = false, cinema = galleryService.getAlbumDisplayTheme() === 'cinema'): string | null {
   const indexPath = appConfig.nodeEnv === 'production'
     ? path.join(repositoryRoot, 'client/dist/index.html') : path.join(repositoryRoot, 'client/index.html');
   if (!fs.existsSync(indexPath)) return null;
@@ -20,7 +20,7 @@ function albumShellHtml(emailEntry = false): string | null {
     if (!Number.isInteger(delay) || delay < 0 || delay > 10000) throw new Error('Invalid viewer loader delay');
     html = html.replace('</head>', `<meta name="cinema-viewer-loader-delay-ms" content="${delay}"></head>`);
   }
-  if (emailEntry || galleryService.getAlbumDisplayTheme() === 'cinema') {
+  if (emailEntry || cinema) {
     html = html.replace('<html ', emailEntry ? '<html class="email-auth-entry" ' : '<html class="shared-album-entry" data-cinema-entry="true" ');
     html = html.replace('<title>Foldergram</title>', '<title>UnReeled Photos</title>');
     for (const [original, branded] of [
@@ -51,6 +51,17 @@ function previewOrigin(request: express.Request): string | null {
 }
 
 export const sharePreviewRouter = express.Router();
+
+// Reels follow the feed theme, independently of the album theme.
+sharePreviewRouter.get('/reels', (_request, response, next) => {
+  const cinema = galleryService.getFeedDisplayTheme() === 'cinema';
+  let html = albumShellHtml(false, cinema);
+  if (!html) return next();
+  if (cinema) html = html.replace('<p>Loading album…</p>', '<p>Loading reels…</p>');
+  if (appConfig.nodeEnv !== 'production') html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
+  response.setHeader('Cache-Control', 'no-store');
+  response.type('html').send(html);
+});
 
 // Brand the email front door before Vue or authentication requests can finish.
 sharePreviewRouter.get(['/', '/signin', '/admin', '/access/review'], (_request, response, next) => {

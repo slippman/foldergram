@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -6,6 +6,36 @@ import { i18n } from '../locales';
 import VideoMediaPlayer from './VideoMediaPlayer.vue';
 
 describe('VideoMediaPlayer', () => {
+  it('keeps Cinema provider mute configuration aligned without changing Classic defaults', async () => {
+    const wrapper = mount(VideoMediaPlayer, { props: { src: '/clip.mp4', cinema: true, muted: true } });
+    expect(wrapper.get('media-player').attributes('muted')).toBe('');
+    await wrapper.setProps({ muted: false });
+    expect(wrapper.get('media-player').attributes('muted')).toBeUndefined();
+    await wrapper.setProps({ cinema: false, muted: true });
+    expect(wrapper.get('media-player').attributes('muted')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('blocks delayed playback and autoplay retries while the Cinema post is hidden', async () => {
+    const wrapper = mount(VideoMediaPlayer, { props: {
+      src: '/clip.mp4', cinema: true, muted: false, autoplay: true, playbackAllowed: false
+    } });
+    const player = wrapper.get('media-player').element as any;
+    player.play = vi.fn().mockResolvedValue(undefined);
+    player.pause = vi.fn().mockResolvedValue(undefined);
+    expect(player.autoPlay).toBe(false);
+    await wrapper.get('media-player').trigger('play');
+    expect(player.pause).toHaveBeenCalledOnce();
+    await wrapper.get('media-player').trigger('auto-play-fail');
+    await flushPromises();
+    expect(player.play).not.toHaveBeenCalled();
+    await wrapper.setProps({ playbackAllowed: true });
+    expect(player.autoPlay).toBe(true);
+    await wrapper.setProps({ playbackAllowed: false });
+    expect(player.pause).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
+  });
+
   it('keeps the Cinema thumbnail until playback starts, and restores it for a new source', async () => {
     const wrapper = mount(VideoMediaPlayer, { props: { src: '/slow.mp4', poster: '/poster.jpg', cinema: true } });
     const player = wrapper.get('media-player');

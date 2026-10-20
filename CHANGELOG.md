@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2-slippman.2.1.1 — 2026-10-20
+
+### Bug fixes
+
+- Cinema Feed videos preserve their initial mute setting and cannot resume behind the loading screen or after scrolling offscreen.
+- Cinema Reels waits until its loading screen closes before starting playback and keeps the chosen sound setting across videos.
+- Cinema Reels uses the UR loading screen and favicon on direct visits and navigation, keeping the loading screen until its active video poster is ready.
+
 ## 1.2.2-slippman.2.1.0 — 2026-10-19
 
 ### New features

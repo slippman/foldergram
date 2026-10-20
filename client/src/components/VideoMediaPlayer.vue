@@ -16,7 +16,8 @@
       :fullscreenOrientation.prop="'none'"
       :playsInline.prop="playsinline"
       :muted.prop="muted"
-      :autoPlay.prop="autoplay"
+      v-bind="cinema ? { '^muted': muted ? '' : null } : {}"
+      :autoPlay.prop="autoplay && playbackAllowed"
       :loop.prop="loop"
       :load="load"
       :preload="preload"
@@ -151,6 +152,7 @@ const props = withDefaults(
     showControls?: boolean;
     timeLabel?: string;
     cinema?: boolean;
+    playbackAllowed?: boolean;
   }>(),
   {
     originalUrl: '',
@@ -168,7 +170,8 @@ const props = withDefaults(
     preload: 'metadata',
     variant: 'viewer',
     showControls: true,
-    timeLabel: ''
+    timeLabel: '',
+    playbackAllowed: true
   }
 );
 
@@ -253,7 +256,7 @@ function handleMuteClick() {
 
 async function handleAutoplayFail() {
   const player = playerElement.value;
-  if (!player || !props.autoplay || player.muted) return;
+  if (!player || !props.playbackAllowed || !props.autoplay || player.muted) return;
 
   // The provider may not yet reflect the requested mute prop. Retry using
   // the actual player state when browsers reject audible autoplay. Keep playback automatic
@@ -261,7 +264,7 @@ async function handleAutoplayFail() {
   player.muted = true;
   emit('autoplay-muted');
   await nextTick();
-  await player.play().catch(() => {});
+  if (props.playbackAllowed && props.autoplay) await player.play().catch(() => {});
 }
 
 async function toggleHd() {
@@ -303,7 +306,7 @@ function handleSurfaceKeydown(event: KeyboardEvent) {
 
 async function togglePlayback() {
   const player = playerElement.value;
-  if (!player) return;
+  if (!player || !props.playbackAllowed) return;
 
   if (player.paused) {
     await player.play().catch(() => {});
@@ -340,7 +343,7 @@ function setupListeners() {
       pendingRestoreState = null;
       try {
         player.currentTime = currentTime;
-        if (!wasPaused) {
+        if (!wasPaused && props.playbackAllowed) {
           await player.play().catch(() => {});
         }
       } catch {}
@@ -357,6 +360,10 @@ function setupListeners() {
   };
 
   const onPlay = () => {
+    if (!props.playbackAllowed) {
+      void player.pause().catch(() => {});
+      return;
+    }
     isPaused.value = false;
     showPausedIndicator.value = false;
   };
@@ -390,6 +397,10 @@ onBeforeUnmount(() => {
   }
   if (removeEventListeners) removeEventListeners();
   if (hidePausedTimer) clearTimeout(hidePausedTimer);
+});
+
+watch(() => props.playbackAllowed, allowed => {
+  if (!allowed) void playerElement.value?.pause().catch(() => {});
 });
 
 watch(basePreviewUrl, () => {
