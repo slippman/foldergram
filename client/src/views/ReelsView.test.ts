@@ -251,6 +251,51 @@ describe('ReelsView', () => {
     });
   });
 
+  it('starts poster readiness even when returning to an initialized Cinema queue', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const start = vi.fn(() => {
+      if (!document.getElementById('fg-splash')) {
+        const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+      }
+    });
+    window.addEventListener('foldergram:album-view-loading', start);
+    const wrapper = mount(ReelsView);
+    try {
+      await flushPromises();
+      expect(start).toHaveBeenCalledOnce();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      document.getElementById('fg-splash')!.remove();
+      window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(true);
+    } finally { window.removeEventListener('foldergram:album-view-loading', start); document.getElementById('fg-splash')?.remove(); wrapper.unmount(); }
+  });
+
+  it('keeps the poster dependency when known Cinema settings have a background error', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    useAppStore().error = 'Settings refresh failed';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('ready');
+    wrapper.unmount();
+  });
+
+  it('allows the settled settings-error fallback after the splash closes', async () => {
+    useAppStore().$patch({ stats: null, error: 'Settings request failed' });
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    try {
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      splash.remove(); window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(true);
+    } finally { splash.remove(); wrapper.unmount(); }
+  });
+
   it('blocks playback before Feed theme settings arrive', async () => {
     useAppStore().stats = null;
     vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);

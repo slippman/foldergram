@@ -161,15 +161,21 @@ const { t } = useI18n();
 const isCinema = computed(() => appStore.feedDisplayTheme === 'cinema');
 // Keep the first player paused through the splash's poster wait and exit fade.
 const startupReady = ref(false);
-const playbackAllowed = computed(() => appStore.stats !== null && (!isCinema.value || startupReady.value));
+const playbackAllowed = computed(() => appStore.stats
+  ? !isCinema.value || startupReady.value
+  : Boolean(appStore.error) && startupReady.value);
 function handleStartupLoading() { startupReady.value = false; }
 function handleStartupReady() { startupReady.value = !document.getElementById('fg-splash'); }
-const loadingState = computed(() => appStore.isLibraryUnavailable || appStore.error || reelsStore.error
+const loadingState = computed(() => appStore.isLibraryUnavailable || (!appStore.stats && appStore.error) || reelsStore.error
   || reelsStore.initialized && reelsStore.items.length === 0 ? 'settled'
   : reelsStore.items.length ? 'ready' : 'loading');
-watch([isCinema, loadingState], ([cinema, state]) => {
-  if (cinema && state === 'loading') window.dispatchEvent(new Event('foldergram:album-view-loading'));
-}, { immediate: true, flush: 'post' });
+watch([isCinema, loadingState], ([cinema, state], previous) => {
+  // Every Cinema entry checks its poster, including an already-loaded queue.
+  // Run synchronously so resolving the theme cannot briefly enable playback.
+  if (cinema && (state === 'loading' || !previous?.[0])) {
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+  }
+}, { immediate: true, flush: 'sync' });
 const deckElement = ref<InstanceType<typeof ReelDeck> | null>(null);
 const isInfoSidebarOpen = ref(false);
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 0);
