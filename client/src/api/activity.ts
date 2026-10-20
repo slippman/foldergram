@@ -1,7 +1,7 @@
 import { requestJson } from './http';
 export type ActivityPeriod = 'all' | 'today' | 'week';
 export interface AccountActivity {
-  id: number; email: string; lastLoginAt: number | null; loginCount: number;
+  id: number; email: string; joinedAt: number; lastLoginAt: number | null; loginCount: number;
   lastActiveAt: number | null; albumViews: number; uniqueAlbums: number; likes: number;
 }
 export interface ActivitySummary {

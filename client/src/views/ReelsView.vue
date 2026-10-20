@@ -1,5 +1,6 @@
 <template>
-  <section class="reels-view">
+  <section class="reels-view" :class="{ 'reels-view--cinema': isCinema }">
+    <CinemaBrowseHint v-if="isCinema" mode="reels" class="reels-view__hint" />
     <!-- Keep decorative avatars outside the splash's image readiness scan. -->
     <div hidden aria-hidden="true"
       :data-album-theme="appStore.stats ? (isCinema ? 'cinema' : 'classic') : appStore.error ? 'classic' : 'unknown'"
@@ -148,6 +149,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import ReelActionRail from '../components/ReelActionRail.vue';
+import CinemaBrowseHint from '../components/CinemaBrowseHint.vue';
 import ReelDeck from '../components/ReelDeck.vue';
 import ReelInfoSidebar from '../components/ReelInfoSidebar.vue';
 import { useAppStore } from '../stores/app';
@@ -299,6 +301,10 @@ watch(activeItem, (item) => {
   background: var(--bg);
   color: var(--text);
 }
+
+.reels-view--cinema { display: flex; flex-direction: column; }
+.reels-view__hint { flex: 0 0 auto; margin: 0; padding: .625rem 1rem; border-bottom: 1px solid var(--border); }
+.reels-view--cinema .reels-view__layout { flex: 1 1 0; height: auto; min-height: 0; }
 
 .reels-view__cinema-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; min-height: 60vh; color: var(--muted); font-size: .95rem; }
 .reels-view__cinema-loading p { margin: 0; }

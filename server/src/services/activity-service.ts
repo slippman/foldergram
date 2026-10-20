@@ -38,7 +38,7 @@ export const activityService = {
   summary(period: ActivityPeriod, page: number, limit: number) {
     const db = databaseManager.connection;
     const day = startDay(period);
-    const items = db.prepare(`SELECT u.id, u.email, u.last_signed_in_at AS lastLoginAt,
+    const items = db.prepare(`SELECT u.id, u.email, u.created_at AS joinedAt, u.last_signed_in_at AS lastLoginAt,
       u.login_count AS loginCount, u.last_active_at AS lastActiveAt,
       (SELECT COUNT(*) FROM album_daily_views v WHERE v.user_id=u.id AND (? IS NULL OR v.view_day>=?)) AS albumViews,
       (SELECT COUNT(DISTINCT album_key) FROM album_daily_views v WHERE v.user_id=u.id AND (? IS NULL OR v.view_day>=?)) AS uniqueAlbums,

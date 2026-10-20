@@ -116,6 +116,73 @@ describe('ReelPlayerCard', () => {
     window.localStorage.clear();
   });
 
+  it('delays the Cinema spinner and clears it on playback, pause, errors and leaving the reel', async () => {
+    vi.useFakeTimers();
+    const wrapper = mount(ReelPlayerCard, {
+      props: { item: createFeedItem(1), folder: createFolder(), active: true, cinema: true, playbackAllowed: false },
+      global: { stubs: globalStubs }
+    });
+    try {
+      const spinner = () => wrapper.find('.reel-player-card__loading').exists();
+      const player = getPlayerElement(wrapper);
+      await vi.advanceTimersByTimeAsync(600);
+      expect(spinner()).toBe(false);
+      await wrapper.setProps({ playbackAllowed: true });
+      await vi.advanceTimersByTimeAsync(499);
+      expect(spinner()).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(spinner()).toBe(true);
+      player.dispatchEvent(new Event('playing'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(spinner()).toBe(false);
+      player.dispatchEvent(new Event('waiting'));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(spinner()).toBe(true);
+      player.dispatchEvent(new Event('pause'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(spinner()).toBe(false);
+      player.dispatchEvent(new Event('play'));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(spinner()).toBe(true);
+      player.dispatchEvent(new Event('error'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(spinner()).toBe(false);
+      player.dispatchEvent(new Event('waiting'));
+      await wrapper.setProps({ active: false });
+      await vi.advanceTimersByTimeAsync(600);
+      expect(spinner()).toBe(false);
+      await wrapper.setProps({ active: true });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(spinner()).toBe(true);
+      player.dispatchEvent(new Event('playing'));
+      player.dispatchEvent(new Event('waiting'));
+      await vi.advanceTimersByTimeAsync(200);
+      player.dispatchEvent(new Event('playing'));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(spinner()).toBe(false);
+    } finally {
+      wrapper.unmount();
+      expect(vi.getTimerCount()).toBe(0);
+      vi.useRealTimers();
+    }
+  });
+
+  it('preserves Classic loading presentation', async () => {
+    vi.useFakeTimers();
+    const wrapper = mount(ReelPlayerCard, {
+      props: { item: createFeedItem(1), folder: createFolder(), active: true },
+      global: { stubs: globalStubs }
+    });
+    try {
+      getPlayerElement(wrapper).dispatchEvent(new Event('waiting'));
+      await vi.advanceTimersByTimeAsync(600);
+      expect(wrapper.find('.reel-player-card__loading').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it('waits through startup readiness events before playing, and pauses when blocked again', async () => {
     const wrapper = mount(ReelPlayerCard, {
       props: { item: createFeedItem(1), folder: createFolder(), active: true, cinema: true, playbackAllowed: false },

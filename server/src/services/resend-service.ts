@@ -21,7 +21,7 @@ export async function sendSignInEmail(message: SignInEmail): Promise<void> {
       body: JSON.stringify({ from: `UnReeled Photos <${appConfig.emailFrom}>`, to: [message.to], subject: message.subject, text: message.text, ...(message.html ? { html: message.html } : {}),
         ...(message.inlineLogo ? { attachments: [{
           filename: 'unreeled-photos.png', content_type: 'image/png', content_id: 'unreeled-logo',
-          content: readFileSync(path.join(repositoryRoot, 'client/public/branding/ur-logo-4e4dc1180945.png')).toString('base64')
+          content: readFileSync(path.join(repositoryRoot, 'client/public/branding/ur-email-logo-945346a88a1a.png')).toString('base64')
         }] } : {}) })
     });
     // Never log provider bodies: they can contain recipients, content or credentials.

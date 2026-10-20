@@ -343,6 +343,8 @@ describe('ReelsView', () => {
     const wrapper = mount(ReelsView);
     await flushPromises();
     const deck = wrapper.findComponent({ name: 'ReelDeck' });
+    expect(wrapper.find('.reels-view__hint').exists()).toBe(theme === 'cinema');
+    if (theme === 'cinema') expect(wrapper.text()).toContain('Swipe up or down to see more videos. Tap to pause.');
     expect(deck.props('playbackAllowed')).toBe(theme === 'classic');
     window.dispatchEvent(new Event('foldergram:album-ready'));
     await flushPromises();

@@ -12,12 +12,18 @@
       "email": "Correo electrónico",
       "lastActive": "Última actividad",
       "lastLogin": "Último inicio",
+      "firstJoined": "Fecha de registro",
       "logins": "Inicios",
       "views": "Visitas",
       "albums": "Álbumes distintos",
       "likes": "Me gusta",
       "albumViews": "Visitas a álbumes",
       "likedPhotos": "Fotos que gustan",
+      "album": "Álbum",
+      "viewCount": "Visitas",
+      "lastViewed": "Última visita",
+      "photo": "Foto",
+      "likedOn": "Fecha de Me gusta",
       "none": "Sin actividad registrada.",
       "empty": "No hay cuentas aprobadas.",
       "previous": "Anterior",
@@ -667,6 +673,8 @@
     }
   },
   "home": {
+    "storiesTitle": "Historias",
+    "feelingLuckyTitle": "Voy a tener suerte",
     "feedTitle": "Feed",
     "sidebar": {
       "ariaLabel": "Recomendaciones de carpetas",
@@ -914,6 +922,8 @@
   },
   "reels": {
     "view": {
+      "browseHint": "Desliza hacia arriba o abajo para ver más vídeos. Toca para pausar.",
+      "browseHintClick": "Desplázate hacia arriba o abajo para ver más vídeos. Haz clic para pausar.",
       "libraryUnavailableTitle": "Almacenamiento de la biblioteca no disponible",
       "loadErrorTitle": "No se pudieron cargar los reels",
       "loadingTitle": "Cargando reels",

@@ -313,6 +313,9 @@ describe.sequential('invite-only email sign-in', () => {
     expect(delivered.html).toContain('src="cid:unreeled-logo"');
     expect(delivered.attachments[0]).toMatchObject({ filename: 'unreeled-photos.png', content_type: 'image/png', content_id: 'unreeled-logo' });
     expect(Buffer.from(delivered.attachments[0].content, 'base64').subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(Buffer.from(delivered.attachments[0].content, 'base64')[25]).toBe(6); // RGBA email logo.
+    expect(delivered.html).toContain('prefers-color-scheme:dark');
+    expect(delivered.html).toContain('class="ur-email__button"');
     const limitedKnown = await request(app, 'POST', '/api/auth/email/request', intent, { email: 'family@example.com' });
     const limitedUnknown = await request(app, 'POST', '/api/auth/email/request', intent, { email: 'unknown@example.com' });
     expect(limitedKnown.status).toBe(429); expect(limitedUnknown.status).toBe(429);

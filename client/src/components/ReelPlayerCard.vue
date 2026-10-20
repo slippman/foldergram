@@ -1,5 +1,5 @@
 <template>
-  <article class="reel-player-card">
+  <article class="reel-player-card" :class="{ 'reel-player-card--cinema': cinema }">
     <div class="reel-player-card__stage">
       <div
         class="reel-player-card__surface"
@@ -43,6 +43,11 @@
             </media-time-slider>
           </div>
         </media-player>
+
+        <div v-if="showLoadingIndicator" class="reel-player-card__loading" role="status">
+          <span class="reel-player-card__spinner" aria-hidden="true" />
+          <span class="sr-only">{{ t('common.loading') }}</span>
+        </div>
 
         <div
           v-if="showPausedIndicator"
@@ -117,6 +122,7 @@ import 'vidstack/bundle';
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import type { PlayerSrc } from 'vidstack';
 import type { MediaPlayerElement } from 'vidstack/elements';
 
@@ -135,11 +141,27 @@ const props = withDefaults(defineProps<{
 }>(), { playbackAllowed: true });
 
 const appStore = useAppStore();
+const { t } = useI18n();
 const playerElement = ref<MediaPlayerElement | null>(null);
 // Vidstack also reads the muted attribute when a new provider becomes ready.
 // The template forces that attribute for Cinema alongside the live muted property.
 const canPlay = computed(() => props.active && props.playbackAllowed !== false);
 const isPaused = ref(false);
+const showLoadingIndicator = ref(false);
+let loadingTimer = 0;
+function setLoading(loading: boolean) {
+  if (!loading || !props.cinema || !canPlay.value) {
+    window.clearTimeout(loadingTimer);
+    loadingTimer = 0;
+    showLoadingIndicator.value = false;
+  } else if (!loadingTimer && !showLoadingIndicator.value) {
+    loadingTimer = window.setTimeout(() => {
+      loadingTimer = 0;
+      showLoadingIndicator.value = props.cinema === true && canPlay.value;
+    }, 500);
+  }
+}
+watch(() => props.cinema && canPlay.value, enabled => setLoading(Boolean(enabled)), { immediate: true });
 const isUsingOriginalFallback = ref(false);
 const playerLoadMode = computed(() => (props.active ? 'eager' : 'visible'));
 const currentVideoSrc = computed(() => (isUsingOriginalFallback.value ? getOriginalMediaUrl(props.item.id) : props.item.previewUrl));
@@ -243,9 +265,11 @@ async function syncPlayback() {
         return;
       }
 
+      if (autoplayRetryAttempts >= MAX_AUTOPLAY_RETRIES && player.hasAttribute('data-can-play')) setLoading(false);
       scheduleAutoplayRetry();
       return;
     }
+    if (player.hasAttribute('data-can-play')) setLoading(false);
   }
 }
 
@@ -260,7 +284,11 @@ function bindPlayerEventListeners(player: MediaPlayerElement | null) {
   const handleReady = () => {
     void syncPlayback();
   };
+  const handlePlaying = () => setLoading(false);
+  const handleWaiting = () => { if (!isPaused.value) setLoading(true); };
+  const handleError = () => setLoading(false);
   const handlePlay = () => {
+    setLoading(true);
     isPaused.value = false;
     if (!canPlay.value) {
       void player.pause().catch(() => {
@@ -269,18 +297,25 @@ function bindPlayerEventListeners(player: MediaPlayerElement | null) {
     }
   };
   const handlePause = () => {
+    setLoading(false);
     isPaused.value = canPlay.value;
   };
 
   player.addEventListener('loaded-metadata', handleReady);
   player.addEventListener('can-play', handleReady);
   player.addEventListener('play', handlePlay);
+  player.addEventListener('playing', handlePlaying);
+  player.addEventListener('waiting', handleWaiting);
+  player.addEventListener('error', handleError);
   player.addEventListener('pause', handlePause);
 
   removePlayerEventListeners = () => {
     player.removeEventListener('loaded-metadata', handleReady);
     player.removeEventListener('can-play', handleReady);
     player.removeEventListener('play', handlePlay);
+    player.removeEventListener('playing', handlePlaying);
+    player.removeEventListener('waiting', handleWaiting);
+    player.removeEventListener('error', handleError);
     player.removeEventListener('pause', handlePause);
   };
 
@@ -382,6 +417,8 @@ watch(playerElement, (player) => {
 watch(
   currentVideoSrc,
   () => {
+    setLoading(false);
+    setLoading(true);
     if (!canPlay.value) {
       return;
     }
@@ -398,6 +435,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  setLoading(false);
   clearAutoplayRetry();
   removePlayerEventListeners?.();
   removePlayerEventListeners = null;
@@ -420,6 +458,8 @@ onBeforeUnmount(() => {
   height: 100%;
   padding: calc(var(--reel-stage-gap) / 2) 0;
 }
+
+.reel-player-card--cinema { min-height: 0; min-width: 0; }
 
 .reel-player-card__stage {
   position: relative;
@@ -472,6 +512,41 @@ onBeforeUnmount(() => {
 .reel-player-card__player :deep(img) {
   object-fit: contain;
   background: #000;
+}
+
+.reel-player-card--cinema .reel-player-card__player { position: relative; }
+.reel-player-card--cinema .reel-player-card__player :deep(media-poster) {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+}
+.reel-player-card--cinema .reel-player-card__player :deep(media-poster[data-visible]) { opacity: 1; }
+.reel-player-card--cinema .reel-player-card__player :deep(media-poster[data-hidden]) { display: none; }
+.reel-player-card--cinema .reel-player-card__bottom-fade { z-index: 1; }
+.reel-player-card--cinema .reel-player-card__overlay { z-index: 3; }
+
+.reel-player-card__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 2;
+}
+.reel-player-card__spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid rgba(255, 255, 255, .3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 8px rgba(0, 0, 0, .25);
+  animation: reel-buffering-spin .8s linear infinite;
+}
+@keyframes reel-buffering-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .reel-player-card__spinner { animation: none; }
 }
 
 .reel-player-card__pause-indicator {

@@ -5,7 +5,7 @@ description: UnReeled Photos logo assets, usage locations, and replacement check
 
 # UnReeled Photos branding map
 
-Last audited: October 17, 2026. Keep this inventory current whenever a logo,
+Last audited: October 20, 2026. Keep this inventory current whenever a logo,
 favicon, branded email, or branding reference is added, removed, or renamed.
 This is the maintained reference for a future branding update.
 
@@ -15,7 +15,8 @@ All UR image assets live in `client/public/branding/`.
 
 | Asset | Purpose |
 | --- | --- |
-| `ur-logo-4e4dc1180945.png` | Current full UR logo; shared by website and sign-in emails. |
+| `ur-logo-4e4dc1180945.png` | Current full UR website logo. |
+| `ur-email-logo-945346a88a1a.png` | Transparent email-only UR logo with a subtle pale edge halo for light/dark backgrounds; keep website variants unchanged. |
 | `ur-favicon-9a5af93327d1.svg` | Current website favicon. |
 | `ur-favicon-9a5af93327d1-32.png` | Current 32px favicon fallback. |
 | `ur-favicon-9a5af93327d1-16.png` | Current 16px favicon fallback. |
@@ -39,7 +40,7 @@ current file bytes, so do not assume they can be regenerated from that alone.
 | `client/src/components/AlbumAttribution.vue` | Cinema attribution footer. | 144px desktop, 112px mobile; links to `https://slip.unreeled.com`. |
 | `client/src/components/EmailSignIn.vue` | Public email sign-in card and post-request waiting page. | 112px; same component and logo. |
 | `client/src/views/EmailAccessReviewView.vue` | Owner approval/denial page and its result screen. | 112px. |
-| `server/src/services/resend-service.ts` | Reads the same PNG and embeds it in sign-in email as a base64 inline attachment. | Attachment filename `unreeled-photos.png`, content ID `unreeled-logo`. |
+| `server/src/services/resend-service.ts` | Reads `ur-email-logo-945346a88a1a.png` and embeds the transparent email-only PNG as a base64 inline attachment. | Attachment filename `unreeled-photos.png`, content ID `unreeled-logo`. |
 | `server/src/services/email-sign-in-service.ts` | Places the email logo at the bottom, after the sign-in link and small print. | 160px, using `src="cid:unreeled-logo"`; must match the transport content ID. |
 
 The attribution component is included by:
@@ -84,7 +85,7 @@ The local preview shows it when the guest-header preview is selected.
 
 For a full rename, also review:
 
-- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: 13px, darker gray semibold Cinema name. On desktop it sits beneath the album/feed title on the left, with account controls on the right. On mobile it sits at the left of a slim, softly outlined gray strip when there is no back control, and centers between the back and account controls in scroll views, with the full-width title on the next row and the matching 13px hint above the sticky header divider. The local static preview uses the same header CSS.
+- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: 13px, darker gray semibold Cinema name. On desktop it sits beneath the album title on the left; Cinema Home omits the redundant visible Feed heading and keeps the site name on its own, with account controls on the right. On mobile it sits at the left of a slim, softly outlined gray strip when there is no back control, and centers between the back and account controls in scroll views, with the full-width title on the next row and the matching 13px hint above the sticky header divider. The local static preview uses the same header CSS.
 - `client/src/utils/document-title.ts`: browser title wording.
 - `client/src/locales/en.json`, `es.json`, `zh.json`: email sign-in name and copy.
 - `server/src/routes/share-preview.ts`: initial and shared-album browser titles.
@@ -94,7 +95,7 @@ For a full rename, also review:
   followed by “You're almost in!”;
   button: “Sign in to UnReeled Photos”. Both sign-in and owner notification
   emails use centered layouts. The sign-in email uses presentation tables with
-  explicit center alignment, including a 160px table for the bottom logo.
+  explicit center alignment, including a 160px table for the bottom logo. Sign-in emails provide white/charcoal color-scheme styles for supporting email clients and inline light-mode fallbacks; the transparent logo uses no CSS inversion or blend mode.
 - `server/src/services/email-access-review-service.ts`: owner notification name,
   subject, and email text.
 
@@ -107,7 +108,7 @@ artwork-only update. Keep private configuration and API keys out of this documen
 The local-only `foldergram-dev` generator references the logo in attribution,
 loading, sign-in, confirmation, waiting, and review previews, and the earlier
 favicon in its HTML head. Sign-in and approval email previews derive from the
-actual server templates; the sign-in preview substitutes the same local logo for
+actual server templates; the sign-in preview substitutes the transparent email-only logo for
 the email content ID.
 Update those references and regenerate with `./foldergram-dev preview`.
 `foldergram-preview.html` is generated; do not maintain its copies by hand.

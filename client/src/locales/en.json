@@ -12,12 +12,18 @@
       "email": "Email address",
       "lastActive": "Last active",
       "lastLogin": "Last login",
+      "firstJoined": "First joined",
       "logins": "Logins",
       "views": "Album views",
       "albums": "Unique albums",
       "likes": "Likes",
       "albumViews": "Album visits",
       "likedPhotos": "Liked photos",
+      "album": "Album",
+      "viewCount": "Views",
+      "lastViewed": "Last viewed",
+      "photo": "Photo",
+      "likedOn": "Liked on",
       "none": "No activity recorded.",
       "empty": "No approved accounts yet.",
       "previous": "Previous",
@@ -667,6 +673,8 @@
     }
   },
   "home": {
+    "storiesTitle": "Stories",
+    "feelingLuckyTitle": "Feeling Lucky",
     "feedTitle": "Feed",
     "sidebar": {
       "ariaLabel": "Folder recommendations",
@@ -914,6 +922,8 @@
   },
   "reels": {
     "view": {
+      "browseHint": "Swipe up or down to see more videos. Tap to pause.",
+      "browseHintClick": "Scroll up or down to see more videos. Click to pause.",
       "libraryUnavailableTitle": "Library storage unavailable",
       "loadErrorTitle": "Could not load reels",
       "loadingTitle": "Loading reels",

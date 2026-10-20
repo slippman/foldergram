@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 
 import { fetchMomentFeed, fetchMoments } from '../api/gallery';
 import { i18n } from '../locales';
+import { useAppStore } from './app';
 import type { CalendarDateParts, FeedItem, FeedRailKind, MomentCapsule } from '../types/api';
 import { updateCaptionInItems } from '../utils/caption';
 
@@ -126,6 +127,7 @@ function formatLocalizedDateRange(startDate: CalendarDateParts, endDate: Calenda
 
 function localizeCapsule(capsule: MomentCapsule, railKind: FeedRailKind): MomentCapsule {
   void i18n.global.locale.value;
+  const cinema = useAppStore().feedDisplayTheme === 'cinema';
 
   switch (capsule.id) {
     case 'on-this-day': {
@@ -189,7 +191,7 @@ function localizeCapsule(capsule: MomentCapsule, railKind: FeedRailKind): Moment
 
       return {
         ...capsule,
-        title: i18n.global.t('moments.capsules.highlightRecentBatches.title'),
+        title: i18n.global.t(cinema ? 'home.storiesTitle' : 'moments.capsules.highlightRecentBatches.title'),
         subtitle: i18n.global.t('moments.capsules.highlightRecentBatches.subtitle'),
         dateContext:
           count === 1
@@ -214,7 +216,7 @@ function localizeCapsule(capsule: MomentCapsule, railKind: FeedRailKind): Moment
     case 'highlight-lucky-dip':
       return {
         ...capsule,
-        title: i18n.global.t('moments.capsules.highlightLuckyDip.title'),
+        title: i18n.global.t(cinema ? 'home.feelingLuckyTitle' : 'moments.capsules.highlightLuckyDip.title'),
         subtitle: i18n.global.t('moments.capsules.highlightLuckyDip.subtitle'),
         dateContext: i18n.global.t('moments.capsules.highlightLuckyDip.dateContext')
       };
