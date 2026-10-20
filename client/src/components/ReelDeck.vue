@@ -2,6 +2,7 @@
   <section
     ref="scrollerElement"
     class="reel-deck"
+    :class="{ 'reel-deck--cinema': cinema }"
     aria-label="Reels feed"
     @scroll="handleScroll"
   >
@@ -350,6 +351,14 @@ defineExpose({
   min-height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+}
+
+.reel-deck--cinema .reel-deck__panel {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
 }
 
 .reel-deck__status {

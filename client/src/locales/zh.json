@@ -12,12 +12,18 @@
       "email": "电子邮箱",
       "lastActive": "最近活跃",
       "lastLogin": "最近登录",
+      "firstJoined": "加入日期",
       "logins": "登录次数",
       "views": "相册访问",
       "albums": "不同相册",
       "likes": "点赞",
       "albumViews": "相册访问",
       "likedPhotos": "已点赞照片",
+      "album": "相册",
+      "viewCount": "访问次数",
+      "lastViewed": "最近访问",
+      "photo": "照片",
+      "likedOn": "点赞时间",
       "none": "暂无活动记录。",
       "empty": "暂无已批准账户。",
       "previous": "上一页",
@@ -667,6 +673,8 @@
     }
   },
   "home": {
+    "storiesTitle": "故事",
+    "feelingLuckyTitle": "试试手气",
     "feedTitle": "动态",
     "sidebar": {
       "ariaLabel": "文件夹推荐",
@@ -914,6 +922,8 @@
   },
   "reels": {
     "view": {
+      "browseHint": "上下滑动查看更多视频。轻点暂停。",
+      "browseHintClick": "上下滚动查看更多视频。点击暂停。",
       "libraryUnavailableTitle": "图库存储不可用",
       "loadErrorTitle": "无法加载短片",
       "loadingTitle": "正在加载短片",

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_LOCALE, i18n } from '../locales';
 import type { FeedItem, MomentCapsule } from '../types/api';
+import { useAppStore } from './app';
 import { useMomentsStore } from './moments';
 
 function createFeedItem(id: number): FeedItem {
@@ -95,6 +96,12 @@ describe('useMomentsStore localization', () => {
     expect(store.localizedItems[0]?.subtitle).toBe('将最近几次拍摄合并为一个合集');
     expect(store.localizedItems[0]?.dateContext).toBe('2 个批次');
     expect(store.currentCapsule?.title).toBe('近期批次');
+    useAppStore().stats = { preferences: { feedDisplayTheme: 'cinema' } } as any;
+    expect(store.localizedItems[0]?.title).toBe('故事');
+    expect(store.localizedItems[1]?.title).toBe('试试手气');
+    expect(store.currentCapsule?.title).toBe('故事');
+    useAppStore().stats = null;
+    expect(store.localizedItems[0]?.title).toBe('近期批次');
   });
 
   it('localizes date-based moment capsules without leaving English subtitle or date copy behind', () => {

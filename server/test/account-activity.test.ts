@@ -57,7 +57,7 @@ describe.sequential('account activity', () => {
     for(const time of ['2026-10-19T18:00Z','2026-10-20T18:00Z','2026-10-20T20:00Z','2026-10-21T18:00Z']) activity.activityService.recordAlbum(alice.id,album,Date.parse(time));
     activity.activityService.recordAlbum(bob.id,album,Date.parse('2026-10-20T18:00Z'));
     const report=(await get('/api/admin/activity')).body;
-    expect(report.items.find((user:any)=>user.id===alice.id)).toMatchObject({albumViews:3,uniqueAlbums:1});
+    expect(report.items.find((user:any)=>user.id===alice.id)).toMatchObject({albumViews:3,uniqueAlbums:1,joinedAt:accounts.getById(alice.id)!.created_at});
     expect(report.items.find((user:any)=>user.id===bob.id)).toMatchObject({albumViews:1,uniqueAlbums:1});
     const other=repo.folderRepository.upsert({slug:'birthday',name:'Birthday',folderPath:'birthday'});
     activity.activityService.recordAlbum(alice.id,other);

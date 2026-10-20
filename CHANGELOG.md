@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2-slippman.2.1.2 — 2026-10-20
+
+### Bug fixes
+
+- Cinema Reels keeps album names and Like controls visible while videos load and above mobile navigation, shows a delayed loading spinner and correctly placed preview image, and explains swipe/scroll and pause controls.
+- Sign-in emails use a transparent UR logo and readable light/dark colors in supporting email apps.
+- Cinema Home removes the redundant Feed heading and centers its story shortcuts, now labeled Stories and Feeling Lucky.
+- Admin activity reports use aligned tables for album visits and liked photos, simpler email disclosure controls, and First joined in place of Last login.
+
 ## 1.2.2-slippman.2.1.1 — 2026-10-20
 
 ### Bug fixes

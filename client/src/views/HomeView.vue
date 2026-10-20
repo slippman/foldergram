@@ -15,7 +15,7 @@
   >
     <!-- Main feed column -->
     <div class="min-w-0">
-      <AlbumHeader v-if="isCinema" :title="t('home.feedTitle')" :hint="feedStore.items.length ? 'scroll' : undefined" />
+      <AlbumHeader v-if="isCinema" class="home-cinema-header" :title="t('nav.home')" :hint="feedStore.items.length ? 'scroll' : undefined" />
       <section
         v-if="appStore.isLibraryRebuildRequired && appStore.stats && !appStore.isRebuilding"
         class="grid gap-[0.55rem] px-5 py-[1rem] mb-[1.1rem] border rounded-[1rem] shadow-[var(--shadow)]"
@@ -39,8 +39,8 @@
         </div>
       </section>
 
-      <section v-if="!appStore.isLibraryUnavailable" class="grid min-w-0 gap-[1rem] mb-5 w-full max-w-[39.375rem]">
-        <section v-if="displayMomentItems.length" class="mb-2 min-w-0">
+      <section v-if="!appStore.isLibraryUnavailable" class="grid min-w-0 gap-[1rem] mb-5 w-full max-w-[39.375rem]" :class="{ 'mx-auto': isCinema }">
+        <section v-if="displayMomentItems.length" class="mb-2 min-w-0" :class="{ 'home-stories--cinema': isCinema }">
           <div class="story-rail-shell">
             <div class="stories-bar story-rail pb-5 pt-[0.12rem]" :aria-label="momentsStore.displayRailTitle">
               <div class="story-rail__track">
@@ -646,3 +646,12 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateHomeLayout);
 });
 </script>
+
+<style scoped>
+.home-cinema-header :deep(h1) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.home-cinema-header :deep(.album-header__brand), .home-cinema-header :deep(.album-header__actions) { grid-row: 1; }
+.home-stories--cinema .story-rail__track { justify-content: center; }
+@media (max-width: 767px) {
+  .home-cinema-header :deep(.album-header__hint) { grid-row: 2; }
+}
+</style>
