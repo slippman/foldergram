@@ -244,6 +244,7 @@
         <!-- CATEGORY: ACCESS -->
         <template v-if="currentCategory === 'access'">
           <EmailAccessSettings v-if="authStore.accessMode === 'email'" />
+          <EmailActivitySettings v-if="authStore.accessMode === 'email' && appStore.folderDisplayTheme === 'cinema'" />
           <section class="card grid gap-[1.15rem] p-8">
             <div class="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-start">
               <div>
@@ -1498,6 +1499,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
+import EmailActivitySettings from '../components/EmailActivitySettings.vue';
 import EmailAccessSettings from '../components/EmailAccessSettings.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import {

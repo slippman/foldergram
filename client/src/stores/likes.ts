@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 
+import { requestJson } from '../api/http';
 import { fetchLikes, likeImage, unlikeImage } from '../api/gallery';
 import { i18n } from '../locales';
 import type { FeedItem, LikesMode } from '../types/api';
@@ -7,6 +8,7 @@ import { updateCaptionInItems } from '../utils/caption';
 import { useAuthStore } from './auth';
 
 interface LikesState {
+  counts: Record<number, number>;
   mode: LikesMode;
   items: FeedItem[];
   likedIds: number[];
@@ -88,6 +90,7 @@ function writeLocalFavorites(items: FeedItem[]) {
 
 export const useLikesStore = defineStore('likes', {
   state: (): LikesState => ({
+    counts: {},
     mode: 'shared',
     items: [],
     likedIds: [],
@@ -97,6 +100,7 @@ export const useLikesStore = defineStore('likes', {
     initialized: false
   }),
   getters: {
+    likeCount: (state) => (item: { id: number; likeCount?: number }) => state.counts[item.id] ?? item.likeCount ?? 0,
     isLiked: (state) => (id: number) => state.likedIds.includes(id),
     isPending: (state) => (id: number) => state.pendingIds.includes(id),
     collectionLabel: (state) => {
@@ -154,6 +158,7 @@ export const useLikesStore = defineStore('likes', {
     syncFromItems(items: FeedItem[], mode: LikesMode) {
       this.mode = mode;
       this.items = items;
+      for (const item of items) if (item.likeCount !== undefined) this.counts[item.id] = item.likeCount;
       this.likedIds = items.map((item) => item.id);
     },
 
@@ -161,6 +166,7 @@ export const useLikesStore = defineStore('likes', {
       const authStore = useAuthStore();
 
       this.mode = authStore.likesMode;
+      this.counts = {};
       this.items = [];
       this.likedIds = [];
       this.pendingIds = [];
@@ -206,7 +212,7 @@ export const useLikesStore = defineStore('likes', {
       }
     },
 
-    async toggleLike(item: FeedItem) {
+    async toggleLike(item: FeedItem, shared = false) {
       const authStore = useAuthStore();
       if (!authStore.canUseSavedItems || this.pendingIds.includes(item.id)) {
         return;
@@ -215,16 +221,18 @@ export const useLikesStore = defineStore('likes', {
       const identity = authStore.user?.id ?? authStore.role;
       const mode = authStore.likesMode;
       const wasLiked = this.likedIds.includes(item.id);
+      const previousCount = this.likeCount(item);
+      if (mode !== 'local') this.counts[item.id] = Math.max(0, previousCount + (wasLiked ? -1 : 1));
       this.mode = mode;
       this.pendingIds.push(item.id);
       this.error = null;
 
       if (wasLiked) {
         this.likedIds = this.likedIds.filter((id) => id !== item.id);
-        this.items = this.items.filter((entry) => entry.id !== item.id);
+        if (!shared) this.items = this.items.filter((entry) => entry.id !== item.id);
       } else {
         this.likedIds = [item.id, ...this.likedIds.filter((id) => id !== item.id)];
-        this.items = [item, ...this.items.filter((entry) => entry.id !== item.id)];
+        if (!shared) this.items = [item, ...this.items.filter((entry) => entry.id !== item.id)];
       }
 
       try {
@@ -232,15 +240,18 @@ export const useLikesStore = defineStore('likes', {
           writeLocalFavorites(this.items);
           this.initialized = true;
         } else if (wasLiked) {
-          await unlikeImage(item.id);
+          const result = shared ? await requestJson<{likeCount?:number}>(`/api/share/posts/${item.id}/like`,{method:'DELETE'}) : await unlikeImage(item.id);
+          if ((authStore.user?.id ?? authStore.role) === identity && result?.likeCount !== undefined) this.counts[item.id] = result.likeCount;
         } else {
-          await likeImage(item.id);
+          const result = shared ? await requestJson<{likeCount?:number}>(`/api/share/posts/${item.id}/like`,{method:'POST'}) : await likeImage(item.id);
+          if ((authStore.user?.id ?? authStore.role) === identity && result?.likeCount !== undefined) this.counts[item.id] = result.likeCount;
         }
       } catch (error) {
         if ((authStore.user?.id ?? authStore.role) !== identity) return;
+        if (mode !== 'local') this.counts[item.id] = previousCount;
         if (wasLiked) {
           this.likedIds = [item.id, ...this.likedIds.filter((id) => id !== item.id)];
-          this.items = [item, ...this.items.filter((entry) => entry.id !== item.id)];
+          if (!shared) this.items = [item, ...this.items.filter((entry) => entry.id !== item.id)];
         } else {
           this.likedIds = this.likedIds.filter((id) => id !== item.id);
           this.items = this.items.filter((entry) => entry.id !== item.id);

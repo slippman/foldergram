@@ -493,3 +493,13 @@ original full link, a short link grants album access to anyone who has it.
 rollout. Set it to `true` in a later phase to offer optional screen names on first
 sign-in. Existing chosen names remain stored when disabled. See
 [Email sign-in](./email-access.md) for rollout behavior.
+
+
+### Account activity timezone
+
+`ACTIVITY_TIMEZONE` selects the IANA timezone for daily per-account album views
+(default `UTC`, for example `America/Denver`). It is validated at startup. Keep it
+stable after collection begins; changing it affects future event day assignment
+and does not re-bin history. Compose passes this setting to the server. Activity
+reports are private to administrators and do not require an external analytics
+service. See [Email access](./email-access.md#account-activity) for capture rules.

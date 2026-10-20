@@ -107,6 +107,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAlbumActivity } from '../composables/useAlbumActivity';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
@@ -131,6 +132,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const shareStore = useShareStore();
+useAlbumActivity(() => props.slug, () => !!shareStore.access?.granted && shareStore.folder?.slug === props.slug && !shareStore.loading && !shareStore.error, true);
 provideCinemaAudio();
 const appStore = useAppStore();
 const router = useRouter();

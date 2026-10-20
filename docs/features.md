@@ -373,3 +373,13 @@ The current repository does **not** implement:
 ## Carousel posts
 
 Carousel posts combine 2–20 images, animated images, and videos in one feed card and viewer. Arrow buttons, keyboard controls, touch swipes, counters, and dots move between items. The post has one shared caption and one set of like, save, collection, trash, and delete actions; active-item download and file details remain asset-specific. See [Carousel Posts](/carousel-posts).
+
+
+## Account activity and like totals
+
+Cinema administrators can inspect sign-in totals, last login/activity, daily album
+visits, unique albums and current likes per email account in Access settings.
+Album visits count once per person per album per day, with today, seven-day and
+all-time views. Cinema hearts show aggregate like counts; signed-in visitors can
+save account likes through an authorized album share. Guest favorites stay local.
+See [Email access](./email-access.md#account-activity) for storage and privacy rules.

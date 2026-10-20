@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.2.2-slippman.2.1.0 — 2026-10-19
 
 ### New features
+
+- Account activity reports show recorded logins, last activity, daily album views, unique albums and current likes per email address. Album views count once per person per album per day. Cinema hearts show like totals, and account likes also work through authorized album share links.
 
 - Albums can be shared with all signed-in users or kept share-link only. Link-only albums stay out of feeds, search and viewer album lists; admins can still manage them. Existing and new albums default to all signed-in users.
 

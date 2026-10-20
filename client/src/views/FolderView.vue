@@ -198,6 +198,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useAlbumActivity } from '../composables/useAlbumActivity'
   import { computed, nextTick, onMounted, ref, watch } from "vue"
   import { useI18n } from "vue-i18n"
   import { useRoute, useRouter } from "vue-router"
@@ -266,6 +267,7 @@
   }
   watch([() => albumRoute.value.query.view, () => albumRoute.value.query.photo], focusCinemaPhoto)
   const hasLoadedOnce = ref(false)
+  useAlbumActivity(() => props.slug, () => foldersStore.currentFolder?.slug === props.slug && !foldersStore.loadingFolder && !foldersStore.folderError)
   const activeStoryViewerId = ref<string | null>(null)
   const activeTab = computed(() =>
     albumRoute.value.query.tab === "reels" ? "reels" : "posts",

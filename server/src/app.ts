@@ -9,6 +9,10 @@ import { handleRequestError } from './middleware/error-handler.js';
 import { requireTrustedMutationRequest } from './middleware/csrf-protection.js';
 import { blockPublicDemoMutations } from './middleware/public-demo-mode.js';
 import { emailAuthRouter } from './routes/email-auth.js';
+import { activityRouter } from './routes/activity.js';
+import { log } from './services/log-service.js';
+import { activityService } from './services/activity-service.js';
+import { appendLikeCounts } from './services/like-counts.js';
 import { apiRouter } from './routes/api.js';
 import { sharePreviewRouter } from './routes/share-preview.js';
 import { authService } from './services/auth-service.js';
@@ -73,12 +77,26 @@ export function createApp() {
   });
   app.use('/api', requireAlbumVisibility);
   app.use('/api', (request, response, next) => {
+    const userId = authService.getRequestAuthContext(request).user?.id;
+    if (userId && /^\/(?:share\/)?(feed|folders|posts|images|reels|places|likes|collections)(\/|$)/i.test(request.path)) {
+      response.on('finish', () => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          try { activityService.touch(userId); } catch { log.error('Account activity update failed'); }
+        }
+      });
+    }
+    const json = response.json.bind(response);
+    response.json = body => json(response.statusCode < 400 ? appendLikeCounts(body, userId) : body);
+    next();
+  });
+  app.use('/api', (request, response, next) => {
     if (appConfig.mediaCacheEnabled && request.method === 'GET' && !/^\/(share|auth|admin)(\/|$)/.test(request.path)) {
       const json = response.json.bind(response);
       response.json = (body) => json(response.statusCode < 400 ? cacheLibraryMediaUrls(request, body) : body);
     }
     next();
   });
+  app.use('/api', activityRouter);
   app.use('/api', emailAuthRouter);
   app.use('/api', apiRouter);
 

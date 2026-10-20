@@ -1,11 +1,12 @@
 <template>
   <div class="cinema-viewer-actions" data-swipe-ignore="true" data-sheet-swipe-ignore="true" @keydown.esc="handleEscape">
-    <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="image.id" />
+    <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="image.id" :item="image" />
     <button v-else-if="auth.canUseSavedItems" class="media-action" :class="{ 'media-action--liked': likes.isLiked(image.id) }"
       :aria-label="likes.toggleAriaLabel(likes.isLiked(image.id))" :aria-pressed="likes.isLiked(image.id)"
       :disabled="likes.isPending(image.id)" @click="likes.toggleLike(image)">
       <span aria-hidden="true" :class="likes.isLiked(image.id) ? 'i-fluent-heart-20-filled' : 'i-fluent-heart-20-regular'" />
     </button>
+    <LikeCount :item="image" />
     <CollectionBookmark v-if="!sharedSlug" :item="image" placement="viewer" />
     <MobileMediaShare cinema :media-type="mediaType ?? image.mediaType" :url="downloadUrl" :download-label="sharedSlug ? 'post.viewer.download' : undefined" />
     <button class="media-action cinema-viewer-actions__desktop" :aria-label="t('post.viewer.shareLink')" :title="t('post.viewer.shareLink')" @click="shareLink">
@@ -29,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import LikeCount from './LikeCount.vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ImageDetail } from '../types/api';
