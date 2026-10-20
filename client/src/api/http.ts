@@ -58,6 +58,8 @@ export async function requestJson<T>(input: RequestInfo | URL, init?: RequestIni
       throw error;
     }
 
+    // Successful no-content mutations (such as album views) have no JSON body.
+    if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   } catch (error) {
     if (timedOut) throw new RequestError('Loading took too long. Please try again.', 408);
