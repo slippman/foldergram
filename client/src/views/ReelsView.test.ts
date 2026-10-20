@@ -251,6 +251,44 @@ describe('ReelsView', () => {
     });
   });
 
+  it('blocks playback before Feed theme settings arrive', async () => {
+    useAppStore().stats = null;
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    try {
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      const stats = createAppStatus(); stats.preferences.feedDisplayTheme = 'cinema';
+      useAppStore().stats = stats;
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      splash.remove(); window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(true);
+    } finally { splash.remove(); wrapper.unmount(); }
+  });
+
+  it('restarts startup readiness when the active poster changes behind the splash', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    const restart = vi.fn(); window.addEventListener('foldergram:album-view-loading', restart);
+    try {
+      useReelsStore().activeReelId = 202;
+      await flushPromises();
+      expect(restart).toHaveBeenCalledOnce();
+      expect(wrapper.get('[data-album-poster]').attributes('data-album-poster')).toBe('/thumbs/202.webp');
+      splash.remove(); window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises(); restart.mockClear();
+      useReelsStore().activeReelId = 101;
+      await flushPromises();
+      expect(restart).not.toHaveBeenCalled();
+    } finally { window.removeEventListener('foldergram:album-view-loading', restart); splash.remove(); wrapper.unmount(); }
+  });
+
   it.each(['cinema', 'classic'] as const)('gates playback through the splash only for %s', async theme => {
     useAppStore().stats!.preferences.feedDisplayTheme = theme;
     vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);

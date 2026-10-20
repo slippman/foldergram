@@ -46,7 +46,7 @@
           :active-reel-id="reelsStore.activeReelId"
           :loading="reelsStore.loading"
           :cinema="isCinema"
-          :playback-allowed="!isCinema || startupReady"
+          :playback-allowed="playbackAllowed"
           @active-change="handleActiveChange"
           @prefetch="handlePrefetch"
         >
@@ -161,6 +161,7 @@ const { t } = useI18n();
 const isCinema = computed(() => appStore.feedDisplayTheme === 'cinema');
 // Keep the first player paused through the splash's poster wait and exit fade.
 const startupReady = ref(false);
+const playbackAllowed = computed(() => appStore.stats !== null && (!isCinema.value || startupReady.value));
 function handleStartupLoading() { startupReady.value = false; }
 function handleStartupReady() { startupReady.value = !document.getElementById('fg-splash'); }
 const loadingState = computed(() => appStore.isLibraryUnavailable || appStore.error || reelsStore.error
@@ -187,6 +188,13 @@ const desktopInfoSidebarAnchor = computed<'left' | 'right'>(() =>
 );
 
 const activeItem = computed(() => reelsStore.activeItem);
+watch(() => activeItem.value?.thumbnailUrl, () => {
+  // Wheel/keyboard navigation can change the active reel beneath the splash.
+  // Cancel the old poster wait and start a new one using the current metadata.
+  if (isCinema.value && !startupReady.value) {
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+  }
+}, { flush: 'post' });
 const activeFolder = computed(() =>
   activeItem.value ? foldersStore.items.find((folder) => folder.slug === activeItem.value?.folderSlug) ?? null : null
 );
