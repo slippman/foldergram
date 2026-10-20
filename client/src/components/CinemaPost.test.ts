@@ -276,11 +276,16 @@ describe('Cinema audio coordination', () => {
       visibility([{ isIntersecting: true, intersectionRatio: 0.8 } as IntersectionObserverEntry], {} as IntersectionObserver);
       await nextTick();
       expect(media.play).not.toHaveBeenCalled();
+      expect(wrapper.findComponent({ name: 'VideoMediaPlayer' }).props('playbackAllowed')).toBe(false);
+      window.dispatchEvent(new Event('foldergram:album-ready'));
+      await nextTick();
+      expect(media.play).not.toHaveBeenCalled();
       splash.remove();
       window.dispatchEvent(new Event('foldergram:album-ready'));
       await nextTick();
       await nextTick();
       expect(media.play).toHaveBeenCalledOnce();
+      expect(wrapper.findComponent({ name: 'VideoMediaPlayer' }).props('playbackAllowed')).toBe(true);
     } finally {
       wrapper.unmount();
       splash.remove();

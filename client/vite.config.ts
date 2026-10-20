@@ -124,6 +124,7 @@ export default defineConfig(async ({ command, mode }) => {
           }
         },
         '/api': `http://localhost:${devServerPort}`,
+        '^/reels/?(?:[?].*)?$': `http://localhost:${devServerPort}`,
         '/share/': `http://localhost:${devServerPort}`,
         '/s/': `http://localhost:${devServerPort}`,
         '/f/': `http://localhost:${devServerPort}`,

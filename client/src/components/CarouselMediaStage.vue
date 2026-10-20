@@ -26,6 +26,7 @@
         :muted="props.muted ?? appStore.videoMuted"
         :autoplay="autoplay"
         :cinema="cinema"
+        :playback-allowed="playbackAllowed"
         variant="viewer"
         @autoplay-muted="handleAutoplayMuted"
         @toggle-mute="toggleMute"
@@ -105,6 +106,7 @@ const props = withDefaults(
     loading?: 'eager' | 'lazy';
     muted?: boolean;
     autoplay?: boolean;
+    playbackAllowed?: boolean;
     fitContainer?: boolean;
     cinema?: boolean;
   }>(),
@@ -115,6 +117,7 @@ const props = withDefaults(
     loading: 'lazy',
     muted: undefined,
     autoplay: false,
+    playbackAllowed: true,
     fitContainer: false
   }
 );

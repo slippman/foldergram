@@ -3,6 +3,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { notifyAlbumLoading } from './album-navigation';
 
 describe('album navigation loading', () => {
+  it('clears a pending Reels loader when navigating to Home', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [
+      { path: '/reels', name: 'reels', component: {} }, { path: '/', name: 'home', component: {} }
+    ] });
+    await router.push('/reels');
+    const cancelled = vi.fn();
+    window.addEventListener('foldergram:album-view-cancel', cancelled);
+    try {
+      const from = router.currentRoute.value;
+      await router.push('/');
+      notifyAlbumLoading(router.currentRoute.value, from);
+      expect(cancelled).toHaveBeenCalledOnce();
+    } finally { window.removeEventListener('foldergram:album-view-cancel', cancelled); }
+  });
   it.each([false, null])('does not start Cinema loading for theme=%s', async (cinema) => {
     const router = createRouter({ history: createMemoryHistory(), routes: [
       { path: '/', name: 'home', component: {} },

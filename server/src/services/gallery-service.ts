@@ -1343,6 +1343,7 @@ function createShareDerivativeResolver() {
 export const galleryService = {
   createShareDerivativeResolver,
   getAlbumDisplayTheme: getFolderDisplayTheme,
+  getFeedDisplayTheme,
   getFeed(page: number, limit: number, mode: FeedMode = 'random', randomSeed?: number) {
     return withAlbumAccess(false, () => {
       if (!storageService.getState().libraryAvailable) {

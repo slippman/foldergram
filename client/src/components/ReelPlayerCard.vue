@@ -17,6 +17,7 @@
           :fullscreenOrientation.prop="'none'"
           :playsInline.prop="true"
           :muted.prop="appStore.videoMuted"
+          v-bind="cinema ? { '^muted': appStore.videoMuted ? '' : null } : {}"
           :loop.prop="true"
           :load="playerLoadMode"
           preload="metadata"
@@ -125,14 +126,19 @@ import { formatFolderTitle } from '../utils/folder-titles';
 import { getOriginalMediaUrl } from '../utils/original-media';
 import Avatar from './Avatar.vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   item: FeedItem;
   folder: FolderSummary | null;
   active: boolean;
-}>();
+  cinema?: boolean;
+  playbackAllowed?: boolean;
+}>(), { playbackAllowed: true });
 
 const appStore = useAppStore();
 const playerElement = ref<MediaPlayerElement | null>(null);
+// Vidstack also reads the muted attribute when a new provider becomes ready.
+// The template forces that attribute for Cinema alongside the live muted property.
+const canPlay = computed(() => props.active && props.playbackAllowed !== false);
 const isPaused = ref(false);
 const isUsingOriginalFallback = ref(false);
 const playerLoadMode = computed(() => (props.active ? 'eager' : 'visible'));
@@ -141,7 +147,7 @@ const videoSource = computed<PlayerSrc>(() => ({
   src: currentVideoSrc.value,
   type: 'video/mp4'
 }));
-const showPausedIndicator = computed(() => props.active && isPaused.value);
+const showPausedIndicator = computed(() => canPlay.value && isPaused.value);
 const displayFolderTitle = computed(() => formatFolderTitle(props.folder ?? props.item, appStore.nestedFolderTitleFormat));
 const folderDescription = computed(() => {
   const normalizedFolderPath = props.item.folderPath.replace(/\\/g, '/');
@@ -172,7 +178,7 @@ function resetAutoplayRetry() {
 }
 
 function scheduleAutoplayRetry() {
-  if (!props.active || autoplayRetryTimer !== 0 || autoplayRetryAttempts >= MAX_AUTOPLAY_RETRIES) {
+  if (!canPlay.value || autoplayRetryTimer !== 0 || autoplayRetryAttempts >= MAX_AUTOPLAY_RETRIES) {
     return;
   }
 
@@ -209,7 +215,7 @@ async function syncPlayback() {
     return;
   }
 
-  if (!props.active) {
+  if (!canPlay.value) {
     resetAutoplayRetry();
     isPaused.value = false;
     void player.pause().catch(() => {
@@ -223,6 +229,10 @@ async function syncPlayback() {
 
   try {
     await player.play();
+    if (!canPlay.value) {
+      await player.pause();
+      return;
+    }
     resetAutoplayRetry();
     isPaused.value = false;
     return;
@@ -252,14 +262,14 @@ function bindPlayerEventListeners(player: MediaPlayerElement | null) {
   };
   const handlePlay = () => {
     isPaused.value = false;
-    if (!props.active) {
+    if (!canPlay.value) {
       void player.pause().catch(() => {
         // Ignore pause rejections before the provider is ready.
       });
     }
   };
   const handlePause = () => {
-    isPaused.value = props.active;
+    isPaused.value = canPlay.value;
   };
 
   player.addEventListener('loaded-metadata', handleReady);
@@ -284,7 +294,7 @@ async function toggleSound() {
   appStore.setVideoMuted(nextMuted);
 
   const player = playerElement.value;
-  if (!player || !props.active) {
+  if (!player || !canPlay.value) {
     return;
   }
 
@@ -301,7 +311,7 @@ async function handleSurfaceClick(event?: MouseEvent) {
   }
 
   const player = playerElement.value;
-  if (!player || !props.active) {
+  if (!player || !canPlay.value) {
     return;
   }
 
@@ -334,7 +344,7 @@ function handleSurfaceKeydown(event: KeyboardEvent) {
 }
 
 watch(
-  () => props.active,
+  canPlay,
   (active) => {
     if (active) {
       resetAutoplayRetry();
@@ -372,7 +382,7 @@ watch(playerElement, (player) => {
 watch(
   currentVideoSrc,
   () => {
-    if (!props.active) {
+    if (!canPlay.value) {
       return;
     }
 
@@ -382,7 +392,7 @@ watch(
 
 onMounted(() => {
   void syncPlayback();
-  if (props.active) {
+  if (canPlay.value) {
     scheduleAutoplayRetry();
   }
 });

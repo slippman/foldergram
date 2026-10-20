@@ -133,6 +133,9 @@
         var initialSplash = document.getElementById('fg-splash');
         if (!initialSplash) return;
         var splashTemplate = initialSplash.cloneNode(true);
+        // Reels' first-paint label must not carry into later album navigation.
+        var templateLabel = splashTemplate.querySelector('.fg-splash__album p');
+        if (templateLabel) templateLabel.textContent = 'Loading album…';
         var stopCurrentRun = null;
         var generation = 0;
         var revealTimer = null;
@@ -221,6 +224,10 @@
           function finish() {
             if (cancelled || finishing) return;
             var state = getState();
+            if (state && state.dataset.albumLoadingLabel) {
+              var label = splash.querySelector('.fg-splash__album p');
+              if (label) label.textContent = state.dataset.albumLoadingLabel;
+            }
             if (!app.childElementCount || (albumEntry && !state)) return;
             if (albumEntry) {
               var theme = state.dataset.albumTheme || 'cinema';

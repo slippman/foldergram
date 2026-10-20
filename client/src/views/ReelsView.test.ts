@@ -22,6 +22,8 @@ vi.mock('../components/ReelDeck.vue', async () => {
     default: defineComponent({
       name: 'ReelDeck',
       props: {
+        cinema: Boolean,
+        playbackAllowed: Boolean,
         items: {
           type: Array,
           required: true
@@ -247,6 +249,158 @@ describe('ReelsView', () => {
       activeReelId: 101,
       hasMore: true
     });
+  });
+
+  it('starts poster readiness even when returning to an initialized Cinema queue', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const start = vi.fn(() => {
+      if (!document.getElementById('fg-splash')) {
+        const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+      }
+    });
+    window.addEventListener('foldergram:album-view-loading', start);
+    const wrapper = mount(ReelsView);
+    try {
+      await flushPromises();
+      expect(start).toHaveBeenCalledOnce();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      document.getElementById('fg-splash')!.remove();
+      window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(true);
+    } finally { window.removeEventListener('foldergram:album-view-loading', start); document.getElementById('fg-splash')?.remove(); wrapper.unmount(); }
+  });
+
+  it('keeps the poster dependency when known Cinema settings have a background error', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    useAppStore().error = 'Settings refresh failed';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('ready');
+    wrapper.unmount();
+  });
+
+  it('allows the settled settings-error fallback after the splash closes', async () => {
+    useAppStore().$patch({ stats: null, error: 'Settings request failed' });
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    try {
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      splash.remove(); window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(true);
+    } finally { splash.remove(); wrapper.unmount(); }
+  });
+
+  it('blocks playback before Feed theme settings arrive', async () => {
+    useAppStore().stats = null;
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    try {
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      const stats = createAppStatus(); stats.preferences.feedDisplayTheme = 'cinema';
+      useAppStore().stats = stats;
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(false);
+      splash.remove(); window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises();
+      expect(wrapper.findComponent({ name: 'ReelDeck' }).props('playbackAllowed')).toBe(true);
+    } finally { splash.remove(); wrapper.unmount(); }
+  });
+
+  it('restarts startup readiness when the active poster changes behind the splash', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div'); splash.id = 'fg-splash'; document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    const restart = vi.fn(); window.addEventListener('foldergram:album-view-loading', restart);
+    try {
+      useReelsStore().activeReelId = 202;
+      await flushPromises();
+      expect(restart).toHaveBeenCalledOnce();
+      expect(wrapper.get('[data-album-poster]').attributes('data-album-poster')).toBe('/thumbs/202.webp');
+      splash.remove(); window.dispatchEvent(new Event('foldergram:album-ready'));
+      await flushPromises(); restart.mockClear();
+      useReelsStore().activeReelId = 101;
+      await flushPromises();
+      expect(restart).not.toHaveBeenCalled();
+    } finally { window.removeEventListener('foldergram:album-view-loading', restart); splash.remove(); wrapper.unmount(); }
+  });
+
+  it.each(['cinema', 'classic'] as const)('gates playback through the splash only for %s', async theme => {
+    useAppStore().stats!.preferences.feedDisplayTheme = theme;
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const splash = document.createElement('div');
+    splash.id = 'fg-splash';
+    document.body.append(splash);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    const deck = wrapper.findComponent({ name: 'ReelDeck' });
+    expect(deck.props('playbackAllowed')).toBe(theme === 'classic');
+    window.dispatchEvent(new Event('foldergram:album-ready'));
+    await flushPromises();
+    expect(deck.props('playbackAllowed')).toBe(theme === 'classic');
+    splash.remove();
+    window.dispatchEvent(new Event('foldergram:album-ready'));
+    await flushPromises();
+    expect(deck.props('playbackAllowed')).toBe(true);
+    window.dispatchEvent(new Event('foldergram:album-view-loading'));
+    await flushPromises();
+    expect(deck.props('playbackAllowed')).toBe(theme === 'classic');
+    wrapper.unmount();
+  });
+
+  it.each(['cinema', 'classic'] as const)('keeps %s loading isolated and settles after an error', async theme => {
+    const app = useAppStore();
+    app.stats!.preferences.feedDisplayTheme = theme;
+    const reels = useReelsStore();
+    reels.$patch({ items: [], initialized: false, loading: true });
+    vi.spyOn(reels, 'loadInitial').mockResolvedValue(undefined);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    expect(wrapper.find('.reels-view__loading-logo').exists()).toBe(theme === 'cinema');
+    expect(wrapper.find('.reels-view__message-card').exists()).toBe(theme === 'classic');
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('loading');
+    reels.$patch({ loading: false, error: 'Could not load reels' });
+    await flushPromises();
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('settled');
+    expect(wrapper.find('.reels-view__loading-logo').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('excludes deck avatars from startup readiness dependencies', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    // A failed inactive avatar must not be inside the generic splash scan.
+    const avatar = document.createElement('span');
+    avatar.dataset.albumImageState = 'error';
+    wrapper.get('[data-test="reel-deck"]').element.append(avatar);
+    const readiness = wrapper.get('[data-album-state]');
+    expect(readiness.find('[data-album-image-state]').exists()).toBe(false);
+    expect(readiness.find('[data-album-poster]').attributes('data-album-poster')).toBe('/thumbs/101.webp');
+    wrapper.unmount();
+  });
+
+  it('marks only the active Cinema reel poster as a startup dependency', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('ready');
+    expect(wrapper.get('[data-album-state] span').attributes('data-album-poster')).toBe('/thumbs/101.webp');
+    useAppStore().stats!.preferences.feedDisplayTheme = 'classic';
+    await flushPromises();
+    expect(wrapper.get('[data-album-state] span').attributes('data-album-poster')).toBeUndefined();
+    wrapper.unmount();
   });
 
   it('loads the route view and shows the right rail for the active reel', async () => {

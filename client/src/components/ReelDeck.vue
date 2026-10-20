@@ -15,6 +15,8 @@
         :item="item"
         :folder="folderLookup.get(item.folderSlug) ?? null"
         :active="item.id === activeReelId"
+        :cinema="cinema"
+        :playback-allowed="playbackAllowed"
       >
         <template v-if="item.id === activeReelId" #mobile-action-rail>
           <slot
@@ -39,12 +41,14 @@ import type { FeedItem, FolderSummary } from '../types/api';
 import { getActiveReelId, shouldPrefetchReels } from '../utils/reels';
 import ReelPlayerCard from './ReelPlayerCard.vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   items: FeedItem[];
   folders: FolderSummary[];
   activeReelId: number | null;
   loading?: boolean;
-}>();
+  cinema?: boolean;
+  playbackAllowed?: boolean;
+}>(), { playbackAllowed: true });
 
 const emit = defineEmits<{
   activeChange: [id: number];

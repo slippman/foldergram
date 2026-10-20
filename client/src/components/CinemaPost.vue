@@ -2,12 +2,12 @@
   <article ref="postElement" class="cinema-post" :data-album-poster="item.mediaType === 'video' ? item.thumbnailUrl : undefined">
     <div class="cinema-post__media" :style="mediaStyle">
       <CarouselMediaStage v-if="isCarousel" cinema :items="item.mediaItems!" v-model="carouselIndex" prefer-preview fit-container
-        :retry-while="appStore.isScanning" :autoplay="isVisible" :muted="videoMuted"
+        :retry-while="appStore.isScanning" :autoplay="isVisible" :playback-allowed="isVisible" :muted="videoMuted"
         @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" @click="openCarouselPhoto" />
       <VideoMediaPlayer v-else-if="item.mediaType === 'video'" cinema :src="item.previewUrl"
         :poster="item.thumbnailUrl" :original-url="media?.originalUrl"
         :playback-strategy="media?.playbackStrategy" :width="item.width" :height="item.height"
-        :alt="item.caption || ''" :muted="videoMuted" :autoplay="isVisible" :loop="false" load="visible"
+        :alt="item.caption || ''" :muted="videoMuted" :autoplay="isVisible" :playback-allowed="isVisible" :loop="false" load="visible"
         @toggle-mute="toggleMute" @autoplay-muted="releaseAudio" />
       <RouterLink v-else custom :to="photoRoute" v-slot="{ href, navigate }">
         <a class="cinema-post__photo" :href="href" :aria-label="t('folder.cinema.openPhoto')" @click="openPhoto($event, navigate)">
@@ -153,7 +153,7 @@ async function toggleInfo() {
 }
 const isInViewport = ref(false);
 const albumReady = ref(!document.getElementById('fg-splash'));
-const markAlbumReady = () => { albumReady.value = true; };
+const markAlbumReady = () => { albumReady.value = !document.getElementById('fg-splash'); };
 const markAlbumLoading = () => { albumReady.value = false; };
 const isVisible = computed(() => albumReady.value && isInViewport.value && route.name !== 'image' && route.name !== 'shared-post');
 const audiblePostId = useCinemaAudio();
@@ -200,7 +200,7 @@ watch(isVisible, async (visible) => {
   await nextTick();
   postElement.value?.querySelectorAll('media-player').forEach(element => {
     const player = element as HTMLElement & { muted: boolean; play?: () => Promise<void>; pause?: () => void };
-    if (visible) {
+    if (visible && isVisible.value) {
       // Apply mute before explicitly starting playback after the loading screen.
       // Vidstack may still have its default state when Vue's prop is unchanged.
       player.muted = videoMuted.value;
