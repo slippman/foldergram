@@ -55,6 +55,19 @@ describe('album startup splash', () => {
     poster.dispatchEvent(new Event('load')); await flush();
     expect(document.querySelector('.fg-splash--out')).not.toBeNull();
   });
+  it('ignores failed inactive avatars outside the Reels poster readiness scope', async () => {
+    document.getElementById('app')!.innerHTML = '<section><div hidden data-album-theme="cinema" data-album-state="ready"><span data-album-poster="/active.jpg"></span></div><div data-album-image-state="error"><img src="/broken-avatar.jpg" data-album-resilient></div></section>';
+    const poster = document.createElement('img');
+    Object.defineProperty(poster, 'complete', { value: true });
+    Object.defineProperty(poster, 'naturalWidth', { value: 640 });
+    vi.stubGlobal('Image', function () { return poster; });
+    start(); await flush();
+    expect(document.querySelector('.fg-splash--out')).not.toBeNull();
+    expect(document.querySelector('.fg-splash__retry')?.hasAttribute('hidden')).toBe(true);
+    await vi.advanceTimersByTimeAsync(340);
+    expect(document.getElementById('fg-splash')).toBeNull();
+  });
+
   it('does not carry a direct Reels entry label into a later album', async () => {
     window.history.replaceState({}, '', '/reels');
     document.querySelector('.fg-splash__album p')!.textContent = 'Loading reels…';

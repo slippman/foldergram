@@ -284,11 +284,26 @@ describe('ReelsView', () => {
     await flushPromises();
     expect(wrapper.find('.reels-view__loading-logo').exists()).toBe(theme === 'cinema');
     expect(wrapper.find('.reels-view__message-card').exists()).toBe(theme === 'classic');
-    expect(wrapper.attributes('data-album-state')).toBe('loading');
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('loading');
     reels.$patch({ loading: false, error: 'Could not load reels' });
     await flushPromises();
-    expect(wrapper.attributes('data-album-state')).toBe('settled');
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('settled');
     expect(wrapper.find('.reels-view__loading-logo').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('excludes deck avatars from startup readiness dependencies', async () => {
+    useAppStore().stats!.preferences.feedDisplayTheme = 'cinema';
+    vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
+    const wrapper = mount(ReelsView);
+    await flushPromises();
+    // A failed inactive avatar must not be inside the generic splash scan.
+    const avatar = document.createElement('span');
+    avatar.dataset.albumImageState = 'error';
+    wrapper.get('[data-test="reel-deck"]').element.append(avatar);
+    const readiness = wrapper.get('[data-album-state]');
+    expect(readiness.find('[data-album-image-state]').exists()).toBe(false);
+    expect(readiness.find('[data-album-poster]').attributes('data-album-poster')).toBe('/thumbs/101.webp');
     wrapper.unmount();
   });
 
@@ -297,11 +312,11 @@ describe('ReelsView', () => {
     vi.spyOn(useReelsStore(), 'loadInitial').mockResolvedValue(undefined);
     const wrapper = mount(ReelsView);
     await flushPromises();
-    expect(wrapper.attributes('data-album-state')).toBe('ready');
-    expect(wrapper.get('.reels-view__deck-shell').attributes('data-album-poster')).toBe('/thumbs/101.webp');
+    expect(wrapper.get('[data-album-state]').attributes('data-album-state')).toBe('ready');
+    expect(wrapper.get('[data-album-state] span').attributes('data-album-poster')).toBe('/thumbs/101.webp');
     useAppStore().stats!.preferences.feedDisplayTheme = 'classic';
     await flushPromises();
-    expect(wrapper.get('.reels-view__deck-shell').attributes('data-album-poster')).toBeUndefined();
+    expect(wrapper.get('[data-album-state] span').attributes('data-album-poster')).toBeUndefined();
     wrapper.unmount();
   });
 

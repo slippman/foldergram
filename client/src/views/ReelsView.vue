@@ -1,8 +1,12 @@
 <template>
-  <section class="reels-view"
-    :data-album-theme="appStore.stats ? (isCinema ? 'cinema' : 'classic') : appStore.error ? 'classic' : 'unknown'"
-    :data-album-state="loadingState"
-    :data-album-loading-label="isCinema ? t('reels.view.loadingTitle') : undefined">
+  <section class="reels-view">
+    <!-- Keep decorative avatars outside the splash's image readiness scan. -->
+    <div hidden aria-hidden="true"
+      :data-album-theme="appStore.stats ? (isCinema ? 'cinema' : 'classic') : appStore.error ? 'classic' : 'unknown'"
+      :data-album-state="loadingState"
+      :data-album-loading-label="isCinema ? t('reels.view.loadingTitle') : undefined">
+      <span :data-album-poster="isCinema ? activeItem?.thumbnailUrl : undefined" />
+    </div>
     <section v-if="appStore.isLibraryUnavailable" class="reels-view__message-card">
       <p class="reels-view__eyebrow">{{ t('nav.reels') }}</p>
       <h1 class="reels-view__title">{{ t('reels.view.libraryUnavailableTitle') }}</h1>
@@ -34,7 +38,7 @@
     </section>
 
     <div v-else class="reels-view__layout">
-      <div class="reels-view__deck-shell" :data-album-poster="isCinema ? activeItem?.thumbnailUrl : undefined">
+      <div class="reels-view__deck-shell">
         <ReelDeck
           ref="deckElement"
           :items="reelsStore.items"
