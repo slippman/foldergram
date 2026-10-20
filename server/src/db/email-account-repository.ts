@@ -10,6 +10,8 @@ export interface LibraryUser {
   revoked_at: number | null;
   created_at: number;
   last_signed_in_at: number | null;
+  login_count: number;
+  last_active_at: number | null;
 }
 
 function transaction<T>(work: () => T): T {
@@ -74,7 +76,7 @@ export const emailAccountRepository = {
       if (pendingOnly && this.getById(id)?.access_status !== 'pending') return false;
       const db = databaseManager.connection;
       // Explicit cleanup also covers installations whose connection predates FK enforcement.
-      for (const table of ['library_user_sessions', 'email_sign_in_tokens', 'email_access_reviews', 'email_invitations', 'user_likes']) {
+      for (const table of ['library_user_sessions', 'email_sign_in_tokens', 'email_access_reviews', 'email_invitations', 'user_likes', 'album_daily_views']) {
         db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(id);
       }
       return Number(db.prepare('DELETE FROM library_users WHERE id = ?').run(id).changes) > 0;
@@ -202,7 +204,8 @@ export const emailAccountRepository = {
       if (user.last_signed_in_at === null) {
         db.prepare('UPDATE library_users SET display_name = ? WHERE id = ?').run(screenName?.trim() || 'Community member', user.id);
       }
-      db.prepare('UPDATE library_users SET last_signed_in_at = ? WHERE id = ?').run(Date.now(), user.id);
+      const signedInAt = Date.now();
+      db.prepare('UPDATE library_users SET last_signed_in_at = ?, last_active_at = ?, login_count = login_count + 1 WHERE id = ?').run(signedInAt, signedInAt, user.id);
       return this.getById(user.id)!;
     });
   },

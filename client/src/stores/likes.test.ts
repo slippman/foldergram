@@ -77,3 +77,12 @@ describe('personal likes account switches', () => {
     expect(store.likedIds).toEqual([2]); expect(store.items.map(item => item.id)).toEqual([2]);
   });
 });
+
+it('rolls back an optimistic count when the like fails and accepts the authoritative count when it succeeds', async () => {
+  setActivePinia(createPinia());
+  const auth=useAuthStore();auth.user={id:1,email:'one@example.com',displayName:'One'};auth.likesMode='personal';
+  const store=useLikesStore();const item={...createFeedItem(1),likeCount:4};
+  const like=vi.spyOn(gallery,'likeImage').mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce({id:1,liked:true,ok:true,likeCount:6});
+  await store.toggleLike(item);expect(store.likeCount(item)).toBe(4);expect(store.isLiked(1)).toBe(false);
+  await store.toggleLike(item);expect(store.likeCount(item)).toBe(6);expect(store.isLiked(1)).toBe(true);like.mockRestore();
+});

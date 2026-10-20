@@ -187,3 +187,44 @@ from their email. Returning sign-ins retain the chosen name and do not repeat th
 step. This name is intended for future public likes and comments; commenting is
 not implemented by this change. Email remains available to the account owner and
 administrator, but is not intended as the public attribution for those features.
+
+
+## Account activity
+
+Cinema Access settings include an administrator-only Community activity report.
+It shows account email, last successful login, recorded login count, last activity,
+album views, unique albums and current likes. Select an email for album totals and
+its current liked photos. View filters cover today, the last seven calendar days,
+or all recorded time; login counts and likes remain lifetime/current totals.
+
+A view is counted once per verified account, album and calendar day. Returning on
+three different days produces three views and one unique album. Grid/scroll changes,
+fullscreen photos, retries and refreshes do not add another daily view. Capture
+waits for a successfully loaded, visible album and its startup splash to finish;
+API probes and background tabs do not count as album opens. A later return can
+record a new day without signing in again. `ACTIVITY_TIMEZONE` determines the day
+(default UTC); keep it stable after capture starts. Zeni uses America/Denver.
+
+Successful one-use token redemption increments logins atomically. Token inspection,
+email requests, retries and reuse of a 90-day session do not. Existing last-login
+values remain, but historical login totals cannot be reconstructed: counts start
+when activity capture is installed. Last active reflects successful account use,
+with database updates throttled to once every five minutes.
+
+Events use internal account IDs, not repeated email addresses. Album facts retain
+only an opaque hash of the indexed folder location, public album slug/name and
+dates. This preserves history across index rebuilds without attaching it to reused
+numeric folder IDs. Moving to a different folder location creates a new identity;
+album deletion does not erase historical admin totals. Deleting the account removes
+its activity, sessions and personal likes, including on legacy FK-disabled connections.
+No IP addresses, fingerprints, sign-in tokens, raw URLs or source file paths are
+collected, and no analytics provider receives activity. Daily facts are retained
+until account deletion. An administrator detail response shows up to 200 albums
+and 200 current likes; summary totals include all records.
+
+Cinema shows a small aggregate number beside the heart. Counts include email
+account likes and the existing shared admin favorite as one additional like when
+present; anonymous browser-local favorites are excluded. Who liked what stays
+administrator-only. A signed-in account can also persist a like in a link-only
+shared album when its existing scoped grant permits access. This does not make
+the album discoverable in regular feeds or Likes. Guest favorites remain local.

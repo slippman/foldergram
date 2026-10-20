@@ -1,6 +1,6 @@
 <template>
   <button type="button" class="media-action" :class="{ 'media-action--liked': liked }"
-    :aria-pressed="liked" :aria-label="label" :title="label" @click="toggle">
+    :aria-pressed="liked" :aria-label="label" :title="label" :disabled="personal && likes.isPending(id)" @click="toggle">
     <span class="w-[1.45rem] h-[1.45rem]" :class="liked ? 'i-fluent-heart-20-filled' : 'i-fluent-heart-20-regular'" aria-hidden="true" />
   </button>
 </template>
@@ -22,14 +22,25 @@ function albumFavorites(slug: string): Ref<number[]> {
 }
 </script>
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { useAuthStore } from '../stores/auth';
+import { useLikesStore } from '../stores/likes';
+import type { FeedItem, SharedFeedItem } from '../types/api';
 import { useI18n } from 'vue-i18n';
-const props = defineProps<{ slug: string; id: number }>();
+const props = defineProps<{ slug: string; id: number; item?: SharedFeedItem | FeedItem }>();
 const { t } = useI18n();
+const auth = useAuthStore();
+const likes = useLikesStore();
+const personal = computed(() => !!auth.user && !!props.item);
+watch(() => [props.id, props.item], () => {
+  if (!personal.value || props.item?.isLiked === undefined || likes.isPending(props.id)) return;
+  likes.likedIds = props.item.isLiked ? [...new Set([...likes.likedIds,props.id])] : likes.likedIds.filter(id=>id!==props.id);
+}, {immediate:true});
 const ids = computed(() => albumFavorites(props.slug));
-const liked = computed(() => ids.value.value.includes(props.id));
+const liked = computed(() => personal.value ? likes.isLiked(props.id) : ids.value.value.includes(props.id));
 const label = computed(() => t(liked.value ? 'likes.actions.removeFavoriteFromPost' : 'likes.actions.favoritePost'));
 function toggle() {
+  if (personal.value && props.item) { void likes.toggleLike(props.item as FeedItem, true); return; }
   const value = ids.value;
   value.value = liked.value ? value.value.filter(id => id !== props.id) : [...value.value, props.id];
   try { localStorage.setItem(`foldergram-share-favorites:${props.slug}`, JSON.stringify(value.value)); }

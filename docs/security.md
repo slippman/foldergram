@@ -328,3 +328,22 @@ fragments until the client removes them, are stored only as hashes, and confer n
 admin session. Changing the owner inbox, origin or admin password invalidates them.
 The intended owner must keep these links private. Denial clears the pending
 request; Delete user removes an existing account and its personal likes.
+
+
+## Account metrics
+
+Account activity reports and per-person like details require administrator
+capability. The server derives account identity from a validated email session;
+view requests cannot choose a user or date. Both regular and scoped shared view
+and like requests pass existing authentication, mutation trust and album-grant
+checks. A share grant never broadens library access. Aggregate counts and the
+current account's liked state are appended only to already-authorized post JSON;
+no public endpoint accepts arbitrary IDs for count lookup. Personalized metadata
+retains no-store and cookie-varying headers, independent of media-byte caching.
+
+Daily uniqueness is enforced in SQLite, and login totals increment inside token
+redemption. Account deletion explicitly removes activity even without FK cascades.
+Public payloads never include who liked a photo or another account's metrics.
+Album facts survive reindexing using an opaque folder-location key and snapshots;
+only admins can see retained names. No external telemetry or browser fingerprinting
+is introduced. See the email-access activity section for retention and limits.

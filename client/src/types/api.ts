@@ -79,6 +79,8 @@ export interface PostMediaItem {
 }
 
 export interface FeedItem {
+  likeCount?: number;
+  isLiked?: boolean;
   id: number;
   folderId: number;
   folderSlug: string;
@@ -321,6 +323,8 @@ export interface SharedFolderSummary {
 }
 
 export interface SharedFeedItem {
+  likeCount?: number;
+  isLiked?: boolean;
   id: number;
   folderId: number;
   folderSlug: string;
@@ -514,6 +518,8 @@ export interface DeleteFolderResult {
 }
 
 export interface LikeMutationResult {
+  likeCount?: number;
+  isLiked?: boolean;
   id: number;
   liked: boolean;
   ok: boolean;

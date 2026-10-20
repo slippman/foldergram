@@ -20,13 +20,14 @@
     <footer class="cinema-post__details" :style="{ width: mediaStyle.width }">
       <div class="cinema-post__toolbar">
         <div class="cinema-post__actions">
-          <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="item.id" />
+          <SharedFavoriteButton v-if="sharedSlug" :slug="sharedSlug" :id="item.id" :item="item" />
           <button v-if="!sharedSlug && authStore.canUseSavedItems" type="button" class="media-action"
             :class="{ 'media-action--liked': likesStore.isLiked(item.id) }"
             :aria-label="likeLabel" :title="likeLabel" :aria-pressed="likesStore.isLiked(item.id)"
             :disabled="likesStore.isPending(item.id)" @click="likesStore.toggleLike(item)">
             <span class="w-[1.45rem] h-[1.45rem]" :class="likesStore.isLiked(item.id) ? 'i-fluent-heart-20-filled' : 'i-fluent-heart-20-regular'" aria-hidden="true" />
           </button>
+          <LikeCount :item="item" />
           <button type="button" class="media-action" :aria-expanded="showInfo" :aria-controls="infoId"
             :aria-label="infoLabel" :title="infoLabel" @click="toggleInfo">
             <span class="i-fluent-info-20-regular w-[1.45rem] h-[1.45rem]" aria-hidden="true" />
@@ -79,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import LikeCount from './LikeCount.vue';
 import { formatExifDetails } from '../utils/media-details';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
