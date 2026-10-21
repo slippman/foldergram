@@ -89,6 +89,7 @@ onUnmounted(() => document.removeEventListener('pointerdown', outside));
 .cinema-viewer-actions :deep(.media-action), .cinema-viewer-actions :deep(.collection-bookmark__button) { display: inline-flex; align-items: center; justify-content: center; width: 2.9rem; height: 2.9rem; padding: 0; border: 0; border-radius: 0.5rem; color: white; background: rgba(0,0,0,0.35); box-shadow: none; cursor: pointer; }
 .cinema-viewer-actions :deep(.media-action:hover), .cinema-viewer-actions :deep(.collection-bookmark__button:hover) { background: rgba(0,0,0,0.6); }
 .cinema-viewer-actions :deep(.media-action--liked) { color: #ff6b81; }
+.cinema-viewer-actions :deep(.cinema-like-count) { align-self: center; width: 2.9rem; margin: -0.25rem 0 0.15rem; color: #f5f5f5; text-align: center; line-height: 1.1; }
 .cinema-viewer-actions :deep(.collection-bookmark__button--saved) { color: #80bdff; }
 .cinema-viewer-actions :deep(.media-action > span) { width: 1.45rem; height: 1.45rem; }
 .cinema-viewer-actions :deep(.mobile-media-share__ready) { position: absolute; right: 3.4rem; width: max-content; max-width: 14rem; padding: 0.5rem; background: var(--surface); color: var(--text); border-radius: 0.5rem; }
