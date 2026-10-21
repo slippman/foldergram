@@ -243,8 +243,8 @@
         
         <!-- CATEGORY: ACCESS -->
         <template v-if="currentCategory === 'access'">
-          <EmailAccessSettings v-if="authStore.accessMode === 'email'" />
-          <EmailActivitySettings v-if="authStore.accessMode === 'email' && appStore.folderDisplayTheme === 'cinema'" />
+          <EmailAccessSettings v-if="authStore.accessMode === 'email'" @ready="accessSettingsReady = true" />
+          <EmailActivitySettings ref="activitySettings" v-if="authStore.accessMode === 'email' && appStore.folderDisplayTheme === 'cinema'" />
           <section class="card grid gap-[1.15rem] p-8">
             <div class="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-start">
               <div>
@@ -1495,9 +1495,9 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import EmailActivitySettings from '../components/EmailActivitySettings.vue';
 import EmailAccessSettings from '../components/EmailAccessSettings.vue';
@@ -1539,7 +1539,35 @@ const momentsStore = useMomentsStore();
 const placesStore = usePlacesStore();
 const viewerStore = useViewerStore();
 const route = useRoute();
-const currentCategory = ref<'library' | 'general' | 'places' | 'access' | 'status'>('library');
+const router = useRouter();
+type SettingsCategory = 'library' | 'general' | 'places' | 'access' | 'status';
+const currentCategory = computed<SettingsCategory>({
+  get: () => {
+    const section = route.query.section;
+    return typeof section === 'string' && ['library', 'general', 'places', 'access', 'status'].includes(section)
+      ? section as SettingsCategory : 'library';
+  },
+  set: section => { void router.push({ query: { ...route.query, section }, hash: '' }); }
+});
+const settingsReady = ref(false);
+const accessSettingsReady = ref(false);
+const activitySettings = ref<ComponentPublicInstance | null>(null);
+let activityBookmarkScrolled = false;
+watch(
+  [() => route.query.section, () => route.hash, settingsReady, accessSettingsReady, activitySettings],
+  async ([section, hash]) => {
+    if (section !== 'access') accessSettingsReady.value = false;
+    if (section !== 'access' || hash !== '#activity') { activityBookmarkScrolled = false; return; }
+    if (activityBookmarkScrolled || !settingsReady.value || !accessSettingsReady.value || !activitySettings.value) return;
+    // Authentication and the account list can finish after router scroll handling.
+    // Scroll once after the content above Activity has reached its initial size.
+    await nextTick();
+    if (route.query.section !== 'access' || route.hash !== '#activity' || !activitySettings.value) return;
+    activityBookmarkScrolled = true;
+    activitySettings.value.$el.scrollIntoView({ block: 'start', behavior: 'instant' });
+  },
+  { immediate: true, flush: 'post' }
+);
 const scanError = ref<string | null>(null);
 const rebuildError = ref<string | null>(null);
 const thumbnailRebuildError = ref<string | null>(null);
@@ -3262,18 +3290,20 @@ async function runThumbnailRebuild() {
 }
 
 onMounted(async () => {
-  if (!appStore.stats && !appStore.loadingStats) {
-    await appStore.fetchStats();
-  }
+  try {
+    if (!appStore.stats && !appStore.loadingStats) {
+      await appStore.fetchStats();
+    }
 
-  if (appStore.stats) {
-    syncLocaleSelectionFromSaved();
-    syncFeedDefaultsFromSaved();
-    syncStoriesModeFromSaved();
-    syncCarouselsModeFromSaved();
-  }
-  await placesStore.fetchStatus();
-  await loadAdminStats().catch(() => {});
+    if (appStore.stats) {
+      syncLocaleSelectionFromSaved();
+      syncFeedDefaultsFromSaved();
+      syncStoriesModeFromSaved();
+      syncCarouselsModeFromSaved();
+    }
+    await placesStore.fetchStatus();
+    await loadAdminStats().catch(() => {});
+  } finally { settingsReady.value = true; }
 });
 
 watch(

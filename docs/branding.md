@@ -17,6 +17,7 @@ All UR image assets live in `client/public/branding/`.
 | --- | --- |
 | `ur-logo-4e4dc1180945.png` | Current full UR website logo. |
 | `ur-email-logo-945346a88a1a.png` | Transparent email-only UR logo with a subtle pale edge halo for light/dark backgrounds; keep website variants unchanged. |
+| `ur-invitation-card-v1.png` | Public 1200×630 homepage message preview: transparent UR artwork composed on charcoal, with UnReeled Photos and “A closer look at the good times.” No album or account data. |
 | `ur-favicon-9a5af93327d1.svg` | Current website favicon. |
 | `ur-favicon-9a5af93327d1-32.png` | Current 32px favicon fallback. |
 | `ur-favicon-9a5af93327d1-16.png` | Current 16px favicon fallback. |
@@ -63,6 +64,7 @@ service. The header and More-menu identity displays share this account styling.
 | `client/src/utils/favicon.ts` | Maps the three default favicon URLs to the current UR favicon URLs, and restores Classic icons when appropriate. |
 | `client/src/App.vue` | Chooses when to apply UR favicons and document titles: Cinema pages and the explicitly branded email front door. |
 | `server/src/routes/share-preview.ts` | Sets initial favicon URLs and title before JavaScript; selects `shared-album-entry` or `email-auth-entry` startup branding. |
+| `server/src/routes/share-preview.ts` homepage metadata | Email-enabled root page advertises the invitation card through Open Graph and Twitter image tags, using the configured email origin. Sign-in/admin/review and album previews retain their existing behavior. |
 | `client/vite.config.ts` | Routes email front-door and Reels HTML through the backend during development so initial branding follows the appropriate theme before Vue boots. |
 | `client/index.html` | Startup logo sizing, light/dark filters, blend mode, and the default Classic favicon links. |
 | `client/src/components/AppShell.vue` | Shared Cinema `--ur-logo-filter` / `--ur-logo-blend` variables for light and dark themes. |
@@ -85,7 +87,7 @@ The local preview shows it when the guest-header preview is selected.
 
 For a full rename, also review:
 
-- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: 13px, darker gray semibold Cinema name. On desktop it sits beneath the album title on the left; Cinema Home omits the redundant visible Feed heading and keeps the site name on its own, with account controls on the right. On mobile it sits at the left of a slim, softly outlined gray strip when there is no back control, and centers between the back and account controls in scroll views, with the full-width title on the next row and the matching 13px hint above the sticky header divider. The local static preview uses the same header CSS.
+- `client/src/components/AlbumHeader.vue`, `client/src/views/HomeView.vue`: 13px, darker gray semibold Cinema name. On desktop it sits beneath the album title on the left; Cinema Home omits the redundant visible Feed heading and uses an 18px semibold site name on its own in a tighter desktop row, with account controls on the right. On mobile it sits at the left of a slim, softly outlined gray strip when there is no back control, and centers between the back and account controls in scroll views, with the full-width title on the next row and the matching 13px hint above the sticky header divider. The local static preview uses the same header CSS.
 - `client/src/utils/document-title.ts`: browser title wording.
 - `client/src/locales/en.json`, `es.json`, `zh.json`: email sign-in name and copy.
 - `server/src/routes/share-preview.ts`: initial and shared-album browser titles.
@@ -110,6 +112,9 @@ loading, sign-in, confirmation, waiting, and review previews, and the earlier
 favicon in its HTML head. Sign-in and approval email previews derive from the
 actual server templates; the sign-in preview substitutes the transparent email-only logo for
 the email content ID.
+The local preview also includes the homepage text-message invitation card as a
+collapsible image preview. Its PNG composes the existing transparent UR artwork
+with SVG-rendered typography on charcoal; it does not replace the email logo or favicon.
 Update those references and regenerate with `./foldergram-dev preview`.
 `foldergram-preview.html` is generated; do not maintain its copies by hand.
 These local tools and generated files remain ignored by Git.

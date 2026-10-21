@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.2-slippman.2.2.0 — 2026-10-20
+
+### New features
+
+- Administrators can see signed-in email accounts, last activity, and browser session counts. The list refreshes while visible; a valid sign-in does not mean someone is browsing right now.
+- Bookmark settings sections and open Community activity directly from its heading.
+- Homepage links shared by text now include a branded UnReeled Photos preview card.
+
+### Bug fixes
+
+- First joined now records the first successful email sign-in and stays empty for invitees who have not signed in. Older dates are recovered only when retained history proves them.
+- Cinema Stories and Feeling Lucky titles remain readable against the dark viewer background.
+- The desktop Cinema Home header has a larger site name and less empty space. Activity date controls have matching sizes.
+- Desktop Cinema album grids again show the short click instruction; mobile keeps the tap instruction.
+
 ## 1.2.2-slippman.2.1.2 — 2026-10-20
 
 ### Bug fixes

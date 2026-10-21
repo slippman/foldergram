@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS library_users (
   revoked_at INTEGER NULL,
   created_at INTEGER NOT NULL,
   last_signed_in_at INTEGER NULL,
+  first_signed_in_at INTEGER NULL,
   login_count INTEGER NOT NULL DEFAULT 0,
   last_active_at INTEGER NULL
 );

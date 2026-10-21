@@ -1,23 +1,37 @@
 <template>
-  <section class="card account-activity">
+  <section id="activity" class="card account-activity">
     <header class="account-activity__heading">
-      <div><h2>{{ t('activity.title') }}</h2><p>{{ t('activity.description') }}</p></div>
+      <div><h2><RouterLink class="account-activity__permalink" :to="{ path: '/settings', query: { section: 'access' }, hash: '#activity' }">{{ t('activity.title') }}</RouterLink></h2><p>{{ t('activity.description') }}</p></div>
       <div class="account-activity__controls">
         <select v-model="period" :aria-label="t('activity.period')" @change="page = 1; load()">
           <option value="all">{{ t('activity.all') }}</option><option value="today">{{ t('activity.today') }}</option><option value="week">{{ t('activity.week') }}</option>
         </select>
-        <button type="button" :disabled="busy" @click="load()">{{ t('activity.refresh') }}</button>
+        <button type="button" :disabled="busy || signedInBusy" @click="refresh()">{{ t('activity.refresh') }}</button>
       </div>
     </header>
+    <section class="account-activity__signed-in" :aria-label="t('activity.signedInTitle')">
+      <h3>{{ t('activity.signedInTitle') }} <span v-if="signedIn" class="account-activity__signed-in-count">{{ signedIn.total }}</span></h3>
+      <p class="account-activity__note">{{ t('activity.signedInDescription') }}</p>
+      <p v-if="signedInError" role="alert">{{ t('activity.signedInFailed') }}</p>
+      <p v-else-if="!signedIn && signedInBusy" role="status">{{ t('activity.loading') }}</p>
+      <div v-if="signedIn?.items.length" class="account-activity__table account-activity__signed-in-table">
+        <table>
+          <thead><tr><th scope="col">{{ t('activity.email') }}</th><th scope="col">{{ t('activity.lastActive') }}</th><th scope="col">{{ t('activity.sessions') }}</th></tr></thead>
+          <tbody><tr v-for="user in signedIn.items" :key="user.id"><td>{{ user.email }}</td><td>{{ date(user.lastActiveAt) }}</td><td>{{ user.sessionCount }}</td></tr></tbody>
+        </table>
+      </div>
+      <p v-else-if="signedIn">{{ t('activity.signedInEmpty') }}</p>
+      <p v-if="signedIn && signedIn.total > signedIn.items.length" class="account-activity__note">{{ t('activity.signedInLimit', { count: signedIn.limit, total: signedIn.total }) }}</p>
+    </section>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="busy" role="status">{{ t('activity.loading') }}</p>
     <p v-if="state" class="account-activity__note">{{ t('activity.started', { date: date(state.captureStartedAt), timezone: state.timezone }) }}</p>
-    <div v-if="state?.items.length" class="account-activity__table">
+    <div v-if="state?.items.length" class="account-activity__table account-activity__history-table">
       <table>
         <caption class="sr-only">{{ t('activity.title') }}</caption>
         <thead><tr><th>{{ t('activity.email') }}</th><th>{{ t('activity.lastActive') }}</th><th>{{ t('activity.firstJoined') }}</th><th>{{ t('activity.logins') }}</th><th>{{ t('activity.views') }}</th><th>{{ t('activity.albums') }}</th><th>{{ t('activity.likes') }}</th></tr></thead>
         <tbody><template v-for="user in state.items" :key="user.id">
-          <tr><td><button type="button" class="account-activity__identity" :aria-expanded="expanded === user.id" @click="expand(user.id)"><span class="account-activity__chevron i-fluent-chevron-right-16-regular" aria-hidden="true" /><span>{{ user.email }}</span></button></td><td>{{ date(user.lastActiveAt) }}</td><td>{{ date(user.joinedAt, true) }}</td><td>{{ user.loginCount }}</td><td>{{ user.albumViews }}</td><td>{{ user.uniqueAlbums }}</td><td>{{ user.likes }}</td></tr>
+          <tr><td><button type="button" class="account-activity__identity" :aria-expanded="expanded === user.id" @click="expand(user.id)"><span class="account-activity__chevron i-fluent-chevron-right-16-regular" aria-hidden="true" /><span>{{ user.email }}</span></button></td><td>{{ date(user.lastActiveAt) }}</td><td>{{ user.joinedAt === null ? '' : date(user.joinedAt, true) }}</td><td>{{ user.loginCount }}</td><td>{{ user.albumViews }}</td><td>{{ user.uniqueAlbums }}</td><td>{{ user.likes }}</td></tr>
           <tr v-if="expanded === user.id"><td colspan="7">
             <p v-if="detailBusy" role="status">{{ t('activity.loading') }}</p>
             <div v-if="detail" class="account-activity__detail">
@@ -53,7 +67,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { fetchActivity, fetchAccountActivity, type ActivityPeriod, type ActivitySummary, type ActivityDetail } from '../api/activity';
+import { fetchActivity, fetchAccountActivity, fetchSignedInActivity, type SignedInActivity, type ActivityPeriod, type ActivitySummary, type ActivityDetail } from '../api/activity';
 const { t, locale } = useI18n();
 const period = ref<ActivityPeriod>('all');
 const page = ref(1);
@@ -63,10 +77,26 @@ const error = ref('');
 const expanded = ref<number | null>(null);
 const detail = ref<ActivityDetail | null>(null);
 const detailBusy = ref(false);
+const signedIn = ref<SignedInActivity | null>(null);
+const signedInBusy = ref(false);
+const signedInError = ref(false);
+let signedInGeneration = 0;
+let signedInTimer = 0;
+async function loadSignedIn() {
+  if (signedInBusy.value || document.visibilityState === 'hidden') return;
+  const run = ++signedInGeneration;
+  signedInBusy.value = true;
+  signedInError.value = false;
+  try { const result = await fetchSignedInActivity(); if (run === signedInGeneration) signedIn.value = result; }
+  catch { if (run === signedInGeneration) { signedIn.value = null; signedInError.value = true; } }
+  finally { if (run === signedInGeneration) signedInBusy.value = false; }
+}
+function refresh() { void load(); void loadSignedIn(); }
+function handleVisibility() { if (document.visibilityState === 'visible') void loadSignedIn(); }
 let generation = 0;
 let detailGeneration = 0;
 function date(value: number | string | null, dateOnly = false) {
-  return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: dateOnly ? undefined : 'short', timeZone: state.value?.timezone }).format(new Date(value)) : '—';
+  return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: dateOnly ? undefined : 'short', timeZone: state.value?.timezone ?? signedIn.value?.timezone }).format(new Date(value)) : '—';
 }
 async function load() {
   const run = ++generation;
@@ -85,16 +115,29 @@ async function expand(id: number) {
   catch { if (run === detailGeneration) error.value = t('activity.failed'); }
   finally { if (run === detailGeneration) detailBusy.value = false; }
 }
-onMounted(load);
-onBeforeUnmount(() => { generation++; detailGeneration++; });
+onMounted(() => {
+  refresh();
+  signedInTimer = window.setInterval(() => { void loadSignedIn(); }, 30_000);
+  document.addEventListener('visibilitychange', handleVisibility);
+});
+onBeforeUnmount(() => {
+  generation++; detailGeneration++; signedInGeneration++;
+  window.clearInterval(signedInTimer);
+  document.removeEventListener('visibilitychange', handleVisibility);
+});
 </script>
 <style scoped>
 .account-activity { padding: 1.5rem; min-width: 0; }
+.account-activity { scroll-margin-top: 5rem; }
+.account-activity__permalink { color: inherit; text-decoration: none; }
+.account-activity__permalink:hover { text-decoration: underline; text-underline-offset: .2em; }
 .account-activity__heading { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 h2 { margin: 0; font-size: 1.05rem; } h3 { margin: 0 0 .75rem; font-size: .875rem; }
 p { color: var(--muted); font-size: .8125rem; line-height: 1.5; }
 .account-activity__controls { display: flex; align-items: center; gap: .5rem; }
 button, select { border: 1px solid var(--border); border-radius: .65rem; background: var(--surface-alt); color: var(--text); padding: .5rem .75rem; font: inherit; font-size: .8125rem; min-height: 2.75rem; cursor: pointer; }
+.account-activity__controls > button, .account-activity__controls > select { box-sizing: border-box; height: 2.75rem; line-height: 1.25; margin: 0; }
+.account-activity__controls > select { width: auto; min-width: 8rem; padding-right: 2rem; }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .account-activity__table { overflow-x: auto; margin: 1rem 0; }
@@ -113,6 +156,11 @@ th { color: var(--muted); font-size: .75rem; font-weight: 600; } th, td { paddin
 .account-activity__detail-table .account-activity__count { width: 5rem; text-align: right; font-weight: 600; }
 .account-activity__detail-table .account-activity__date { width: 14rem; white-space: nowrap; color: var(--muted); }
 .account-activity__detail-table a { text-decoration: underline; text-underline-offset: .15em; }
+.account-activity__signed-in { margin: 1.25rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: .75rem; }
+.account-activity__signed-in h3 { display: flex; align-items: center; gap: .5rem; margin-bottom: .375rem; }
+.account-activity__signed-in-count { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .375rem; border-radius: 999px; background: var(--surface-alt); color: var(--muted); font-size: .75rem; }
+.account-activity__signed-in-table { max-height: 15rem; margin-bottom: 0; }
+.account-activity__signed-in-table th { position: sticky; top: 0; background: var(--surface); }
 .account-activity__note { font-size: .75rem; }
 @media(max-width: 640px) { .account-activity { padding: 1rem; } }
 </style>

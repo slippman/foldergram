@@ -315,6 +315,16 @@ describe('router', () => {
     expect(router.currentRoute.value.params.slug).toBe('saved');
   });
 
+  it('keeps bookmarked activity behind the settings capability', () => {
+    const authStore = useAuthStore(pinia);
+    authStore.$patch({ ready: true, capabilities: { canAccessSettings: false } });
+    const activity = router.resolve('/settings?section=access#activity');
+    expect(activity.name).toBe('settings');
+    expect(canAccessRoute(activity)).toBe(false);
+    authStore.$patch({ capabilities: { canAccessSettings: true } });
+    expect(canAccessRoute(activity)).toBe(true);
+  });
+
   it('keeps shared folder routes outside normal app capability checks', () => {
     const authStore = useAuthStore(pinia);
     authStore.$patch({

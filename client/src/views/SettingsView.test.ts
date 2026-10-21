@@ -8,11 +8,15 @@ import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import SettingsView from './SettingsView.vue';
 
-vi.mock('vue-router', () => ({
-  useRoute: () => ({
-    query: {}
-  })
+const routing = vi.hoisted(() => ({
+  route: { query: {} as Record<string, string>, hash: '' },
+  push: vi.fn()
 }));
+vi.mock('vue-router', async () => {
+  const { reactive } = await import('vue');
+  routing.route = reactive(routing.route);
+  return { useRoute: () => routing.route, useRouter: () => ({ push: routing.push }) };
+});
 
 const scrollIntoViewSpy = vi.fn();
 
@@ -134,7 +138,8 @@ function mountSettingsView() {
     global: {
       stubs: {
         ConfirmDialog: true,
-        EmailAccessSettings: true
+        EmailAccessSettings: true,
+        EmailActivitySettings: true
       }
     }
   });
@@ -157,6 +162,12 @@ describe('SettingsView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.restoreAllMocks();
+    routing.route.query = {};
+    routing.route.hash = '';
+    routing.push.mockReset().mockImplementation(async (target) => {
+      routing.route.query = target.query;
+      routing.route.hash = target.hash;
+    });
     window.localStorage.clear();
     scrollIntoViewSpy.mockReset();
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -164,6 +175,50 @@ describe('SettingsView', () => {
       value: scrollIntoViewSpy
     });
     vi.spyOn(galleryApi, 'fetchAdminStats').mockResolvedValue(createAppStats());
+  });
+
+  it('scrolls a bookmarked Activity only after the account list is ready', async () => {
+    const status = createAppStatus();
+    status.preferences.folderDisplayTheme = 'cinema';
+    useAppStore().$patch({stats:status});
+    useAuthStore().accessMode = 'email';
+    routing.route.query = {section:'access'};
+    routing.route.hash = '#activity';
+    const wrapper = mountSettingsView();
+    await flushPromises();
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    wrapper.findComponent({name:'EmailAccessSettings'}).vm.$emit('ready');
+    await flushPromises();
+    expect(scrollIntoViewSpy).toHaveBeenCalledTimes(1);
+    expect(scrollIntoViewSpy).toHaveBeenLastCalledWith({block:'start',behavior:'instant'});
+    wrapper.findComponent({name:'EmailAccessSettings'}).vm.$emit('ready');
+    await flushPromises();
+    expect(scrollIntoViewSpy).toHaveBeenCalledTimes(1);
+    routing.route.hash = '';
+    await flushPromises();
+    routing.route.hash = '#activity';
+    await flushPromises();
+    expect(scrollIntoViewSpy).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
+  });
+
+  it('opens bookmarked sections and keeps tab navigation in the URL', async () => {
+    useAppStore().$patch({ stats: createAppStatus() });
+    routing.route.query = { section: 'general', action: 'rebuild' };
+    const wrapper = mountSettingsView();
+    await flushPromises();
+    expect(wrapper.text()).toContain('Feed');
+    expect(wrapper.findAll('button').find(button => button.text().includes('General Settings'))?.classes()).toContain('font-bold');
+    await wrapper.findAll('button').find(button => button.text().includes('Security & Access'))!.trigger('click');
+    await flushPromises();
+    expect(routing.push).toHaveBeenLastCalledWith({query:{section:'access',action:'rebuild'},hash:''});
+    routing.route.query = { section: 'general' };
+    await flushPromises();
+    expect(wrapper.findAll('button').find(button => button.text().includes('General Settings'))?.classes()).toContain('font-bold');
+    routing.route.query = { section: 'unknown' };
+    await flushPromises();
+    expect(wrapper.findAll('button').find(button => button.text().includes('Library'))?.classes()).toContain('font-bold');
+    wrapper.unmount();
   });
 
   it('hides password disabling in email mode while preserving the password-mode controls', async () => {

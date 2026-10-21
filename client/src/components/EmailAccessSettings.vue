@@ -56,6 +56,7 @@ import { useI18n } from 'vue-i18n';
 import { sendEmailInvitation, approveAccessRequest, fetchLibraryUsers, rejectAccessRequest, deleteLibraryUser, type LibraryUser, type LibraryUsersPayload } from '../api/email-auth';
 import ConfirmDialog from './ConfirmDialog.vue';
 const { t } = useI18n();
+const emit = defineEmits<{ ready: [] }>();
 const state = ref<LibraryUsersPayload | null>(null);
 const isPendingRequest = (user: LibraryUser) => user.access_status === 'pending' && user.requested_at != null;
 const pending = computed(() => state.value?.items.filter(user => isPendingRequest(user)) ?? []);
@@ -79,7 +80,7 @@ async function load() {
   if (mounted && current === revision) state.value = payload;
 }
 onMounted(() => {
-  void refresh();
+  void refresh().finally(() => { if (mounted) emit('ready'); });
   poll = setInterval(() => { if (!busy.value && !document.hidden) void load().catch(() => {}); }, 15_000);
 });
 onBeforeUnmount(() => { mounted = false; revision++; clearInterval(poll); clearTimeout(noticeTimer); });

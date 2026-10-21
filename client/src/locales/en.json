@@ -2,6 +2,12 @@
   "activity": {
       "title": "Community activity",
       "description": "Select an email address to see album visits and current likes.",
+      "signedInTitle": "Signed-in users",
+      "signedInDescription": "Email accounts signed in on at least one browser. People can stay signed in after closing the site. Refreshes automatically.",
+      "sessions": "Sessions",
+      "signedInEmpty": "No signed-in users.",
+      "signedInFailed": "Could not load signed-in users. Try Refresh.",
+      "signedInLimit": "Showing the {count} most recently active accounts out of {total} signed-in users.",
       "period": "Album view period",
       "all": "All time",
       "today": "Today",

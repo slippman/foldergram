@@ -1,5 +1,5 @@
 <template>
-  <div class="rail-viewer fixed inset-0 z-[80] bg-black" @click.self="emit('close')">
+  <div class="rail-viewer fixed inset-0 z-[80] bg-black" :class="{ 'rail-viewer--cinema': cinema }" @click.self="emit('close')">
     <button
       class="rail-viewer__close"
       type="button"
@@ -271,6 +271,7 @@ const CAPSULE_SWITCH_ANIMATION_MS = 360;
 const CAPSULE_VIEW_TRANSITION_NAME = 'rail-highlight-stage';
 
 const props = defineProps<{
+  cinema?: boolean;
   items: RailCapsule[];
   initialId: string;
   railSingularLabel: string;
@@ -803,6 +804,10 @@ onUnmounted(() => {
   min-height: 100vh;
   min-height: 100dvh;
 }
+
+.rail-viewer--cinema .story-stage__header strong,
+.rail-viewer--cinema .story-stage__footer strong,
+.rail-viewer--cinema .story-side-card__meta strong { color: #f5f5f5; }
 
 .rail-viewer__close {
   position: absolute;

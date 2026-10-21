@@ -2,6 +2,12 @@
   "activity": {
       "title": "社区活动",
       "description": "选择电子邮箱，查看相册访问和当前点赞。",
+      "signedInTitle": "已登录用户",
+      "signedInDescription": "至少在一个浏览器中登录的邮箱账户。关闭网站后仍可保持登录。此列表会自动刷新。",
+      "sessions": "会话数",
+      "signedInEmpty": "暂无已登录用户。",
+      "signedInFailed": "无法加载已登录用户，请刷新。",
+      "signedInLimit": "共 {total} 位已登录用户，显示最近活跃的 {count} 个账户。",
       "period": "相册访问时间范围",
       "all": "全部时间",
       "today": "今天",
