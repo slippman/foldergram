@@ -10,6 +10,7 @@ export interface LibraryUser {
   revoked_at: number | null;
   created_at: number;
   last_signed_in_at: number | null;
+  first_signed_in_at: number | null;
   login_count: number;
   last_active_at: number | null;
 }
@@ -205,7 +206,8 @@ export const emailAccountRepository = {
         db.prepare('UPDATE library_users SET display_name = ? WHERE id = ?').run(screenName?.trim() || 'Community member', user.id);
       }
       const signedInAt = Date.now();
-      db.prepare('UPDATE library_users SET last_signed_in_at = ?, last_active_at = ?, login_count = login_count + 1 WHERE id = ?').run(signedInAt, signedInAt, user.id);
+      db.prepare(`UPDATE library_users SET first_signed_in_at = CASE WHEN last_signed_in_at IS NULL THEN ? ELSE first_signed_in_at END,
+        last_signed_in_at = ?, last_active_at = ?, login_count = login_count + 1 WHERE id = ?`).run(signedInAt, signedInAt, signedInAt, user.id);
       return this.getById(user.id)!;
     });
   },

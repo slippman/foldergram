@@ -2,6 +2,12 @@
   "activity": {
       "title": "Actividad de la comunidad",
       "description": "Selecciona un correo para ver visitas a álbumes y Me gusta actuales.",
+      "signedInTitle": "Usuarios con sesión iniciada",
+      "signedInDescription": "Cuentas con sesión iniciada en al menos un navegador. La sesión puede mantenerse al cerrar el sitio. Se actualiza automáticamente.",
+      "sessions": "Sesiones",
+      "signedInEmpty": "No hay usuarios con sesión iniciada.",
+      "signedInFailed": "No se pudieron cargar las sesiones. Pulsa Actualizar.",
+      "signedInLimit": "Se muestran las {count} cuentas más activas recientemente de {total} usuarios con sesión iniciada.",
       "period": "Período de visitas",
       "all": "Todo",
       "today": "Hoy",

@@ -191,8 +191,25 @@ administrator, but is not intended as the public attribution for those features.
 
 ## Account activity
 
+First joined stays empty until the first successful email sign-in. Inviting, approving,
+or inspecting a sign-in link does not set it. Historical first dates are recovered
+only where retained login history proves them; unknown dates remain empty.
+
 Cinema Access settings include an administrator-only Community activity report.
-It shows account email, last successful login, recorded login count, last activity,
+Bookmark `/settings?section=access#activity` to open it directly, or click the
+Community activity heading to put that address in the browser. Settings tabs use
+`section=library`, `general`, `places`, `access`, or `status`; browser Back and
+Forward restore the selected tab. These URLs retain the normal administrator
+access requirements and contain no account credentials.
+Its Signed-in users section lists approved email accounts with at least one
+unexpired session matching the current authentication version, their last activity,
+and browser session count. Closed browsers can retain a login for up to 90 days;
+this is a sign-in list, not live online presence. Expired, revoked, banned and
+invalidated sessions are excluded. The panel refreshes every 30 seconds while
+visible without resetting expanded history. It shows up to 100 recently active
+accounts and the full signed-in total; password-only admin sessions are not
+associated with email accounts and are not included.
+It shows account email, first successful sign-in (First joined), recorded login count, last activity,
 album views, unique albums and current likes. Select an email for album totals and
 its current liked photos. View filters cover today, the last seven calendar days,
 or all recorded time; login counts and likes remain lifetime/current totals.

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import type express from 'express';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { requestTestApp as request } from './http-test-utils.js';
@@ -57,12 +58,57 @@ describe.sequential('account activity', () => {
     for(const time of ['2026-10-19T18:00Z','2026-10-20T18:00Z','2026-10-20T20:00Z','2026-10-21T18:00Z']) activity.activityService.recordAlbum(alice.id,album,Date.parse(time));
     activity.activityService.recordAlbum(bob.id,album,Date.parse('2026-10-20T18:00Z'));
     const report=(await get('/api/admin/activity')).body;
-    expect(report.items.find((user:any)=>user.id===alice.id)).toMatchObject({albumViews:3,uniqueAlbums:1,joinedAt:accounts.getById(alice.id)!.created_at});
+    expect(report.items.find((user:any)=>user.id===alice.id)).toMatchObject({albumViews:3,uniqueAlbums:1,joinedAt:accounts.getById(alice.id)!.first_signed_in_at});
     expect(report.items.find((user:any)=>user.id===bob.id)).toMatchObject({albumViews:1,uniqueAlbums:1});
     const other=repo.folderRepository.upsert({slug:'birthday',name:'Birthday',folderPath:'birthday'});
     activity.activityService.recordAlbum(alice.id,other);
     expect((await get('/api/admin/activity')).body.items.find((user:any)=>user.id===alice.id)).toMatchObject({albumViews:4,uniqueAlbums:2});
   });
+  it('leaves invitations unjoined and records the first successful login once', async () => {
+    const now = Date.now();
+    const time = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const invited = accounts.approveInvitation('invited@example.com')!;
+      const joined = () => (activity.activityService.summary('all', 1, 100).items as any[]).find(user => user.id === invited.id).joinedAt;
+      expect(joined()).toBeNull();
+      accounts.createSignInToken(invited.id, hash('first'), now + 7200000);
+      accounts.getSignInUser(hash('first'));
+      expect(joined()).toBeNull();
+      time.mockReturnValue(now + 60000);
+      accounts.redeem(hash('first'), hash('session1'), auth.getSessionVersion(), now + 86400000);
+      expect(joined()).toBe(now + 60000);
+      time.mockReturnValue(now + 120000);
+      accounts.createSignInToken(invited.id, hash('second'), now + 7200000);
+      accounts.redeem(hash('second'), hash('session2'), auth.getSessionVersion(), now + 86400000);
+      expect(joined()).toBe(now + 60000);
+      expect(accounts.redeem(hash('second'), hash('replay'), auth.getSessionVersion(), now + 86400000)).toBeNull();
+      expect(joined()).toBe(now + 60000);
+      // Preserve unknown historical first dates instead of substituting a later login.
+      const db = (await import('../src/db/database.js')).databaseManager.connection;
+      db.prepare('UPDATE library_users SET first_signed_in_at=NULL WHERE id=?').run(invited.id);
+      accounts.createSignInToken(invited.id, hash('legacy'), now + 7200000);
+      accounts.redeem(hash('legacy'), hash('session3'), auth.getSessionVersion(), now + 86400000);
+      expect(joined()).toBeNull();
+    } finally { time.mockRestore(); }
+  });
+
+  it('backfills only provable first logins and keeps incomplete history unknown', async () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      db.exec(`CREATE TABLE library_users(id INTEGER PRIMARY KEY,created_at INTEGER,last_signed_in_at INTEGER,login_count INTEGER);
+        CREATE TABLE library_user_sessions(user_id INTEGER,created_at INTEGER);
+        CREATE TABLE app_settings(key TEXT,value TEXT);
+        INSERT INTO app_settings VALUES('activity.capture_started_at','1000');
+        INSERT INTO library_users VALUES(1,1100,NULL,0),(2,1100,2000,1),(3,1100,3000,2),(4,1100,3000,2),(5,900,3000,1);
+        INSERT INTO library_user_sessions VALUES(3,2100),(3,3000),(4,3000);`);
+      db.exec(await fs.readFile(new URL('../db/migrations/000013_add_first_sign_in.sql', import.meta.url), 'utf8'));
+      expect(db.prepare('SELECT id,first_signed_in_at FROM library_users ORDER BY id').all()).toEqual([
+        {id:1,first_signed_in_at:null},{id:2,first_signed_in_at:2000},{id:3,first_signed_in_at:2100},
+        {id:4,first_signed_in_at:null},{id:5,first_signed_in_at:null}
+      ]);
+    } finally { db.close(); }
+  });
+
   it('uses Denver calendar dates across midnight and daylight-saving boundaries',()=>{
     expect(activity.activityDay(Date.parse('2026-10-20T05:59Z'))).toBe('2026-10-19');
     expect(activity.activityDay(Date.parse('2026-10-20T06:00Z'))).toBe('2026-10-20');
@@ -85,6 +131,44 @@ describe.sequential('account activity', () => {
     expect((await view()).status).toBe(204);
     expect((await get('/api/admin/activity')).headers.get('cache-control')).toContain('no-store');
   });
+  it('reports only valid signed-in email accounts, groups browsers and keeps session secrets private', async () => {
+    const db = (await import('../src/db/database.js')).databaseManager.connection;
+    const version = auth.getSessionVersion();
+    const now = Date.now();
+    const added = db.prepare('INSERT INTO library_user_sessions(token_hash,user_id,auth_version,expires_at,created_at) VALUES(?,?,?,?,?)');
+    added.run(hash('second-browser'), alice.id, version, now + 86400000, now);
+    added.run(hash('expired-browser'), alice.id, version, now - 1, now - 10000);
+    added.run(hash('old-password-browser'), alice.id, version + 1, now + 86400000, now);
+    const banned = accounts.approve('banned@example.com', 'Banned');
+    const revoked = accounts.approve('revoked@example.com', 'Revoked');
+    db.prepare("UPDATE library_users SET access_status='banned' WHERE id=?").run(banned.id);
+    db.prepare('UPDATE library_users SET revoked_at=? WHERE id=?').run(now, revoked.id);
+    added.run(hash('banned-session'), banned.id, version, now + 86400000, now);
+    added.run(hash('revoked-session'), revoked.id, version, now + 86400000, now);
+    accounts.approveInvitation('not-joined@example.com');
+    const response = await get('/api/admin/activity/signed-in');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.body.total).toBe(2);
+    expect(response.body.items).toHaveLength(2);
+    const config = (await import('../src/config/env.js')).appConfig;
+    config.emailSignInEnabled = false;
+    try { expect((await get('/api/admin/activity/signed-in')).body).toMatchObject({items:[],total:0}); }
+    finally { config.emailSignInEnabled = true; }
+    expect(response.body.items.find((user:any)=>user.id===alice.id)).toMatchObject({email:'alice@example.com',sessionCount:2});
+    expect(response.body.items.find((user:any)=>user.id===bob.id)).toMatchObject({email:'bob@example.com',sessionCount:1});
+    for (const user of response.body.items) expect(Object.keys(user).sort()).toEqual(['email','id','lastActiveAt','sessionCount']);
+    expect(JSON.stringify(response.body)).not.toContain(hash('second-browser'));
+    expect((await get('/api/admin/activity/signed-in', alice.cookie)).status).toBe(403);
+    expect((await get('/api/admin/activity/signed-in', '')).status).toBe(401);
+    accounts.deleteSession(hash(bob.cookie.split('=')[1]!));
+    expect((await get('/api/admin/activity/signed-in')).body.total).toBe(1);
+    accounts.deleteSession(hash(alice.cookie.split('=')[1]!));
+    expect((await get('/api/admin/activity/signed-in')).body.items[0].sessionCount).toBe(1);
+    accounts.deleteSession(hash('second-browser'));
+    expect((await get('/api/admin/activity/signed-in')).body).toMatchObject({items:[],total:0});
+  });
+
   it('records signed-in scoped shares without broadening link-only album access',async()=>{
     repo.folderRepository.setShareMode('trip','link-only');
     expect((await view()).status).toBe(404);

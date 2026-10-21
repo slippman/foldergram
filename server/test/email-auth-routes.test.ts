@@ -219,6 +219,15 @@ describe.sequential('invite-only email sign-in', () => {
       expect(page.body).toContain('<p>Loading UnReeled Photos…</p>');
       expect(page.body).not.toContain('data-cinema-entry="true"');
       expect(page.headers.get('cache-control')).toBe('no-store');
+      if (url === '/') {
+        expect(page.body).toContain('property="og:image" content="https://photos.example.com/branding/ur-invitation-card-v1.png"');
+        expect(page.body).toContain('A closer look at the good times.');
+        expect(page.body).toContain('property="og:image:width" content="1200"');
+        const spoofed = await request(app, 'GET', '/', { Host: 'evil.example', 'X-Forwarded-Host': 'evil.example' });
+        expect(spoofed.body).toContain('property="og:image" content="https://photos.example.com/branding/ur-invitation-card-v1.png"');
+      } else {
+        expect(page.body).not.toContain('property="og:image"');
+      }
     }
     const { appConfig } = await import('../src/config/env.js');
     appConfig.emailSignInEnabled = false;

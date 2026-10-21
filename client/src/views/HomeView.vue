@@ -204,6 +204,7 @@
       </template>
 
       <StoriesModal
+        :cinema="isCinema"
         v-if="activeRailViewerId && displayMomentItems.length"
         :items="displayMomentItems"
         :initial-id="activeRailViewerId"
@@ -212,6 +213,7 @@
         @close="closeRailViewer"
       />
       <StoriesModal
+        :cinema="isCinema"
         v-if="activeFeedStoryId && folderStoriesStore.items.length"
         :items="folderStoriesStore.items"
         :initial-id="activeFeedStoryId"
@@ -651,6 +653,10 @@ onUnmounted(() => {
 .home-cinema-header :deep(h1) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .home-cinema-header :deep(.album-header__brand), .home-cinema-header :deep(.album-header__actions) { grid-row: 1; }
 .home-stories--cinema .story-rail__track { justify-content: center; }
+@media (min-width: 768px) {
+  .home-cinema-header { padding: .25rem 0; row-gap: 0; }
+  .home-cinema-header :deep(.album-header__brand) { font-size: 1.125rem; line-height: 1.25; }
+}
 @media (max-width: 767px) {
   .home-cinema-header :deep(.album-header__hint) { grid-row: 2; }
 }

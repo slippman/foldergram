@@ -64,10 +64,29 @@ sharePreviewRouter.get('/reels', (_request, response, next) => {
 });
 
 // Brand the email front door before Vue or authentication requests can finish.
-sharePreviewRouter.get(['/', '/signin', '/admin', '/access/review'], (_request, response, next) => {
+sharePreviewRouter.get(['/', '/signin', '/admin', '/access/review'], (request, response, next) => {
   if (!appConfig.emailSignInEnabled) return next();
   let html = albumShellHtml(true);
   if (!html) return next();
+  // Public invitation preview only: never include account, token, or album data.
+  if (request.path === '/' && appConfig.emailSignInOrigin) {
+    const origin = new URL(appConfig.emailSignInOrigin).origin;
+    const image = escapeHtml(`${origin}/branding/ur-invitation-card-v1.png`);
+    html = html.replace('</head>', [
+      '<meta property="og:type" content="website" />',
+      '<meta property="og:title" content="UnReeled Photos" />',
+      '<meta property="og:description" content="A closer look at the good times." />',
+      `<meta property="og:url" content="${escapeHtml(origin)}/" />`,
+      `<meta property="og:image" content="${image}" />`,
+      '<meta property="og:image:type" content="image/png" />',
+      '<meta property="og:image:width" content="1200" />',
+      '<meta property="og:image:height" content="630" />',
+      '<meta property="og:image:alt" content="UR logo — UnReeled Photos. A closer look at the good times." />',
+      '<meta name="twitter:card" content="summary_large_image" />',
+      `<meta name="twitter:image" content="${image}" />`,
+      '</head>'
+    ].join('\n'));
+  }
   response.setHeader('Cache-Control', 'no-store');
   if (appConfig.nodeEnv !== 'production') html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
   response.type('html').send(html);

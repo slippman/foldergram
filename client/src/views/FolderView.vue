@@ -180,6 +180,7 @@
       <AlbumAttribution v-if="isCinema" />
 
       <StoriesModal
+        :cinema="isCinema"
         v-if="activeStoryViewerId && folderStoriesStore.items.length"
         :items="folderStoriesStore.items"
         :initial-id="activeStoryViewerId"

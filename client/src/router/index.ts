@@ -179,6 +179,11 @@ export const router = createRouter({
       return savedPosition;
     }
 
+    if (to.name === 'settings' && to.query.section === 'access' && to.hash === '#activity') {
+      // Settings handles its anchor after authentication and initial lists load.
+      return false;
+    }
+
     // Cinema positions the selected photo after loading its album page.
     if ((to.name === 'folder' || to.name === 'shared-folder') && to.query.view === 'scroll') {
       return false;

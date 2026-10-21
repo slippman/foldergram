@@ -15,6 +15,9 @@ activityRouter.get('/admin/activity', admin, (request, response) => {
   const query = z.object({ period: periodSchema, page: z.coerce.number().int().min(1).max(100000).default(1), limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(request.query);
   response.json(activityService.summary(query.period, query.page, query.limit));
 });
+activityRouter.get('/admin/activity/signed-in', admin, (_request, response) => {
+  response.json(activityService.signedIn(authService.getSessionVersion()));
+});
 activityRouter.get('/admin/activity/:id', admin, (request, response) => {
   const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
   const { period } = z.object({ period: periodSchema }).parse(request.query);

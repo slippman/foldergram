@@ -38,7 +38,7 @@ export const activityService = {
   summary(period: ActivityPeriod, page: number, limit: number) {
     const db = databaseManager.connection;
     const day = startDay(period);
-    const items = db.prepare(`SELECT u.id, u.email, u.created_at AS joinedAt, u.last_signed_in_at AS lastLoginAt,
+    const items = db.prepare(`SELECT u.id, u.email, u.first_signed_in_at AS joinedAt, u.last_signed_in_at AS lastLoginAt,
       u.login_count AS loginCount, u.last_active_at AS lastActiveAt,
       (SELECT COUNT(*) FROM album_daily_views v WHERE v.user_id=u.id AND (? IS NULL OR v.view_day>=?)) AS albumViews,
       (SELECT COUNT(DISTINCT album_key) FROM album_daily_views v WHERE v.user_id=u.id AND (? IS NULL OR v.view_day>=?)) AS uniqueAlbums,
@@ -49,6 +49,21 @@ export const activityService = {
     const total = (db.prepare("SELECT COUNT(*) AS n FROM library_users WHERE access_status='approved'").get() as { n: number }).n;
     return { items, total, page, limit, hasMore: page * limit < total, timezone: appConfig.activityTimezone,
       captureStartedAt: Number((db.prepare("SELECT value FROM app_settings WHERE key='activity.capture_started_at'").get() as { value: string }).value) };
+  },
+  signedIn(authVersion: number, now = Date.now()) {
+    const db = databaseManager.connection;
+    const limit = 100;
+    if (!appConfig.emailSignInEnabled) return { items: [], total: 0, limit, timezone: appConfig.activityTimezone };
+    const items = db.prepare(`SELECT u.id, u.email, u.last_active_at AS lastActiveAt, COUNT(*) AS sessionCount
+      FROM library_users u JOIN library_user_sessions s ON s.user_id=u.id
+      WHERE u.access_status='approved' AND u.revoked_at IS NULL AND s.auth_version=? AND s.expires_at>?
+      GROUP BY u.id ORDER BY COALESCE(u.last_active_at,u.last_signed_in_at,0) DESC,u.id DESC LIMIT ?`)
+      .all(authVersion, now, limit);
+    const total = (db.prepare(`SELECT COUNT(DISTINCT u.id) AS n FROM library_users u
+      JOIN library_user_sessions s ON s.user_id=u.id
+      WHERE u.access_status='approved' AND u.revoked_at IS NULL AND s.auth_version=? AND s.expires_at>?`)
+      .get(authVersion, now) as { n: number }).n;
+    return { items, total, limit, timezone: appConfig.activityTimezone };
   },
   detail(userId: number, period: ActivityPeriod) {
     const db = databaseManager.connection;
