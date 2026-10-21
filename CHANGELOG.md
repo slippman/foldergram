@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2-slippman.2.2.1 — 2026-10-20
+
+### Bug fixes
+
+- Cinema fullscreen like counts are centered beneath the heart with tighter spacing and readable text on the dark background.
+
 ## 1.2.2-slippman.2.2.0 — 2026-10-20
 
 ### New features
