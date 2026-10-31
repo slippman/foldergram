@@ -67,6 +67,7 @@ service. The header and More-menu identity displays share this account styling.
 | `server/src/routes/share-preview.ts` homepage metadata | Email-enabled root page advertises the invitation card through Open Graph and Twitter image tags, using the configured email origin. Sign-in/admin/review and album previews retain their existing behavior. |
 | `client/vite.config.ts` | Routes email front-door and Reels HTML through the backend during development so initial branding follows the appropriate theme before Vue boots. |
 | `client/index.html` | Startup logo sizing, light/dark filters, blend mode, and the default Classic favicon links. |
+| `client/src/components/SharedAlbumShell.vue` | Reuses the Cinema app shell and its existing branded navigation for confirmed signed-in users on Cinema share routes; guests and Classic albums retain standalone presentation. |
 | `client/src/components/AppShell.vue` | Shared Cinema `--ur-logo-filter` / `--ur-logo-blend` variables for light and dark themes. |
 | `AlbumAttribution.vue`, `SharedFolderView.vue`, `EmailSignIn.vue`, `EmailAccessReviewView.vue` | Component logo sizing and/or theme filters. |
 

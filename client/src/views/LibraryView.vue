@@ -236,11 +236,14 @@
           v-if="authStore.canManageLibrary"
           class="flex items-center gap-[0.8rem] w-full px-4 py-[0.95rem] border-0 border-b border-border text-text bg-transparent cursor-pointer text-left"
           type="button"
-          @click="shareFolder = menuFolder; menuFolder = null"
+          @click="shareMenuFolder"
         >
           <span class="i-fluent-share-20-regular w-[1.15rem] h-[1.15rem] shrink-0" aria-hidden="true" />
           <span>{{ t('libraryPage.shareAlbum') }}</span>
         </button>
+        <div v-if="authStore.canManageLibrary && appStore.folderDisplayTheme === 'cinema'" class="border-b border-border p-3">
+          <AlbumVisibilityControl :key="menuFolder.slug" :folder="menuFolder" />
+        </div>
         <button
           v-if="authStore.canDeleteMedia"
           class="flex items-center gap-[0.8rem] w-full px-4 py-[0.95rem] border-0 border-b border-border text-[#d93025] bg-transparent cursor-pointer text-left"
@@ -334,6 +337,7 @@
 </template>
 
 <script setup lang="ts">
+  import AlbumVisibilityControl from "../components/AlbumVisibilityControl.vue"
   import FolderShareModal from "../components/FolderShareModal.vue"
   import { computed, onMounted, ref } from "vue"
   import { useI18n } from "vue-i18n"
@@ -521,6 +525,13 @@
 
   function openMenu(folder: FolderSummary) {
     menuFolder.value = folder
+  }
+
+  function shareMenuFolder() {
+    if (!menuFolder.value || !authStore.canManageLibrary) return
+    // Saving visibility replaces the store item; the open menu may hold its old object.
+    shareFolder.value = foldersStore.items.find(folder => folder.slug === menuFolder.value?.slug) ?? menuFolder.value
+    menuFolder.value = null
   }
 
   function navigateToFolder() {

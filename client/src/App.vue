@@ -13,12 +13,12 @@
   <div v-else-if="sharedAlbumRedirectPending" class="min-h-screen grid place-items-center bg-bg text-muted" role="status" data-album-state="loading">
     {{ t('share.loadingAlbum') }}
   </div>
-  <template v-else-if="isPublicShareRoute">
+  <SharedAlbumShell v-else-if="isPublicShareRoute" :cinema="isCinemaPage === true">
     <RouterView :route="displayRoute" />
     <div v-if="showImageModal" class="app__image-modal-layer app__image-modal-layer--cinema" @click.self="closeImageModal">
       <SharedPostView :slug="String(route.params.slug ?? '')" :id="String(route.params.id ?? '')" modal @close="closeImageModal" />
     </div>
-  </template>
+  </SharedAlbumShell>
   <RouterView v-else-if="route.meta.publicAuth === true" />
   <EmailSignIn v-else-if="authStore.requiresLogin && authStore.accessMode === 'email'" data-album-state="settled" data-album-theme="classic" />
   <AuthGate v-else-if="authStore.requiresLogin" data-album-state="settled" data-album-theme="classic" />
@@ -37,6 +37,7 @@ import { useI18n } from 'vue-i18n';
 import { RouterView, useRoute, useRouter, type RouteLocationNormalizedLoaded } from 'vue-router';
 
 import AppShell from './components/AppShell.vue';
+import SharedAlbumShell from './components/SharedAlbumShell.vue';
 import AdminUnlockDialog from './components/AdminUnlockDialog.vue';
 import EmailSignIn from './components/EmailSignIn.vue';
 import { useSharedAlbumRedirect } from './composables/useSharedAlbumRedirect';

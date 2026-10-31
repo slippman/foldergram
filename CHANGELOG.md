@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2-slippman.2.2.2 — 2026-10-31
+
+### Bug fixes
+
+- Signed-in viewers can use the sidebar and mobile navigation while browsing Cinema albums through share links, including share-link-only albums. Guest views and album access permissions stay the same.
+- Album visibility is available directly in the Cinema album options menu as well as the sharing dialog.
+- The Cinema Community activity period selector fits its label and aligns with the Refresh button.
+
 ## 1.2.2-slippman.2.2.1 — 2026-10-20
 
 ### Bug fixes
