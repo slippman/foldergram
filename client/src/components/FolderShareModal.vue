@@ -37,16 +37,7 @@
           {{ localNotice }}
         </p>
 
-        <section v-if="cinema" class="grid gap-2 rounded-[1rem] border border-border bg-surface-alt p-4">
-          <label class="grid gap-2 text-[0.84rem] font-semibold">
-            {{ t('folder.shareModal.visibilityTitle') }}
-            <select v-model="shareMode" class="min-h-11 rounded-[0.75rem] border border-border bg-surface px-3 text-text" :disabled="savingShareMode" @change="saveShareMode">
-              <option value="library">{{ t('folder.shareModal.visibilityLibrary') }}</option>
-              <option value="link-only">{{ t('folder.shareModal.visibilityLinkOnly') }}</option>
-            </select>
-          </label>
-          <p class="m-0 text-[0.8rem] leading-relaxed text-muted">{{ t(shareMode === 'link-only' ? 'folder.shareModal.visibilityLinkOnlyDescription' : 'folder.shareModal.visibilityLibraryDescription') }}</p>
-        </section>
+        <AlbumVisibilityControl v-if="cinema" :folder="folder" />
 
         <section class="grid gap-1 rounded-[1rem] border border-accent/25 bg-accent-soft/50 p-4 sm:p-4.5">
           <div class="flex items-center gap-2 text-text">
@@ -231,6 +222,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import AlbumVisibilityControl from './AlbumVisibilityControl.vue';
 import { useFoldersStore } from '../stores/folders';
 import { copyFolderShareLink } from '../api/gallery';
 import type { FolderShareExpirationPreset, FolderShareLinkStatus, FolderSummary } from '../types/api';
@@ -252,24 +244,6 @@ const customExpiresAtLocal = ref('');
 const password = ref('');
 const localError = ref<string | null>(null);
 const localNotice = ref<string | null>(null);
-const shareMode = ref(props.folder.shareMode ?? 'library');
-const savedShareMode = ref(shareMode.value);
-const savingShareMode = ref(false);
-watch(() => props.folder, folder => { shareMode.value = savedShareMode.value = folder.shareMode ?? 'library'; });
-async function saveShareMode() {
-  if (savingShareMode.value) return;
-  savingShareMode.value = true;
-  localError.value = null;
-  localNotice.value = null;
-  try {
-    const updated = await foldersStore.updateShareMode(props.folder.slug, shareMode.value);
-    savedShareMode.value = shareMode.value = updated.shareMode ?? 'library';
-    localNotice.value = t('folder.shareModal.visibilitySaved');
-  } catch (error) {
-    shareMode.value = savedShareMode.value;
-    localError.value = error instanceof Error ? error.message : t('folder.shareModal.visibilityFailed');
-  } finally { savingShareMode.value = false; }
-}
 const copiedButton = ref<string | null>(null);
 const manualCopyUrl = ref<string | null>(null);
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;

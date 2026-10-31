@@ -3,9 +3,12 @@
     <header class="account-activity__heading">
       <div><h2><RouterLink class="account-activity__permalink" :to="{ path: '/settings', query: { section: 'access' }, hash: '#activity' }">{{ t('activity.title') }}</RouterLink></h2><p>{{ t('activity.description') }}</p></div>
       <div class="account-activity__controls">
-        <select v-model="period" :aria-label="t('activity.period')" @change="page = 1; load()">
-          <option value="all">{{ t('activity.all') }}</option><option value="today">{{ t('activity.today') }}</option><option value="week">{{ t('activity.week') }}</option>
-        </select>
+        <span class="account-activity__period">
+          <select v-model="period" :aria-label="t('activity.period')" @change="page = 1; load()">
+            <option value="all">{{ t('activity.all') }}</option><option value="today">{{ t('activity.today') }}</option><option value="week">{{ t('activity.week') }}</option>
+          </select>
+          <span class="account-activity__period-arrow i-fluent-chevron-down-16-regular" aria-hidden="true" />
+        </span>
         <button type="button" :disabled="busy || signedInBusy" @click="refresh()">{{ t('activity.refresh') }}</button>
       </div>
     </header>
@@ -136,8 +139,10 @@ h2 { margin: 0; font-size: 1.05rem; } h3 { margin: 0 0 .75rem; font-size: .875re
 p { color: var(--muted); font-size: .8125rem; line-height: 1.5; }
 .account-activity__controls { display: flex; align-items: center; gap: .5rem; }
 button, select { border: 1px solid var(--border); border-radius: .65rem; background: var(--surface-alt); color: var(--text); padding: .5rem .75rem; font: inherit; font-size: .8125rem; min-height: 2.75rem; cursor: pointer; }
-.account-activity__controls > button, .account-activity__controls > select { box-sizing: border-box; height: 2.75rem; line-height: 1.25; margin: 0; }
-.account-activity__controls > select { width: auto; min-width: 8rem; padding-right: 2rem; }
+.account-activity__controls > button, .account-activity__period select { box-sizing: border-box; height: 2.25rem; min-height: 2.25rem; line-height: 1.25; margin: 0; }
+.account-activity__period { position: relative; display: inline-flex; flex: none; }
+.account-activity__period select { appearance: none; -webkit-appearance: none; width: auto; min-width: 0; padding: .375rem 2rem .375rem .75rem; }
+.account-activity__period-arrow { position: absolute; right: .625rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: var(--muted); pointer-events: none; }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .account-activity__table { overflow-x: auto; margin: 1rem 0; }

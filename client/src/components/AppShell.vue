@@ -2,23 +2,21 @@
   <!-- Desktop: fixed sidebar + content with margin-left -->
   <!-- Mobile: no sidebar, fixed bottom nav handles navigation -->
   <div
-    class="app-shell flex min-h-screen overflow-x-clip"
-    :class="{
+    :class="bare ? undefined : ['app-shell flex min-h-screen overflow-x-clip', {
       'app-shell--standalone': isStandaloneDisplay,
       'app-shell--sidebar-expanded': sidebarExpanded,
       'app-shell--explore': isExploreShell,
       'app-shell--reels': isReelsShell,
       'app-shell--cinema': isCinemaShell
-    }"
+    }]"
   >
     <!-- Sidebar: fixed on desktop, hidden on mobile -->
-    <SidebarNav v-model:expanded="sidebarExpanded" :cinema="isCinemaShell" class="hidden md:flex fixed top-0 left-0 h-screen z-30" />
+    <SidebarNav v-if="!bare" v-model:expanded="sidebarExpanded" :cinema="isCinemaShell" class="hidden md:flex fixed top-0 left-0 h-screen z-30" />
     <!-- Content: margin-left matches sidebar width on desktop -->
-    <div class="app-shell__content flex flex-1 min-h-screen min-w-0 flex-col">
-      <TopNav :cinema="isCinemaShell" />
+    <div :class="bare ? undefined : 'app-shell__content flex flex-1 min-h-screen min-w-0 flex-col'">
+      <TopNav v-if="!bare" :cinema="isCinemaShell" />
       <main
-        class="app-shell__main flex-1 min-h-0"
-        :class="[
+        :class="bare ? undefined : ['app-shell__main flex-1 min-h-0',
           isImmersiveShell
             ? 'px-0 pt-0 pb-0 md:px-0 md:pt-0 md:pb-0'
             : 'px-10 pt-7 pb-28 md:px-[0.9rem] md:pt-4 md:pb-10',
@@ -30,7 +28,7 @@
     </div>
 
     <div
-      v-if="showStickyScanStatus"
+      v-if="!bare && showStickyScanStatus"
       class="app-shell__scan-status pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4"
       role="status"
       aria-live="polite"
@@ -98,11 +96,12 @@ import {
   getScanSummary
 } from '../utils/scan-progress';
 
+const props = withDefaults(defineProps<{ cinema?: boolean; bare?: boolean }>(), { cinema: undefined });
 const appStore = useAppStore();
 const sidebarExpanded = ref(false);
 const route = useRoute();
 const isStandaloneDisplay = ref(false);
-const isCinemaShell = computed(() => (route.name === 'folder' && appStore.folderDisplayTheme === 'cinema') || (route.name === 'home' && appStore.feedDisplayTheme === 'cinema'));
+const isCinemaShell = computed(() => props.cinema ?? ((route.name === 'folder' && appStore.folderDisplayTheme === 'cinema') || (route.name === 'home' && appStore.feedDisplayTheme === 'cinema')));
 const isExploreShell = computed(() => route.meta.shell === 'explore');
 const isReelsShell = computed(() => route.meta.shell === 'reels');
 const isImmersiveShell = computed(() => isExploreShell.value || isReelsShell.value);
