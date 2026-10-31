@@ -23,7 +23,7 @@ export type AuthRole = 'admin' | 'viewer' | 'anonymous';
 export type SessionRole = Exclude<AuthRole, 'anonymous'>;
 export type ViewerAccessMode = 'off' | 'password' | 'public' | 'email';
 export type LikesMode = 'shared' | 'local' | 'personal';
-type SupportedLocale = 'en' | 'es' | 'zh';
+type SupportedLocale = 'en' | 'es' | 'zh' | 'de';
 
 export interface AuthCapabilities {
   canManageLibrary: boolean;
@@ -70,7 +70,7 @@ export const AUTH_PASSWORD_MIN_LENGTH = 8;
 export const AUTH_PASSWORD_MAX_LENGTH = 256;
 const PASSWORD_HASH_LENGTH = 64;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
-const SUPPORTED_LOCALES = ['en', 'es', 'zh'] as const;
+const SUPPORTED_LOCALES = ['en', 'es', 'zh', 'de'] as const;
 
 function parseSupportedLocale(value: string | null): SupportedLocale | null {
   if (!value) {

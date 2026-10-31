@@ -93,9 +93,13 @@ installation. Keep the requirement enabled on public hosts.
 
 Folder shares are narrower than viewer sessions. They grant read-only access to
 one folder through `/share/:slug` and do not unlock Home, feed search, Reels,
-Places, Likes, Collections, Trash, Settings, scans, rebuilds, captions, cover
+Places, Likes, Collections, Trash, Settings, scans, rebuilds, caption editing, cover
 editing, or delete actions. Album-scoped original downloads also require an
 active grant for that album.
+
+Shared visitors can read post captions and permitted camera/exposure metadata.
+Shared responses omit local filesystem paths and location coordinates. Original
+media access remains scoped to the album grant.
 
 Admins can create:
 
@@ -161,7 +165,7 @@ All mutating API routes pass through `requireTrustedMutationRequest`.
 That middleware does two things:
 
 1. Requires `x-foldergram-intent: 1`
-2. Rejects non-loopback `Origin` or `Referer` values when those headers are present
+2. Validates `Origin` or `Referer` against the allowed app origins when those headers are present
 
 Allowed hostnames are:
 
@@ -201,7 +205,7 @@ Foldergram does not serve arbitrary filesystem paths from the client.
 
 `GET /api/originals/:id`:
 
-- looks up the post by numeric ID
+- looks up the physical media asset by its numeric `images.id`
 - resolves the stored absolute path
 - confirms that path is still within `GALLERY_ROOT`
 - confirms the file still exists
@@ -219,7 +223,7 @@ when skip mode records supported-media failures.
 
 Delete flows resolve target files and directories inside configured roots before
 removing them. If a stored path falls outside the expected root, the operation
-throws instead of deleting blindly. Permanent deletion also rejects symbolic-link
+throws instead of deleting blindly. Permanent deletion of individual posts also rejects symbolic-link
 path components, verifies file and parent-directory identities around each
 filesystem mutation, and serializes its own scans, rebuilds, lazy derivative
 generation, recovery, and deletion work.

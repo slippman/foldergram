@@ -3,7 +3,7 @@
     ref="scrollerElement"
     class="reel-deck"
     :class="{ 'reel-deck--cinema': cinema }"
-    aria-label="Reels feed"
+    :aria-label="t('reels.view.feedAria')"
     @scroll="handleScroll"
   >
     <div
@@ -30,17 +30,20 @@
     </div>
 
     <div v-if="loading && items.length > 0" class="reel-deck__status" role="status" aria-live="polite">
-      Loading more reels...
+      {{ t('reels.view.loadingMore') }}
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import type { FeedItem, FolderSummary } from '../types/api';
 import { getActiveReelId, shouldPrefetchReels } from '../utils/reels';
 import ReelPlayerCard from './ReelPlayerCard.vue';
+
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<{
   items: FeedItem[];

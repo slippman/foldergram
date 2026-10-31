@@ -82,6 +82,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
 import SidebarNav from './SidebarNav.vue';
@@ -97,6 +98,7 @@ import {
 } from '../utils/scan-progress';
 
 const props = withDefaults(defineProps<{ cinema?: boolean; bare?: boolean }>(), { cinema: undefined });
+const { t } = useI18n();
 const appStore = useAppStore();
 const sidebarExpanded = ref(false);
 const route = useRoute();
@@ -110,14 +112,14 @@ const showStickyScanStatus = computed(() => Boolean(activeScan.value?.isScanning
 
 const stickyScanTitle = computed(() => {
   if (activeScan.value?.scanReason === 'rebuild') {
-    return 'Rebuilding library';
+    return t('scanProgress.titles.rebuild');
   }
 
   if (activeScan.value?.scanReason === 'rebuild-thumbnails') {
-    return 'Regenerating thumbnails';
+    return t('scanProgress.titles.thumbnails');
   }
 
-  return 'Scanning library';
+  return t('scanProgress.titles.scan');
 });
 
 const stickyScanPhaseLabel = computed(() => getScanPhaseLabel(activeScan.value));
