@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### New features
+
+- German is available for the upstream interface. Fork-specific controls use English where German translations are not yet available.
+
+### Bug fixes
+
+- More loading messages, errors, scan progress, dialogs, and accessibility labels follow the selected language.
+- Docker builds use the patched Node.js 22.23.4 runtime from upstream.
+
 ## 1.2.2-slippman.2.2.2 — 2026-10-31
 
 ### Bug fixes

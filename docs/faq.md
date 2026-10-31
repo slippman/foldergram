@@ -127,7 +127,7 @@ that folder.
 
 No. A folder share is not an admin session, viewer session, or public-library
 mode. It does not grant Home, feed search, Reels, Places, Likes, Collections,
-Trash, Settings, scans, rebuild actions, captions, cover editing, delete
+Trash, Settings, scans, rebuild actions, caption editing, cover editing, delete
 actions. Original downloads remain scoped to the shared album's active grant.
 
 ## Why does the API call posts "images" in some fields?

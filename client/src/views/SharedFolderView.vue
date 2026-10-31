@@ -31,8 +31,8 @@
 
         <EmptyState
           v-if="!shareStore.loading && shareStore.images.length === 0"
-          title="No posts in this shared folder"
-          description="This folder share is valid, but there are no visible posts right now."
+          :title="t('share.emptyTitle')"
+          :description="t('share.emptyDescription')"
         />
         <section v-else class="grid gap-5">
           <div v-if="isCinema && isScroll">
@@ -169,7 +169,7 @@ async function scrollToPhoto() {
 watch([() => albumRoute.value.query.view, () => albumRoute.value.query.photo], scrollToPhoto);
 const password = ref('');
 const linkUnlockFailed = ref(false);
-const displayFolderTitle = computed(() => (shareStore.folder ? shareStore.folder.name : 'Shared folder'));
+const displayFolderTitle = computed(() => (shareStore.folder ? shareStore.folder.name : t('share.fallbackTitle')));
 const isAccessPending = computed(() => !shareStore.error &&
   (shareStore.access === null || (shareStore.access.granted && !shareStore.folder)));
 
