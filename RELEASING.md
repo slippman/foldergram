@@ -16,6 +16,22 @@ patch to zero; a major release resets minor and patch to zero. Updating the
 upstream base does not reset the fork's version: choose the fork bump based on
 the resulting changes. Keep the same upstream base while it remains unchanged.
 
+When merging a newer upstream release, update the root `package.json` version
+in the same change, even when publication is deferred. The upstream prefix must
+match the latest upstream release included in the merged history. Choose the
+fork SemVer for the accumulated unreleased changes; for example, integrating
+upstream 1.3.0 with German support after `1.2.2-slippman.2.2.2` prepares
+`1.3.0-slippman.2.3.0`. Keep the changes under **Unreleased** until publication.
+Changing the development label does not publish a release or change existing tags.
+A prepared version has already received its SemVer bump. Publish that version
+rather than incrementing it again when starting the release workflow.
+
+On Zeni, the local development and release workflows check the upstream prefix
+against merged Git history before proceeding. Verify the version served by the
+running development app after changing it. The local development workflow
+refreshes the container’s package metadata and verifies Vite’s served version;
+source mounts alone do not update image-baked metadata.
+
 The already published `1.2.2-slippman.1` is the historical first fork release.
 Do not rename its tag or silently replace its Docker image. It is the fork's
 1.0.0 baseline: the next fixes-only release is `1.2.2-slippman.1.0.1`, and the
